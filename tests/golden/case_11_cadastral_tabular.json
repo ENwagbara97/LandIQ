@@ -1,0 +1,20 @@
+{
+  "_description": "GOLDEN CASE 11 — Cadastral Engine: Track A Tabular. 5-station Minna UTM 32N parcel (OCR text). Expected: GREEN area match, 5 ledger entries, WGS84 within Nigeria.",
+  "input": {
+    "input_type": "cadastral_tabular_ocr",
+    "raw_text": "SC/AK/K 49700  387804.297  550821.575\nSC/AK/K 49701  387852.254  550891.123\nSC/AK/K 49702  387910.500  550865.400\nSC/AK/K 49703  387875.100  550795.200\nSC/AK/K 49700  387804.297  550821.575",
+    "datum_hint": "MINNA UTM ZONE 32",
+    "stated_area_ha": 0.42,
+    "property_owner": "Alhaji Musa Ibrahim",
+    "location_context": "Minna, Niger State"
+  },
+  "expected": {
+    "cadastral": {
+      "computation_track": "TABULAR",
+      "area_match_status_not": "RED",
+      "station_count_min": 4,
+      "wgs84_within_nigeria": true,
+      "datum_contains": "MINNA"
+    }
+  }
+}

@@ -1,0 +1,105 @@
+{
+  "evaluated_at": "2026-06-09T12:18:31.916495",
+  "total": 12,
+  "passed": 12,
+  "failed": 0,
+  "pass_rate_pct": 100.0,
+  "results": [
+    {
+      "name": "case_01_lagos_green",
+      "description": "GOLDEN CASE 01 \u2014 Valid Lagos parcel (Ikorodu LGA). Expected: GREEN, LOW flood risk.",
+      "passed": true,
+      "failures": [],
+      "duration_ms": 1514,
+      "status": "PASS"
+    },
+    {
+      "name": "case_02_lagos_red_flood",
+      "description": "GOLDEN CASE 02 \u2014 Lekki swamp-adjacent parcel. Expected: RED, HIGH flood risk (NDWI > 0.3, near Aga Creek).",
+      "passed": true,
+      "failures": [],
+      "duration_ms": 155,
+      "status": "PASS"
+    },
+    {
+      "name": "case_03_rivers_amber",
+      "description": "GOLDEN CASE 03 \u2014 Rivers State, Port Harcourt mainland. Expected: AMBER, MEDIUM flood risk.",
+      "passed": true,
+      "failures": [],
+      "duration_ms": 268,
+      "status": "PASS"
+    },
+    {
+      "name": "case_04_niger_delta_red",
+      "description": "GOLDEN CASE 04 \u2014 Niger Delta parcel. Expected: RED, HIGH flood risk. Strahler order >= 4, elevation < 5m, NDWI > 0.3.",
+      "passed": true,
+      "failures": [],
+      "duration_ms": 201,
+      "status": "PASS"
+    },
+    {
+      "name": "case_05_swapped_easting_northing",
+      "description": "GOLDEN CASE 05 \u2014 Swapped Easting/Northing. Raw UTM values provided with axes reversed. Expected: Dialog T2 fires, is_inside_nigeria=false BEFORE flip, flip test corrects it.",
+      "passed": true,
+      "failures": [],
+      "duration_ms": 9,
+      "status": "PASS"
+    },
+    {
+      "name": "case_06_unclosed_polygon",
+      "description": "GOLDEN CASE 06 \u2014 Unclosed polygon (missing terminal node). Expected: MCPErrorResponse POLYGON_OPEN. Pipeline must not proceed.",
+      "passed": true,
+      "failures": [],
+      "duration_ms": 0,
+      "status": "PASS"
+    },
+    {
+      "name": "case_07_minna_datum",
+      "description": "GOLDEN CASE 07 \u2014 Minna Datum input. Survey plan labelled 'Clarke 1880'. Expected: Dialog T4 fires, POS_ACCURACY flag injected, transform to WGS84 applied.",
+      "passed": true,
+      "failures": [],
+      "duration_ms": 14,
+      "status": "PASS"
+    },
+    {
+      "name": "case_08_outside_nigeria",
+      "description": "GOLDEN CASE 08 \u2014 Parcel outside Nigeria bounding box (Cameroon coordinates). Expected: Dialog T2 fires. Auto-flip test runs. Pipeline halts for user resolution.",
+      "passed": true,
+      "failures": [],
+      "duration_ms": 4,
+      "status": "PASS"
+    },
+    {
+      "name": "case_09_low_crs_confidence",
+      "description": "GOLDEN CASE 09 \u2014 CRS confidence below 60. Ambiguous numeric range. Expected: Dialog T1 fires, analysis halts until user selects CRS manually.",
+      "passed": true,
+      "failures": [],
+      "duration_ms": 0,
+      "status": "PASS"
+    },
+    {
+      "name": "case_10_dms_format",
+      "description": "GOLDEN CASE 10 \u2014 DMS format coordinate string. Expected: Dialog T5 fires, DMS converted to Decimal Degrees, user confirms conversion.",
+      "passed": true,
+      "failures": [],
+      "duration_ms": 6,
+      "status": "PASS"
+    },
+    {
+      "name": "case_11_cadastral_tabular",
+      "description": "GOLDEN CASE 11 \u2014 Cadastral Engine: Track A Tabular. 5-station Minna UTM 32N parcel (OCR text). Expected: GREEN area match, 5 ledger entries, WGS84 within Nigeria.",
+      "passed": true,
+      "failures": [],
+      "duration_ms": 6,
+      "status": "PASS"
+    },
+    {
+      "name": "case_12_cadastral_cogo",
+      "description": "GOLDEN CASE 12 \u2014 Cadastral Engine: Track B COGO Traverse. 4-leg traverse from Minna UTM tie-point. Expected: linear misclosure < 1.0m, COGO_TRAVERSE track, computed area > 0, ledger has 5 stations (anchor + 4 legs).",
+      "passed": true,
+      "failures": [],
+      "duration_ms": 4,
+      "status": "PASS"
+    }
+  ]
+}

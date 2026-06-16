@@ -1,0 +1,25 @@
+{
+  "_description": "GOLDEN CASE 02 — Lekki swamp-adjacent parcel. Expected: RED, HIGH flood risk (NDWI > 0.3, near Aga Creek).",
+  "input": {
+    "input_type": "manual_coordinates",
+    "raw_text": "6.4355N 3.5912E; 6.4362N 3.5925E; 6.4348N 3.5930E; 6.4341N 3.5917E; 6.4355N 3.5912E",
+    "stated_area_ha": 0.30,
+    "persona_mode": "EVERYDAY_BUYER"
+  },
+  "expected": {
+    "coord_extract": {
+      "detected_crs": "WGS84",
+      "crs_confidence_min": 85,
+      "is_inside_nigeria": true
+    },
+    "crs_dialogs_fired": [],
+    "risk_assess": {
+      "flood_risk": "HIGH",
+      "traffic_light": "RED"
+    },
+    "report": {
+      "traffic_light": "RED",
+      "overall_risk_score_min": 65
+    }
+  }
+}

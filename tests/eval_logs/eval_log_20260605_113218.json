@@ -1,0 +1,17 @@
+{
+  "evaluated_at": "2026-06-05T11:32:18.801022",
+  "total": 1,
+  "passed": 1,
+  "failed": 0,
+  "pass_rate_pct": 100.0,
+  "results": [
+    {
+      "name": "case_09_low_crs_confidence",
+      "description": "GOLDEN CASE 09 \u2014 CRS confidence below 60. Ambiguous numeric range. Expected: Dialog T1 fires, analysis halts until user selects CRS manually.",
+      "passed": true,
+      "failures": [],
+      "duration_ms": 2700,
+      "status": "PASS"
+    }
+  ]
+}

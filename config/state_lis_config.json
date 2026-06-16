@@ -1,0 +1,54 @@
+{
+  "states": [
+    {
+      "name": "Lagos",
+      "code": "LA",
+      "endpoint": "https://lasgis.lagosstate.gov.ng/api/v1/parcel",
+      "auth_type": "bearer",
+      "token_env_var": "LAGOS_LIS_TOKEN",
+      "schema_version": "1.0",
+      "active": false,
+      "notes": "LASGIC (Lagos Geographic Information Systems) — stub only"
+    },
+    {
+      "name": "Rivers",
+      "code": "RI",
+      "endpoint": "https://lis.riversstate.gov.ng/api/v1/parcel",
+      "auth_type": "bearer",
+      "token_env_var": "RIVERS_LIS_TOKEN",
+      "schema_version": "1.0",
+      "active": false,
+      "notes": "Rivers State Land Information System — stub only"
+    },
+    {
+      "name": "FCT",
+      "code": "FCT",
+      "endpoint": "https://agis.fcta.gov.ng/api/v1/parcel",
+      "auth_type": "bearer",
+      "token_env_var": "FCT_AGIS_TOKEN",
+      "schema_version": "1.0",
+      "active": false,
+      "notes": "Abuja Geographic Information Systems — stub only"
+    },
+    {
+      "name": "Ogun",
+      "code": "OG",
+      "endpoint": "https://lands.ogunstate.gov.ng/api/v1/parcel",
+      "auth_type": "bearer",
+      "token_env_var": "OGUN_LIS_TOKEN",
+      "schema_version": "1.0",
+      "active": false,
+      "notes": "Ogun State Lands Bureau API — stub only"
+    },
+    {
+      "name": "Kano",
+      "code": "KN",
+      "endpoint": "https://lands.kanostate.gov.ng/api/v1/parcel",
+      "auth_type": "bearer",
+      "token_env_var": "KANO_LIS_TOKEN",
+      "schema_version": "1.0",
+      "active": false,
+      "notes": "Kano State Lands bureau — stub only"
+    }
+  ]
+}

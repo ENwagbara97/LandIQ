@@ -1,0 +1,24 @@
+{
+  "_description": "GOLDEN CASE 04 — Niger Delta parcel. Expected: RED, HIGH flood risk. Strahler order >= 4, elevation < 5m, NDWI > 0.3.",
+  "input": {
+    "input_type": "manual_coordinates",
+    "raw_text": "5.1100N 6.7300E; 5.1107N 6.7313E; 5.1093N 6.7318E; 5.1086N 6.7305E; 5.1100N 6.7300E",
+    "stated_area_ha": 1.20,
+    "persona_mode": "INSTITUTIONAL_DEV"
+  },
+  "expected": {
+    "coord_extract": {
+      "detected_crs": "WGS84",
+      "is_inside_nigeria": true
+    },
+    "risk_assess": {
+      "flood_risk": "HIGH",
+      "terrain_suitability": "UNSUITABLE",
+      "traffic_light": "RED"
+    },
+    "report": {
+      "traffic_light": "RED",
+      "overall_risk_score_min": 75
+    }
+  }
+}

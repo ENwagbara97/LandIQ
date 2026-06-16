@@ -1,0 +1,22 @@
+{
+  "_description": "GOLDEN CASE 07 — Minna Datum input. Survey plan labelled 'Clarke 1880'. Expected: Dialog T4 fires, POS_ACCURACY flag injected, transform to WGS84 applied.",
+  "input": {
+    "input_type": "manual_coordinates",
+    "raw_text": "6.5912N 3.3501E; 6.5919N 3.3514E; 6.5905N 3.3519E; 6.5898N 3.3506E; 6.5912N 3.3501E",
+    "coordinate_hint": "MINNA_DATUM",
+    "datum_label": "Clarke 1880",
+    "stated_area_ha": 0.55,
+    "persona_mode": "SURVEYOR"
+  },
+  "expected": {
+    "coord_extract": {
+      "minna_datum_detected": true,
+      "detected_crs": "MINNA",
+      "warnings_contain": ["POS_ACCURACY: ±5 METRES"]
+    },
+    "crs_dialogs_fired": ["T4"],
+    "gate": {
+      "dialog_message_contains": "Minna Datum"
+    }
+  }
+}

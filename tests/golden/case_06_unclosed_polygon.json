@@ -1,0 +1,23 @@
+{
+  "_description": "GOLDEN CASE 06 — Unclosed polygon (missing terminal node). Expected: MCPErrorResponse POLYGON_OPEN. Pipeline must not proceed.",
+  "input": {
+    "input_type": "manual_coordinates",
+    "raw_text": "6.6018N 3.5062E; 6.6025N 3.5075E; 6.6010N 3.5080E; 6.6003N 3.5067E",
+    "_note": "Intentionally missing the closing point that matches the first coordinate.",
+    "stated_area_ha": null,
+    "persona_mode": "EVERYDAY_BUYER"
+  },
+  "expected": {
+    "coord_extract": {
+      "error_code": "POLYGON_OPEN"
+    },
+    "gate": {
+      "must_halt": true
+    },
+    "mcp_error_response": {
+      "status": "error",
+      "error_code": "POLYGON_OPEN",
+      "instruction_contains": "closed loop"
+    }
+  }
+}

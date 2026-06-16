@@ -1,0 +1,9 @@
+{
+  "Lagos": {
+    "default": "Lands Bureau, Alausa Secretariat, Ikeja",
+    "Ikorodu": "Ikorodu Local Government Registry, T.O.S Benson Road",
+    "Epe": "Epe Local Government Land Registry",
+    "Badagry": "Badagry Local Government Land Registry"
+  },
+  "default": "State Ministry of Lands / Surveyor General's Office"
+}

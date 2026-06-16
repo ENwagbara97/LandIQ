@@ -1,0 +1,21 @@
+{
+  "_description": "GOLDEN CASE 09 — CRS confidence below 60. Ambiguous numeric range. Expected: Dialog T1 fires, analysis halts until user selects CRS manually.",
+  "input": {
+    "input_type": "manual_coordinates",
+    "raw_text": "450500 650200; 450513 650213; 450499 650218; 450486 650205; 450500 650200",
+    "_note": "Values in range 450000-650000: ambiguous — could be UTM Zone 31N or 32N. CRS confidence expected < 60.",
+    "stated_area_ha": null,
+    "persona_mode": "SURVEYOR"
+  },
+  "expected": {
+    "coord_extract": {
+      "crs_confidence_max": 59,
+      "detected_crs": "UNKNOWN"
+    },
+    "crs_dialogs_fired": ["T1"],
+    "gate": {
+      "must_halt": true,
+      "dialog_message_contains": "coordinate system"
+    }
+  }
+}

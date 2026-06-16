@@ -1,0 +1,430 @@
+﻿LAND RISK INTELLIGENCE AGENT
+Nigeria
+System Architecture & AI Build Specification
+Version 1.0  |  MVP Phase  |  2024
+SECTION 1: PRODUCT VISION & NORTH STAR
+1.1  The Core Problem
+Nigeria's land market operates on information asymmetry. Buyers commit millions of Naira to land parcels with no systematic risk screening ΓÇö no flood check, no government acquisition alert, no encroachment scan, no coordinate validation. The result: demolished buildings, flooded investments, years-long court disputes, and total capital loss.
+This product is the answer to one question every Nigerian land buyer, surveyor, and developer asks:
+1.2  Product Definition
+A user uploads any combination of: survey plan (PDF/image), coordinates (manual entry or file), KML/KMZ, or shapefile. The AI agent pipeline automatically generates a structured Land Intelligence Report within 5 minutes.
+SECTION 2: MASTER SYSTEM INSTRUCTION (AI AGENT PROMPT)
+This is the system-level instruction injected into the orchestrating LLM before every agent run. It defines identity, scope, constraints, output format, and safety guardrails.
+SECTION 3: MULTI-AGENT ARCHITECTURE
+The system uses a pipeline of 5 specialised agents. Each agent has a discrete instruction set, input contract, and output contract. The Orchestrator (LandIQ) sequences them and handles failures.
+Agent 1 ΓÇö Coordinate Extraction & Validation Agent
+System Instruction
+Agent 2 ΓÇö GIS Analysis Agent
+System Instruction
+Agent 3 ΓÇö Risk Assessment Agent
+System Instruction
+Agent 4 ΓÇö Development Suitability & Growth Agent
+Agent 5 ΓÇö Report Generation Agent
+SECTION 4: REPORT DATA SCHEMA (JSON CONTRACT)
+Every agent communicates through typed JSON. The schema below is the contract between agents and the PDF renderer. This eliminates hallucination of structure ΓÇö agents fill fields, they do not invent them.
+SECTION 5: TECHNOLOGY STACK
+SECTION 6: END-TO-END SYSTEM FLOW
+The sequence below defines every system state from user upload to PDF download. Each step maps to an agent, API call, or UI event.
+SECTION 7: COORDINATE SYSTEM VALIDATION ΓÇö DIALOG LOGIC
+Coordinate errors are the #1 cause of silent analysis failures. These dialogs prevent that. They are mandatory ΓÇö analysis cannot proceed without user resolution.
+SECTION 8: MVP BUILD SEQUENCE (4-WEEK SPRINT)
+Build in this exact order. Each week produces a working, testable increment. Do not skip to Week 3 without Week 1 working with real users.
+SECTION 9: PRODUCT RISK GUARDRAILS
+These are non-negotiable trust and liability protections. Every agent output and every PDF must honour them.
+SECTION 10: REVENUE ARCHITECTURE
+SECTION 11: PATH TO GOVERNMENT DATA PARTNERSHIP
+SECTION 12: HOW TO POSITION WITHOUT LYING
+Your language determines your legal exposure and your user trust. These rules are non-negotiable for MVP.
+CLOSING: THE SINGLE MOST IMPORTANT FEATURE TO BUILD FIRST
+The persona research shows that all five user types ΓÇö surveyor, realtor, developer, architect, and first-time buyer ΓÇö converged on the same unmet need: catch bad land early, before money is committed. That is the product. One report. Five minutes. Evidence-based. Advisory. Honest about what it knows and what it does not.
+Start with 10 paying surveyors at Γéª3,000 per report. Then 50. Then 100. Revenue, data, and credibility come in that order. The government data partnership comes after, not before.
+ΓÇö End of System Architecture Document ΓÇö
+--- TABLE ---
+Document Purpose:  This document defines the complete system instruction set, agent architecture, data pipeline, and build sequence for deploying the Land Risk Intelligence Agent as a production AI product targeting Nigerian surveyors, realtors, developers, architects, and land buyers.
+--- TABLE ---
+"Carfax for Land."  Before buying a car, people run checks. Before buying land in Nigeria, most people do almost no analysis. We change that.
+--- TABLE ---
+Report Section | What It Answers
+Property Summary | Location, LGA, community, parcel area
+Coordinate Validation | Are these coordinates correct? Which CRS? Does map match the site?
+Terrain Analysis | Elevation, slope, terrain difficulty ΓÇö can I build here?
+Flood Risk | Low / Medium / High ΓÇö with reasoning from DEM + hydrology data
+Accessibility Score | Distance to road, town centre, hospital, power infrastructure
+Encroachment Alert | New structures detected within buffer zone (2020 vs present)
+Development Suitability | Residential / Commercial / Agricultural / Industrial suitability flags
+Government Acquisition Risk | Advisory alert if parcel proximity to known gazette zones (OSM + user data)
+AI Recommendation | Plain-language summary: proceed / caution / do not proceed
+--- TABLE ---
+SYSTEM INSTRUCTION ΓÇö LAND RISK INTELLIGENCE AGENT (NIGERIA)
+ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+
+IDENTITY
+You are LandIQ, a specialist AI agent for land parcel risk assessment
+in Nigeria. You operate as part of a multi-agent pipeline. Your role is
+to orchestrate sub-agents, interpret their outputs, and produce a
+structured Land Intelligence Report that is accurate, evidence-based,
+and legally defensible as an advisory document.
+
+CORE MANDATE
+Given: uploaded coordinates / survey plan / KML / shapefile
+Produce: a structured risk report covering terrain, flood, accessibility,
+encroachment, development suitability, and an AI recommendation.
+
+OPERATING CONTEXT
+- Country: Federal Republic of Nigeria
+- Primary CRS: WGS84 (EPSG:4326), UTM Zone 31N/32N/33N, Minna Datum
+- Data sources: SRTM DEM, HydroSHEDS, Sentinel-2, OpenStreetMap, FMARD
+- Language: English (plain language for non-technical users)
+- Currency: Nigerian Naira (NGN)
+
+MANDATORY PRE-ANALYSIS STEPS
+1. Validate coordinate format and detect CRS before any analysis
+2. Display parcel on map and request user confirmation: 'Is this your land?'
+3. Alert if coordinates fall outside Nigeria bounding box
+4. Alert if computed area differs from stated area by >10%
+5. Never proceed to analysis without user confirmation of map preview
+
+RISK SCORING RULES
+- Always express risk as: Low / Medium / High + reason sentence
+- Never say 'safe' or 'unsafe' ΓÇö use 'suitable' / 'unsuitable'
+- Never guarantee absence of government acquisition risk on MVP
+- Always include: 'This report is advisory. Engage a registered
+  surveyor and lawyer for legal due diligence.'
+
+PROHIBITED OUTPUTS
+- Do NOT claim C of O verification capability (not available in MVP)
+- Do NOT claim real-time government registry access
+- Do NOT provide legal advice or title opinions
+- Do NOT fabricate risk scores when data is unavailable ΓÇö state: 'Insufficient
+  data for this indicator. Manual inspection recommended.'
+
+OUTPUT FORMAT
+Return a JSON object matching the ReportSchema (see Section 4).
+The Report Agent will convert this to PDF. Do not return free-form text.
+
+CONFIDENCE SCORING
+Each risk indicator includes a confidence field (0ΓÇô100):
+- >80: high-quality DEM + hydrology data available
+- 50ΓÇô79: partial data, interpolated
+- <50: limited data, flag for manual review
+--- TABLE ---
+Trigger:  User uploads any file or enters coordinates manually.
+--- TABLE ---
+AGENT: CoordExtract v1
+INPUT: Raw file (PDF, image, KML, KMZ, shapefile) OR manual coordinate string
+
+TASKS:
+1. OCR the document if image/PDF ΓÇö extract all numeric pairs that match
+   coordinate patterns (DD, DMS, UTM Northing/Easting)
+2. Detect the most likely CRS using heuristics:
+   - Values 3.0ΓÇô15.0 / 4.0ΓÇô14.0 ΓåÆ likely WGS84 Lat/Lng
+   - Northing 600000ΓÇô900000, Easting 200000ΓÇô900000 ΓåÆ likely UTM Nigeria zone
+   - Label 'MINNA' or 'Clarke 1880' ΓåÆ Minna Datum, transform to WGS84
+3. Return detected CRS with confidence score
+4. Return coordinate array as WGS84 Lat/Lng
+5. Compute parcel centroid and bounding box
+6. Check if centroid is inside Nigeria bbox: [2.676932, 4.240594, 14.680073, 13.885645]
+
+OUTPUT CONTRACT:
+{
+  coordinates: [[lat, lng], ...],
+  centroid: { lat, lng },
+  detectedCRS: string,
+  crsConfidence: number,
+  isInsideNigeria: boolean,
+  warnings: string[],
+  computedAreaHa: number
+}
+
+ERROR HANDLING:
+- If no coordinates found: return { error: 'NO_COORDINATES_DETECTED' }
+- If CRS confidence < 60: set warning 'CRS_UNCERTAIN ΓÇö user must confirm'
+- If outside Nigeria bbox: set warning 'OUTSIDE_NIGERIA'
+--- TABLE ---
+Trigger:  Called after user confirms map preview. Receives validated WGS84 coordinates.
+--- TABLE ---
+AGENT: GISAnalysis v1
+INPUT: Validated WGS84 coordinates, centroid, bounding box
+
+DATA SOURCES (call in order, cache results):
+1. SRTM 30m DEM via OpenTopography or AWS Terrain Tiles
+   ΓåÆ Extract: elevation at centroid, min/max within parcel, mean slope
+2. HydroSHEDS river network
+   ΓåÆ Extract: distance to nearest watercourse (m), Strahler order of nearest river
+3. OpenStreetMap (Overpass API)
+   ΓåÆ Extract: distance to nearest paved road, distance to town centre,
+     distance to hospital, distance to electricity infrastructure
+4. Sentinel-2 imagery via Google Earth Engine or SentinelHub (2020 + latest)
+   ΓåÆ Extract: NDWI (water index), NDVI (vegetation), detect new structures
+     within 200m buffer by comparing epochs
+
+COMPUTED INDICATORS:
+- flood_proximity_score: weighted function of elevation + river distance + slope
+- terrain_difficulty: slope classification (0-5% flat, 5-15% gentle, >15% steep)
+- encroachment_flag: boolean ΓÇö new built-up area detected in buffer since 2020
+- road_access_category: Excellent (<200m), Good (200-500m), Fair (500-1km), Poor (>1km)
+
+OUTPUT CONTRACT:
+{
+  elevation_m: number,
+  slope_pct: number,
+  distance_to_river_m: number,
+  river_strahler_order: number,
+  flood_proximity_score: number,
+  terrain_difficulty: 'flat'|'gentle'|'steep',
+  distance_to_road_m: number,
+  road_access_category: string,
+  distance_to_town_m: number,
+  encroachment_flag: boolean,
+  encroachment_detail: string,
+  ndwi: number,
+  ndvi: number,
+  data_confidence: number
+}
+--- TABLE ---
+Trigger:  Called after GIS Analysis completes. Interprets raw GIS outputs into risk classifications.
+--- TABLE ---
+AGENT: RiskAssess v1
+INPUT: GISAnalysis output object
+
+FLOOD RISK CLASSIFICATION (rule-based, not ML at MVP):
+  HIGH if ANY of:
+    - elevation_m < 5m AND distance_to_river_m < 500m
+    - flood_proximity_score > 0.7
+    - ndwi > 0.3 (persistent water signature)
+    - river_strahler_order >= 4 AND distance_to_river_m < 300m
+  MEDIUM if ANY of:
+    - elevation_m 5ΓÇô15m AND distance_to_river_m < 1000m
+    - flood_proximity_score 0.4ΓÇô0.7
+    - slope_pct < 3% (flat land, poor drainage)
+  LOW otherwise
+
+TERRAIN SUITABILITY:
+  SUITABLE: slope < 15%, elevation > 3m, terrain_difficulty != 'steep'
+  MARGINAL: slope 15ΓÇô25% OR elevation 1ΓÇô3m
+  UNSUITABLE: slope > 25% OR elevation < 1m
+
+DEVELOPMENT SUITABILITY MATRIX:
+  Residential: flood LOW/MEDIUM + terrain SUITABLE/MARGINAL + road Good/Excellent
+  Commercial:  flood LOW + terrain SUITABLE + road Excellent
+  Agricultural: any flood + any terrain (flag drainage requirements)
+  Industrial:  flood LOW + terrain SUITABLE + road Excellent + buffer from settlement
+
+ADVISORY FLAGS (not definitive ΓÇö data limitations apply):
+  - encroachment_flag = true ΓåÆ flag for physical site inspection
+  - ndwi > 0.1 in dry season ΓåÆ possible wetland, check FMARD classification
+  - ndvi > 0.6 ΓåÆ dense vegetation, check if gazette forest reserve
+
+OUTPUT CONTRACT:
+{
+  flood_risk: 'LOW'|'MEDIUM'|'HIGH',
+  flood_risk_reason: string,
+  flood_confidence: number,
+  terrain_suitability: 'SUITABLE'|'MARGINAL'|'UNSUITABLE',
+  development_suitability: { residential, commercial, agricultural, industrial },
+  advisory_flags: string[],
+  overall_risk_score: number  // 0-100, higher = more risk
+}
+--- TABLE ---
+AGENT: SuitabilityGrowth v1
+INPUT: RiskAssess output + GISAnalysis output + centroid coordinates
+
+TASKS:
+1. Cross-reference centroid with OSM land use layers:
+   - Is it inside an existing settlement boundary?
+   - Is it tagged as forest, wetland, or protected area in OSM?
+   - Distance to nearest urban centroid (SEDAC GPW dataset)
+2. Urban expansion proxy: compute building density in 1km, 5km, 10km rings
+   using OSM building footprints. Trend = growth signal.
+3. Infrastructure pipeline proximity:
+   - Is it within 2km of a planned/existing road corridor in OSM?
+   - Within 5km of an airport, port, or rail line?
+4. Return growth potential classification:
+   HIGH: urban ring growth >15% + infrastructure within 2km
+   MEDIUM: urban ring growth 5ΓÇô15% OR infrastructure within 5km
+   LOW: remote, minimal growth signals
+
+OUTPUT CONTRACT:
+{
+  land_use_conflicts: string[],
+  urban_expansion_score: number,
+  infrastructure_proximity: { road_km, airport_km, rail_km },
+  growth_potential: 'HIGH'|'MEDIUM'|'LOW',
+  growth_notes: string
+}
+--- TABLE ---
+AGENT: ReportGen v1
+INPUT: All previous agent outputs (merged ReportData object)
+
+TASKS:
+1. Generate executive summary in plain English (max 3 sentences)
+   ΓÇö suitable for a first-time land buyer with no GIS background
+2. Assign overall traffic light: RED / AMBER / GREEN
+   RED:   flood HIGH or terrain UNSUITABLE or multiple advisory flags
+   AMBER: flood MEDIUM or any single advisory flag
+   GREEN: flood LOW + terrain SUITABLE + no flags
+3. Compose AI Recommendation paragraph:
+   'This parcel is [suitable/not recommended] for [use]. The primary
+   concern is [X]. [One action the user should take]. This report is
+   advisory ΓÇö engage a registered surveyor (SURCON member) and a
+   property lawyer before committing funds.'
+4. Structure full JSON report matching ReportSchema (Section 4)
+5. Flag any indicators where data_confidence < 50 with: [LOW DATA]
+
+TONE RULES:
+- Never alarming, never dismissive
+- One risk per sentence in the summary
+- Avoid jargon: say 'distance to nearest paved road' not 'road_access_m'
+- Always end with the advisory disclaimer
+--- TABLE ---
+ReportSchema {
+  meta: {
+    report_id: uuid,
+    generated_at: ISO8601,
+    version: string,
+    user_id: string,
+    data_sources: string[],
+    disclaimer: string   // always included, not optional
+  },
+  parcel: {
+    centroid: { lat: number, lng: number },
+    coordinates: [[lat, lng]],
+    computed_area_ha: number,
+    stated_area_ha: number | null,
+    lga: string,
+    state: string,
+    community: string | null
+  },
+  coordinate_validation: {
+    detected_crs: string,
+    crs_confidence: number,
+    is_inside_nigeria: boolean,
+    area_discrepancy_pct: number | null,
+    warnings: string[]
+  },
+  terrain: {
+    elevation_m: number,
+    slope_pct: number,
+    terrain_difficulty: string,
+    suitability: string,
+    confidence: number
+  },
+  flood_risk: {
+    level: 'LOW'|'MEDIUM'|'HIGH',
+    score: number,
+    reason: string,
+    distance_to_river_m: number,
+    ndwi: number,
+    confidence: number
+  },
+  accessibility: {
+    distance_to_road_m: number,
+    road_category: string,
+    distance_to_town_m: number,
+    distance_to_hospital_m: number | null,
+    confidence: number
+  },
+  encroachment: {
+    flag: boolean,
+    detail: string,
+    satellite_epoch_comparison: string
+  },
+  development_suitability: {
+    residential: boolean,
+    commercial: boolean,
+    agricultural: boolean,
+    industrial: boolean,
+    notes: string
+  },
+  growth_potential: {
+    level: 'LOW'|'MEDIUM'|'HIGH',
+    urban_expansion_score: number,
+    infrastructure_proximity: object,
+    notes: string
+  },
+  advisory_flags: string[],
+  summary: {
+    traffic_light: 'GREEN'|'AMBER'|'RED',
+    executive_summary: string,
+    ai_recommendation: string,
+    overall_risk_score: number
+  }
+}
+--- TABLE ---
+Layer | Technology | Rationale
+Frontend | Next.js 14 + Tailwind CSS | SSR, fast map rendering, Vercel deploy
+Map Visualisation | Mapbox GL JS or Leaflet + OSM tiles | Satellite basemap, parcel polygon overlay
+Backend API | FastAPI (Python) | Async, native GIS library support
+AI Orchestrator | Anthropic Claude claude-sonnet-4-20250514 | Tool use, structured JSON output, long context
+OCR / Coord Extract | Google Vision API or Tesseract + regex | Survey plan image parsing
+GIS Processing | GeoPandas + Shapely + GDAL | Polygon ops, CRS transforms, buffer analysis
+Elevation Data | SRTM via AWS Terrain Tiles or OpenTopography | Free, global, 30m resolution
+Hydrology | HydroSHEDS (HydroRIVERS) | River network, distance computations
+Roads / POI | OpenStreetMap via Overpass API | Free, community-maintained Nigeria data
+Satellite Imagery | Sentinel-2 via SentinelHub or GEE | Free 10m imagery, multi-temporal
+Database | PostgreSQL + PostGIS | Spatial queries, parcel storage, user history
+Job Queue | Celery + Redis | Async GIS analysis jobs (5-min SLA)
+PDF Generation | WeasyPrint or Puppeteer | HTML template ΓåÆ branded PDF download
+Auth | Supabase Auth | Email/OTP login, JWT, row-level security
+Payments | Paystack | NGN card payments, subscriptions, webhooks
+Hosting | Railway or Render (backend) + Vercel (frontend) | Cost-effective, no DevOps overhead at MVP
+File Storage | Supabase Storage or AWS S3 | Survey plan uploads, generated PDF storage
+--- TABLE ---
+Step | Actor | Action | Output / Guard
+1 | User | Signs up / logs in via OTP email | JWT token issued
+2 | User | Uploads: survey plan PDF, coordinates, KML, or shapefile | File stored to S3. Job created in queue.
+3 | Agent 1 | OCR + coordinate extraction + CRS detection | Coordinate array + CRS + confidence score
+4 | System | CRS dialog shown to user: 'We detected WGS84 UTM 32N ΓÇö confirm?' | User confirms or selects alternate CRS
+5 | System | Parcel plotted on satellite map. User sees polygon. | User clicks 'This is my land' or 'Edit'
+6 | System | Nigeria bounding box check + area discrepancy check | Warnings shown if triggered. User proceeds.
+7 | Agent 2 | GIS analysis: DEM, hydrology, OSM, Sentinel-2 | GIS output JSON ΓÇö all indicators computed
+8 | Agent 3 | Risk classification: flood, terrain, advisory flags | Risk levels + reasons + confidence scores
+9 | Agent 4 | Growth potential + OSM land use conflict check | Growth score + infrastructure distances
+10 | Agent 5 | LLM interprets full data ΓåÆ executive summary + recommendation | Plain-English summary + traffic light + JSON report
+11 | System | PDF rendered from report JSON + map screenshot | Branded PDF ΓÇö downloadable + shareable
+12 | User | Downloads PDF / shares link / saves to dashboard | Report stored in user account history
+--- TABLE ---
+Trigger Condition | Dialog Message | User Options
+CRS confidence < 60% | ΓÜá We could not confidently detect your coordinate system. Please confirm. | Select: WGS84 / Minna Datum / UTM 31N / UTM 32N / UTM 33N
+Centroid outside Nigeria bbox | ΓÜá These coordinates appear to be outside Nigeria. Common cause: Easting/Northing reversed. | Proceed anyway / Swap Easting-Northing / Re-enter coordinates
+Area differs from stated by >10% | ΓÜá Computed area (2.4ha) differs from stated area (3.0ha) by 20%. A coordinate may be missing or incorrect. | Continue / Review coordinates / Upload new plan
+Minna Datum detected | Γä╣ Minna Datum detected. We will transform to WGS84 for analysis. Accuracy: ┬▒5m. | Confirm / Cancel
+DMS format detected | Γä╣ Coordinates appear to be in Degrees-Minutes-Seconds format. We have converted to Decimal Degrees. | Confirm conversion / Enter manually
+--- TABLE ---
+Week | Focus | Deliverable | Success Metric
+Week 1 | Coordinate Validator + Map Preview | User uploads coordinates ΓåÆ sees polygon on satellite map ΓåÆ CRS dialog ΓåÆ confirms | 5 surveyors test it. 0 silent coordinate errors.
+Week 2 | Flood + Terrain Analysis | Confirmed parcel ΓåÆ SRTM elevation + slope + HydroSHEDS river distance ΓåÆ flood risk score + reason | Risk classification matches manual surveyor check on 10 test parcels
+Week 3 | Accessibility + Encroachment + PDF | OSM road distance + Sentinel-2 comparison + branded PDF download | Full report generated in < 5 minutes. PDF shareable.
+Week 4 | Paystack + Dashboard + 10 Paying Users | Γéª3,000/report payment flow + report history dashboard | 10 paying transactions. Γéª30,000+ revenue. Real market validation.
+--- TABLE ---
+Risk | Mitigation in System | Prohibited Agent Output
+Wrong flood score causes buyer loss | Confidence score shown on every risk indicator. Low confidence triggers [LOW DATA] flag. | Never say 'No flood risk.' Say 'Low estimated risk based on available data.'
+Implied legal title verification | Disclaimer on every page of PDF. No C of O or registry check claims. | Never output: 'Title is clear' or 'No encumbrance found.'
+Government acquisition false negative | Advisory framing only. Direct users to Surveyor-General for definitive check. | Never output: 'No government acquisition risk.' Say: 'No acquisition signals in available open data.'
+CRS error produces wrong polygon | Mandatory map preview + user confirmation before any analysis runs. | Analysis must not proceed without confirmed map visualisation.
+Hallucinated risk scores | Agents return null for indicators without data. ReportGen flags [INSUFFICIENT DATA]. | Never interpolate missing indicators. State data gaps explicitly.
+--- TABLE ---
+Tier | Price | What's Included | Target User
+Free | 0 ΓÇö 1 report/month | Full physical risk report, PDF download, map preview | Land buyers testing the product
+Pay-Per-Report | Γéª3,000ΓÇôΓéª5,000/report | Full report on demand, no subscription | Occasional buyers, one-off surveyors
+Starter | Γéª10,000/month ΓÇö 5 reports | Report history dashboard, PDF watermark-free | Independent realtors, small surveyors
+Professional | Γéª30,000/month ΓÇö 20 reports | Bulk analysis, white-label PDF, API access | Surveying firms, developer site screening
+Enterprise | Custom (Γéª500k+/year) | Unlimited reports, custom data layers, SLA | Banks, government agencies, large developers
+--- TABLE ---
+Reality Check:  You cannot access Nigeria's Surveyor-General records, Excision volumes, or Regional Master Plans at MVP stage. These are restricted, non-digitised, or physically archived. Build with open data first. Prove demand. Then pitch.
+--- TABLE ---
+Stage | Timeframe | What You Have | Government Pitch
+MVP | Month 1ΓÇô3 | Physical risk data (flood, slope, roads). 10ΓÇô100 reports. | N/A ΓÇö not yet. Build proof first.
+Growth | Month 4ΓÇô12 | 1,000+ analysed parcels. User feedback on flood accuracy. Proprietary dataset emerging. | 'We have Nigeria's largest land suitability dataset. Here's our flood accuracy rate.'
+Partnership | Year 2+ | Revenue, data moat, media presence, proven accuracy. | 'Partner with us to digitise your registry. We drive compliance + fee revenue for you.'
+Integration | Year 3+ | Official data access via MOU or API agreement (cf. LASGIC model). | White-label government portal. Revenue share on official land checks.
+--- TABLE ---
+Γ¥î Never Say | Γ£à Always Say Instead
+'Official government acquisition check' | 'Physical land suitability screener using satellite and terrain data'
+'C of O verification' | 'Coordinate validation and map preview ΓÇö confirm before you proceed'
+'No flood risk' | 'Low estimated flood risk based on elevation and river proximity data'
+'Land is safe to buy' | 'Physical indicators are favourable. Engage a surveyor and lawyer for legal due diligence.'
+'Title is clear' | 'Advisory report only ΓÇö does not replace a professional title search'
+'100% accurate' | 'Confidence: 84% ΓÇö based on 30m resolution terrain data'
+--- TABLE ---
+Build this one thing:  Coordinate Validator + Satellite Map Preview + CRS Dialog. If a user's coordinates plot in Cameroon and the system catches it before analysis runs, you have already earned the trust of every surveyor in Nigeria who has ever experienced that problem. Everything else is downstream of trust.

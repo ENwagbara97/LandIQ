@@ -1,0 +1,1502 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LandIQ — Land Risk Intelligence Agent</title>
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+  <!-- Leaflet JS -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  
+  <style>
+    :root {
+      --bg-color: #0b0f19;
+      --panel-bg: rgba(17, 24, 39, 0.7);
+      --panel-border: rgba(255, 255, 255, 0.08);
+      --text-primary: #f8fafc;
+      --text-secondary: #94a3b8;
+      --text-muted: #64748b;
+      --primary: #3b82f6;
+      --primary-hover: #2563eb;
+      --primary-glow: rgba(59, 130, 246, 0.35);
+      --success: #10b981;
+      --success-bg: rgba(16, 185, 129, 0.15);
+      --warning: #f59e0b;
+   
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 32px;
+      padding-bottom: 20px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .logo-container {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .logo-icon {
+      font-size: 28px;
+      background: linear-gradient(135deg, var(--primary), var(--success));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .logo-text {
+      font-size: 24px;
+      font-weight: 800;
+      background: linear-gradient(to right, #ffffff, #94a3b8);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .logo-badge {
+      font-size: 10px;
+      font-weight: 700;
+      background: rgba(59, 130, 246, 0.2);
+      color: var(--primary);
+      border: 1px solid rgba(59, 130, 246, 0.3);
+      padding: 2px 6px;
+      border-radius: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .header-nav {
+      display: flex;
+      gap: 12px;
+    }
+
+    .main-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 24px;
+    }
+
+    @media (min-width: 1024px) {
+      .main-grid {
+        grid-template-columns: 380px 1fr;
+      }
+    }
+
+    /* Left panel: Input and History */
+    .sidebar {
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    /* Right panel: Map, Report, Dashboard */
+    .content-area {
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+      min-height: 600px;
+    }
+
+    /* Leaflet custom styling */
+    .map-container {
+      height: 400px;
+      border-radius: 12px;
+      overflow: hidden;
+      border: 1px solid var(--panel-border);
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+    }
+
+    /* Step indicator & progress bars */
+    .progress-bar-wrapper {
+      margin-top: 16px;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 999px;
+      height: 8px;
+      width: 100%;
+      overflow: hidden;
+    }
+
+    .progress-bar-fill {
+      height: 100%;
+      background: linear-gradient(to right, var(--primary), var(--success));
+      width: 0%;
+      transition: width 0.4s ease;
+      box-shadow: 0 0 8px var(--primary-glow);
+    }
+
+    /* Traffic lights */
+    .traffic-badge {
+      padding: 6px 16px;
+      border-radius: 999px;
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .traffic-badge.green {
+      background: var(--success-bg);
+      color: var(--success);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      box-shadow: 0 0 10px rgba(16, 185, 129, 0.2);
+    }
+
+   
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+      background: rgba(0, 0, 0, 0.7);
+      backdrop-filter: blur(8px);
+      z-index: 1000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .dialog-card {
+      max-width: 500px;
+      width: 100%;
+      padding: 28px;
+    }
+
+    /* Checklist */
+    .checklist-item {
+      display: flex;
+      gap: 12px;
+      padding: 12px 0;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+    }
+
+    .checklist-checkbox {
+      margin-top: 4px;
+      width: 18px;
+      height: 18px;
+      accent-color: var(--primary);
+      cursor: pointer;
+    }
+
+    /* Gauge / Score card */
+    .score-ring {
+      position: relative;
+      width: 120px;
+      height: 120px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .score-circle {
+      transform: rotate(-90deg);
+    }
+
+    .score-number {
+      position: absolute;
+      font-size: 28px;
+      font-weight: 800;
+      font-family: var(--font-heading);
+    }
+
+    /* Comparisons side-by-side */
+    .compare-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 16px;
+    }
+
+    @media (min-width: 768px) {
+      .compare-grid {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+
+    .compare-field {
+      padding: 14px;
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid rgba(255, 255, 255, 0.04);
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    }
+
+    // Initialize Leaflet Map
+    function initMap(mapId, coordinates, centroid, zoom = 15) {
+      const container = document.getElementById(mapId);
+      // Clean previous map if exists
+      if (mapId === 'gate-map' && gateMapInstance) {
+        gateMapInstance.remove();
+        gateMapInstance = null;
+      }
+      if (mapId === 'report-map' && reportMapInstance) {
+        reportMapInstance.remove();
+        reportMapInstance = null;
+      }
+
+      const map = L.map(mapId).setView([centroid.lat, centroid.lng], zoom);
+      
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '© OpenStreetMap contributors'
+      }).addTo(map);
+
+      // Map polygon points
+      const polygonCoords = coordinates.map(c => [c.lat, c.lng]);
+      const polygon = L.polygon(polygonCoords, {
+        color: '#3b82f6',
+        fillColor: '#3b82f6',
+        fillOpacity: 0.25,
+        weight: 3
+      }).addTo(map);
+
+      // Centroid marker
+      L.marker([centroid.lat, centroid.lng]).addTo(map)
+        .bindPopup(`Centroid: ${centroid.lat.toFixed(5)}, ${centroid.lng.toFixed(5)}`);
+
+      // Fit map to polygon bounds
+      map.fitBounds(polygon.getBounds(), { padding: [20, 20] });
+
+      if (mapId === 'gate-map') gateMapInstance = map;
+      if (mapId === 'report-map') reportMapInstance = map;
+      return map;
+    }
+
+    // Submit coordinates/file to API
+    document.getElementById('upload-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const fileInput = document.getElementById('input-file');
+      const textInput = document.getElementById('input-coords');
+      const areaInput = document.getElementById('input-area');
+      const personaInput = document.getElementById('input-persona');
+
+      const formData = new FormData();
+      if (fileInput.files.length > 0) {
+        formData.append('file', fileInput.files[0]);
+      }
+      if (textInput.value.trim() !== '') {
+        formData.append('raw_text', textInput.value.trim());
+      }
+      if (areaInput.value.trim() !== '') {
+        formData.append('stated_area_ha', parseFloat(areaInput.value));
+      }
+      formData.append('persona_mode', personaInput.value);
+      formData.append('user_id', 'anonymous');
+
+      document.getElementById('btn-submit-run').disabled = true;
+      document.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+      if (data.area_discrepancy_message) {
+        discrepancyBox.classList.remove('hidden');
+        document.getElementById('gate-discrepancy-text').innerText = data.area_discrepancy_message;
+      } else {
+        discrepancyBox.classList.add('hidden');
+      }
+
+      // Render Folium/Leaflet Map preview
+      setTimeout(() => {
+        initMap('gate-map', data.map_preview.coordinates, data.map_preview.centroid);
+      }, 100);
+    }
+
+    // Gate Yes: User confirms parcel
+    document.getElementById('btn-gate-yes').onclick = async () => {
+      if (!currentRunId) return;
+      
+      try {
+        const response = await fetch(`${API_BASE}/api/confirm/${currentRunId}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ responses: dialogAnswers })
+        });
+        
+        if (!response.ok) {
+          alert('Failed to register confirmation.');
+          return;
+        }
+
+        // Move to progress tracking view
+        startProgressTracking(currentRunId);
+
+      } catch (error) {
+        alert('Error connecting to confirmation endpoint.');
+      }
+    };
+
+    // Gate No: Cancel
+    document.getElementById('btn-gate-no').onclick = async () => {
+      if (!currentRunId) return;
+      await fetch(`${API_BASE}/api/reject/${currentRunId}`, { method: 'POST' });
+      showView('welcome');
+      currentRunId = null;
+    };
+
+    // Poll server for pipeline stage progress
+    let progressInterval = null;
+    function startProgressTracking(runId) {
+        if (!response.ok) {
+          alert('Failed to register confirmation.');
+          return;
+        }
+
+        // Move to progress tracking view
+        startProgressTracking(currentRunId);
+
+      } catch (error) {
+        alert('Error connecting to confirmation endpoint.');
+      }
+    };
+
+    // Gate No: Cancel
+    document.getElementById('btn-gate-no').onclick = async () => {
+      if (!currentRunId) return;
+      await fetch(`${API_BASE}/api/reject/${currentRunId}`, { method: 'POST' });
+      showView('welcome');
+      currentRunId = null;
+    };
+
+    // Poll server for pipeline stage progress
+    let progressInterval = null;
+    function startProgressTracking(runId) {
+      showView('progress');
+      document.getElementById('progress-bar').style.width = '0%';
+      document.getElementById('progress-heading').innerText = 'Starting multi-agent orchestration...';
+      document.getElementById('progress-subtext').innerText = 'Initializing analysis matrices.';
+
+      const stageLabels = {
+        'INIT': { w: '5%', t: 'Initializing pipeline...', s: 'Bootstrapping state caches.' },
+        'COORD_EXTRACT': { w: '15%', t: 'Extracting boundary coordinates...', s: 'Parsing survey plan texts.' },
+        'GATE': { w: '25%', t: 'Verifying coordinate flags...', s: 'Applying datum auto-corrections.' },
+        'ADAPTER_FETCH': { w: '40%', t: 'Fetch
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        document.getElementById('metric-road-dist').innerText = report.accessibility_development.distance_to_road_m !== null ? `${report.accessibility_development.distance_to_road_m.toFixed(0)} m` : 'N/A';
+        document.getElementById('metric-growth').innerText = report.growth_potential.level || 'N/A';
+        document.getElementById('metric-road-cat').innerText = report.accessibility_development.road_category || 'N/A';
+
+        // Load data sources transparency panel
+        const sourcesResponse = await fetch(`${API_BASE}/api/report/${reportId}/sources`);
+        if (sourcesResponse.ok) {
+          const sources = await sourcesResponse.json();
+          const tbody = document.getElementById('report-sources-tbody');
+          tbody.innerHTML = '';
+          
+          sources.forEach(src => {
+            const tr = document.createElement('tr');
+            
+            // Apply warning styling if confidence is low
+            if (src.confidence_score < 30) {
+              tr.className = 'diag-row-red';
+            } else if (src.confidence_score < 50) {
+              tr.className = 'diag-row-amber';
+            }
+
+            const verifiedLabel = src.live_feed_used ? '<i class="fa-solid fa-circle-check" style="color:var(--success)"></i> Verified' : '<span style="color:var(--text-muted)">Unverified stub</span>';
+            const statusLabel = src.fallback_used ? '<span style="color:var(--warning)">Fallback U
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+              <div style="flex:1; background:rgba(255,255,255,0.01); padding: 8px; border-radius:6px;">
+                <span style="font-size:10px; color:var(--text-muted); display:block;">Report A</span>
+                <strong>${f.value_a !== null ? f.value_a : 'N/A'}</strong>
+              </div>
+              <div style="flex:1; background:rgba(255,255,255,0.01); padding: 8px; border-radius:6px;">
+                <span style="font-size:10px; color:var(--text-muted); display:block;">Report B</span>
+                <strong>${f.value_b !== null ? f.value_b : 'N/A'}</strong>
+              </div>
+            </div>
+            <p style="font-size:12px; color:var(--text-muted); margin-top: 6px; line-height:1.4;">${f.plain_english}</p>
+          `;
+          fieldsContainer.appendChild(card);
+        });
+
+      } catch (error) {
+          const card = document.createElement('div');
+          card.className = 'compare-field';
+          
+          card.innerHTML = `
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <strong style="font-size: 13.5px; text-transform: capitalize; color: var(--text-secondary);">${f.field_name.replace(/_/g, ' ')}</strong>
+              <span class="badge-diff ${f.direction}">${f.direction}</span>
+            </div>
+            <div style="display:flex; gap: 12px; font-size: 14px; margin-top: 6px;">
+              <div style="flex:1; background:rgba(255,255,255,0.01); padding: 8px; border-radius:6px;">
+                <span style="font-size:10px; color:var(--text-muted); display:block;">Report A</span>
+                <strong>${f.value_a !== null ? f.value_a : 'N/A'}</strong>
+              </div>
+              <div style="flex:1; background:rgba(255,255,255,0.01); padding: 8px; border-radius:6px;">
+                <span style="font-size:10px; color:var(--text-muted); display:block;">Report B</span>
+                <strong>${f.value_b !== null ? f.value_b : 'N/A'}</strong>
+              </div>
+            </div>
+            <p style="font-size:12px; color:var(--text-muted); margin-top: 6px; line-height:1.4;">${f.plain_english}</p>
+          `;
+          fieldsContainer.appendChild(card);
+        });
+
+      } catch (error) {
+        console.error(error);
+      }
+    };
+
+    // Close compare
+    document.getElementById('btn-compare-close').onclick = () => {
+      if (selectedHistoryIds.length > 0) {
+        loadReport(selectedHistoryIds[0]);
+      } else {

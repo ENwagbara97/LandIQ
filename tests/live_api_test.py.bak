@@ -1,0 +1,212 @@
+"""
+LandIQ — tests/live_api_test.py
+Live API integration test against the running FastAPI server at http://127.0.0.1:8000
+
+Tests:
+  A. Text coordinate upload (plain DD) → should return map_preview
+  B. Gate confirm → should queue background pipeline
+  C. Session polling → should eventually reach completed/error
+  D. PDF upload (fake) → should return NO_COORDINATES_DETECTED or FILE_PARSE_ERROR
+  E. History list endpoint
+  F. Summary card endpoint
+"""
+
+import io
+import json
+import sys
+import time
+
+try:
+    import requests
+except ImportError:
+    print("requests not available — install it or run via arcgispro-py3 environment")
+    sys.exit(1)
+
+BASE = "http://127.0.0.1:8000"
+PASS = "[PASS]"
+FAIL = "[FAIL]"
+results = []
+
+
+def section(title):
+    print()
+    print("=" * 65)
+    print(f"  {title}")
+    print("=" * 65)
+
+
+def check(label, condition, detail=""):
+    sym = PASS if condition else FAIL
+    results.append((label, condition))
+    suffix = f" — {detail}" if detail else ""
+    print(f"  {sym} {label}{suffix}")
+    return condition
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+section("A: Text coordinate upload (plain Decimal Degrees)")
+# ─────────────────────────────────────────────────────────────────────────────
+coords_text = (
+    "6.6018N 3.5062E; 6.6025N 3.5075E; "
+    "6.6010N 3.5080E; 6.6003N 3.5067E; 6.6018N 3.5062E"
+)
+try:
+    r = requests.post(
+        f"{BASE}/api/upload",
+        data={"raw_text": coords_text, "persona_mode": "EVERYDAY_BUYER", "user_id": "test"},
+        timeout=30,
+    )
+    print(f"  HTTP {r.status_code}")
+    data = r.json()
+    check("Status 200", r.status_code == 200, f"got {r.status_code}")
+    check("Has run_id", "run_id" in data)
+    check("Has map_preview", "map_preview" in data)
+    check("Has coordinates", "coordinates" in data.get("map_preview", {}))
+    check("detected_crs present", "detected_crs" in data.get("map_preview", {}))
+    check("status=awaiting_confirmation", data.get("status") == "awaiting_confirmation")
+
+    if r.status_code != 200:
+        print(f"  Response: {json.dumps(data, indent=4)}")
+
+    run_id = data.get("run_id")
+except Exception as e:
+    print(f"  Exception: {e}")
+    check("Upload succeeded", False, str(e))
+    run_id = None
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+section("B: Gate confirm")
+# ─────────────────────────────────────────────────────────────────────────────
+confirm_data = None
+if run_id:
+    try:
+        r2 = requests.post(
+            f"{BASE}/api/confirm/{run_id}",
+            json={"responses": {}},
+            timeout=15,
+        )
+        print(f"  HTTP {r2.status_code}")
+        confirm_data = r2.json()
+        check("Status 200", r2.status_code == 200, f"got {r2.status_code}")
+        check("status=confirmed", confirm_data.get("status") == "confirmed")
+        if r2.status_code != 200:
+            print(f"  Response: {json.dumps(confirm_data, indent=4)}")
+    except Exception as e:
+        print(f"  Exception: {e}")
+        check("Gate confirm succeeded", False, str(e))
+else:
+    print("  Skipped — no run_id from step A")
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+section("C: Session polling (10 seconds max)")
+# ─────────────────────────────────────────────────────────────────────────────
+final_status = None
+if run_id:
+    for i in range(10):
+        time.sleep(1)
+        try:
+            r3 = requests.get(f"{BASE}/api/session/{run_id}", timeout=10)
+            s = r3.json()
+            stage = s.get("pipeline_stage", "?")
+            status = s.get("status", "?")
+            err = s.get("error_detail") or ""
+            print(f"  [{i+1:02d}s] status={status} stage={stage} error={err[:60]}")
+            final_status = status
+            if status in ("completed", "error"):
+                break
+        except Exception as e:
+            print(f"  [{i+1:02d}s] Poll failed: {e}")
+    check("Pipeline reached terminal state", final_status in ("completed", "error"), f"final={final_status}")
+    check("Pipeline completed (not error)", final_status == "completed", f"final={final_status}")
+else:
+    print("  Skipped — no run_id from step A")
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+section("D: PDF upload — empty/no-coordinate PDF")
+# ─────────────────────────────────────────────────────────────────────────────
+try:
+    fake_pdf = b"%PDF-1.4\n1 0 obj\n<< /Type /Catalog >>\nendobj\nxref\n0 2\ntrailer\n<< /Size 2 >>\nstartxref\n0\n%%EOF"
+    r4 = requests.post(
+        f"{BASE}/api/upload",
+        files={"file": ("blank_plan.pdf", io.BytesIO(fake_pdf), "application/pdf")},
+        data={"persona_mode": "EVERYDAY_BUYER", "user_id": "test"},
+        timeout=30,
+    )
+    print(f"  HTTP {r4.status_code}")
+    d4 = r4.json()
+    check(
+        "Returns 400 for unreadable PDF",
+        r4.status_code == 400,
+        f"got {r4.status_code}",
+    )
+    detail = d4.get("detail", {})
+    error_code = detail.get("error_code") if isinstance(detail, dict) else str(detail)
+    check(
+        "Error code is parse-related",
+        error_code in ("NO_COORDINATES_DETECTED", "FILE_PARSE_ERROR", "POLYGON_OPEN"),
+        f"got {error_code}",
+    )
+    if r4.status_code == 200:
+        print(f"  Response (unexpected 200): {json.dumps(d4, indent=4)}")
+except Exception as e:
+    print(f"  Exception: {e}")
+    check("PDF upload test completed", False, str(e))
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+section("E: History list endpoint")
+# ─────────────────────────────────────────────────────────────────────────────
+try:
+    r5 = requests.get(f"{BASE}/api/history", timeout=10)
+    print(f"  HTTP {r5.status_code}")
+    check("Status 200", r5.status_code == 200, f"got {r5.status_code}")
+    if r5.ok:
+        h = r5.json()
+        count = len(h) if isinstance(h, list) else "n/a"
+        print(f"  History records: {count}")
+        check("Returns list", isinstance(h, list))
+except Exception as e:
+    print(f"  Exception: {e}")
+    check("History endpoint reachable", False, str(e))
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+section("F: Frontend index served")
+# ─────────────────────────────────────────────────────────────────────────────
+try:
+    r6 = requests.get(f"{BASE}/", timeout=10)
+    print(f"  HTTP {r6.status_code}")
+    check("Frontend returns 200", r6.status_code == 200)
+    check(
+        "Contains LandIQ branding",
+        "LandIQ" in r6.text or "landiq" in r6.text.lower(),
+    )
+    check(
+        "Contains Extract button",
+        "Extract" in r6.text,
+    )
+except Exception as e:
+    print(f"  Exception: {e}")
+    check("Frontend reachable", False, str(e))
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+section("SUMMARY")
+# ─────────────────────────────────────────────────────────────────────────────
+passed = sum(1 for _, ok in results if ok)
+failed = sum(1 for _, ok in results if not ok)
+print(f"\n  Results: {passed} passed / {failed} failed of {len(results)} checks\n")
+for label, ok in results:
+    sym = PASS if ok else FAIL
+    print(f"    {sym} {label}")
+
+print()
+if failed == 0:
+    print("  [OK] All checks passed — system is live and functional.")
+    sys.exit(0)
+else:
+    print(f"  [FAIL] {failed} checks failed — review output above.")
+    sys.exit(1)

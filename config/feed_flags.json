@@ -1,0 +1,56 @@
+{
+  "NLIR_FEED_ACTIVE": false,
+  "STATE_LIS_ACTIVE": false,
+  "WB_FEED_ACTIVE": false,
+  "OFFLINE_RASTER_ACTIVE": true,
+  "MOCK_REGISTRY_ACTIVE": true,
+  "MOCK_SCENARIO": "clean_title",
+  "SELENIUM_SNAPSHOT_ACTIVE": true,
+  "SENTINEL_LIVE_FETCH": false,
+  "FEED_TIMEOUT_SECONDS": 5,
+  "FALLBACK_ON_TIMEOUT": true,
+  "LOG_FEED_ATTEMPTS": true,
+  "OLLAMA_MODEL": "qwen2.5-coder:1.5b",
+  "OLLAMA_FALLBACK_MODEL": "qwen2.5-coder:1.5b",
+  "OLLAMA_BASE_URL": "http://localhost:11434",
+  "OLLAMA_TIMEOUT_SECONDS": 20,
+  "OLLAMA_STREAM": true,
+  "SNAPSHOT_ENGINE": "staticmap",
+  "LOCAL_TILE_URL": "file:///data/tiles/{z}/{x}/{y}.png",
+  "SNAPSHOT_WIDTH": 1200,
+  "SNAPSHOT_HEIGHT": 800,
+  "SNAPSHOT_DPI": 150,
+  "SNAPSHOT_THUMB_WIDTH": 240,
+  "SNAPSHOT_THUMB_HEIGHT": 160,
+  "MAX_REPORT_GENERATION_SECONDS": 35,
+  "CIRCUIT_BREAKER_MAX_CALLS": 3,
+  "NIGERIA_BBOX": {
+    "lon_min": 2.676932,
+    "lon_max": 14.680073,
+    "lat_min": 4.240594,
+    "lat_max": 13.885645
+  },
+  "SENTINEL_ZONES": [
+    {
+      "name": "Lagos",
+      "lon_min": 3.18,
+      "lon_max": 4.02,
+      "lat_min": 6.35,
+      "lat_max": 6.90,
+      "ndwi_path": "data/sentinel/lagos_ndwi_2023.tif",
+      "ndvi_path": "data/sentinel/lagos_ndvi_2023.tif"
+    },
+    {
+      "name": "Rivers",
+      "lon_min": 6.85,
+      "lon_max": 7.20,
+      "lat_min": 4.65,
+      "lat_max": 4.95,
+      "ndwi_path": "data/sentinel/rivers_ndwi_2023.tif",
+      "ndvi_path": "data/sentinel/rivers_ndvi_2023.tif"
+    }
+  ],
+  "REPORT_HISTORY_PAGE_SIZE": 50,
+  "HITL_FILE_RETENTION_HOURS": 24,
+  "PIPELINE_VERSION": "2.0"
+}

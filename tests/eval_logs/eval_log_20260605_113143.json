@@ -1,0 +1,17 @@
+{
+  "evaluated_at": "2026-06-05T11:31:43.084619",
+  "total": 1,
+  "passed": 1,
+  "failed": 0,
+  "pass_rate_pct": 100.0,
+  "results": [
+    {
+      "name": "case_05_swapped_easting_northing",
+      "description": "GOLDEN CASE 05 \u2014 Swapped Easting/Northing. Raw UTM values provided with axes reversed. Expected: Dialog T2 fires, is_inside_nigeria=false BEFORE flip, flip test corrects it.",
+      "passed": true,
+      "failures": [],
+      "duration_ms": 2709,
+      "status": "PASS"
+    }
+  ]
+}

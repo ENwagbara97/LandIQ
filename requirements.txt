@@ -1,0 +1,70 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# LandIQ — Land Risk Intelligence Agent (Nigeria)
+# Requirements — Local-First MVP
+# Python >= 3.11
+# ─────────────────────────────────────────────────────────────────────────────
+
+# ── Web Framework ─────────────────────────────────────────────────────────────
+fastapi
+uvicorn[standard]
+python-multipart
+
+# ── Validation & Schema ───────────────────────────────────────────────────────
+pydantic
+pydantic-settings
+
+# ── GIS / Geospatial ─────────────────────────────────────────────────────────
+geopandas
+shapely
+pyproj
+fiona
+rasterio
+numpy
+scipy
+
+# ── OCR ───────────────────────────────────────────────────────────────────────
+pytesseract
+Pillow
+
+# ── Map Snapshot Engine ───────────────────────────────────────────────────────
+staticmap
+contextily
+matplotlib
+folium
+
+# ── LLM ───────────────────────────────────────────────────────────────────────
+ollama
+
+# ── PDF Generation ────────────────────────────────────────────────────────────
+weasyprint
+xhtml2pdf
+jinja2
+
+# ── Job Queue ─────────────────────────────────────────────────────────────────
+celery
+redis
+
+# ── HTTP / Networking ─────────────────────────────────────────────────────────
+httpx
+tenacity
+
+# ── Utilities ─────────────────────────────────────────────────────────────────
+python-dotenv
+click
+rich
+python-dateutil
+uuid
+
+# ── Testing ───────────────────────────────────────────────────────────────────
+pytest
+pytest-asyncio
+pytest-cov
+
+# ── Security / Sanitization ───────────────────────────────────────────────────
+bleach
+
+# ── QR Code (PNG summary card export) ────────────────────────────────────────
+qrcode[pil]
+
+# ── Cadastral Engine (XLSX tabular parsing) ───────────────────────────────────
+openpyxl

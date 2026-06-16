@@ -1,0 +1,22 @@
+{
+  "_description": "GOLDEN CASE 05 — Swapped Easting/Northing. Raw UTM values provided with axes reversed. Expected: Dialog T2 fires, is_inside_nigeria=false BEFORE flip, flip test corrects it.",
+  "input": {
+    "input_type": "manual_coordinates",
+    "raw_text": "727543.0 650182.0; 727556.0 650195.0; 727542.0 650200.0; 727529.0 650187.0; 727543.0 650182.0",
+    "coordinate_hint": "UTM_SWAPPED",
+    "stated_area_ha": null,
+    "persona_mode": "SURVEYOR"
+  },
+  "expected": {
+    "coord_extract": {
+      "is_inside_nigeria": false,
+      "flip_tested": true,
+      "warnings_contain": ["OUTSIDE_NIGERIA"]
+    },
+    "crs_dialogs_fired": ["T2"],
+    "gate": {
+      "must_halt": true,
+      "dialog_message_contains": "Easting and Northing"
+    }
+  }
+}

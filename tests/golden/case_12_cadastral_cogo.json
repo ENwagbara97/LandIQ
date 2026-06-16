@@ -1,0 +1,19 @@
+{
+  "_description": "GOLDEN CASE 12 — Cadastral Engine: Track B COGO Traverse. 4-leg traverse from Minna UTM tie-point. Expected: linear misclosure < 1.0m, COGO_TRAVERSE track, computed area > 0, ledger has 5 stations (anchor + 4 legs).",
+  "input": {
+    "input_type": "cadastral_cogo_traverse",
+    "raw_text": "Tie-Point: E 387500.000 N 550600.000\n\nL1: N 62°15'30\"E  120.50m\nL2: S 27°44'30\"E   95.75m\nL3: S 62°15'30\"W  120.50m\nL4: N 27°44'30\"W   95.75m",
+    "datum_hint": "MINNA UTM ZONE 32",
+    "property_owner": "Chief Emeka Okonkwo",
+    "location_context": "Asaba, Delta State"
+  },
+  "expected": {
+    "cadastral": {
+      "computation_track": "COGO_TRAVERSE",
+      "misclosure_max_m": 1.0,
+      "station_count_min": 4,
+      "calculated_area_ha_min": 0.0001,
+      "datum_contains": "MINNA"
+    }
+  }
+}
