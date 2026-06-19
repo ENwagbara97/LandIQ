@@ -13,6 +13,9 @@ import logging
 from pathlib import Path
 from typing import Any, Optional
 
+from dotenv import load_dotenv
+load_dotenv(override=True)
+
 from pydantic import BaseModel
 from fastapi import FastAPI, UploadFile, File, Form, BackgroundTasks, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
@@ -183,12 +186,25 @@ async def upload_coordinates(
         from pathlib import Path
         ext = Path(filename).suffix.lower()
         if ext in (".pdf", ".jpg", ".jpeg", ".png", ".tiff", ".bmp"):
+            # Convert PDF to image bytes so Gemini Vision can read the scanned pixels directly
+            if ext == ".pdf":
+                try:
+                    import fitz  # PyMuPDF
+                    pdf_doc = fitz.open(stream=file_bytes, filetype="pdf")
+                    page = pdf_doc.load_page(0)
+                    pix = page.get_pixmap(dpi=200)
+                    file_bytes = pix.tobytes("png")
+                    filename = filename.replace(".pdf", ".png")
+                except ImportError:
+                    pass
+
             from agents.coord_extract import ocr_file
             try:
                 raw_text = ocr_file(
                     file_bytes, filename,
                     vision_provider=vision_provider,
                     vision_api_key=vision_api_key,
+                    stated_area_ha=stated_area_ha,
                 )
                 with open(r"C:\Users\Admin\Downloads\Land Risk Intelligent Agent\scratch\ocr_dump.txt", "w", encoding="utf-8") as f:
                     f.write(raw_text or "")
@@ -197,6 +213,7 @@ async def upload_coordinates(
 
     from agents.cadastral_engine import run as run_cadastral
     from core.schemas import MCPErrorResponse
+    from agents.coord_extract import ocr_file
 
     # Only pass file_bytes to Cadastral Engine if it's a tabular file it can natively parse.
     # Images/PDFs are already OCR'd into raw_text above.
@@ -208,15 +225,42 @@ async def upload_coordinates(
             cad_file_bytes = file_bytes
             cad_filename = filename
 
-    # Try Cadastral Engine first (handles Tabular and COGO)
-    cad_result = run_cadastral(
-        raw_text=raw_text,
-        file_bytes=cad_file_bytes,
-        filename=cad_filename,
-        stated_area_ha=stated_area_ha,
-        property_owner="Unknown",
-        location_context="Not specified",
-    )
+    # Execute and retry on SANITY_CHECK_FAILED up to 2 times (total 3 attempts)
+    max_attempts = 3
+    cad_result = None
+    for attempt in range(max_attempts):
+        if attempt > 0:
+            logger.info(f"[server] Retry attempt {attempt}/2 on sanity check failure...")
+            # Re-run OCR file with stated_area_ha to get fresh/rechecked extraction
+            if file_bytes and filename:
+                ext = Path(filename).suffix.lower()
+                if ext in (".jpg", ".jpeg", ".png", ".tiff", ".bmp"): # it was converted to png already if PDF
+                    try:
+                        raw_text = ocr_file(
+                            file_bytes, filename,
+                            vision_provider=vision_provider,
+                            vision_api_key=vision_api_key,
+                            stated_area_ha=stated_area_ha,
+                        )
+                        with open(r"C:\Users\Admin\Downloads\Land Risk Intelligent Agent\scratch\ocr_dump.txt", "w", encoding="utf-8") as f:
+                            f.write(raw_text or "")
+                    except Exception as exc:
+                        logger.error(f"[server] Re-OCR failed: {exc}")
+
+        cad_result = run_cadastral(
+            raw_text=raw_text,
+            file_bytes=cad_file_bytes,
+            filename=cad_filename,
+            stated_area_ha=stated_area_ha,
+            property_owner="Unknown",
+            location_context="Not specified",
+        )
+
+        # Stop retrying if result is not an error or is a non-sanity error
+        if not isinstance(cad_result, MCPErrorResponse):
+            break
+        if cad_result.error_code != "SANITY_CHECK_FAILED":
+            break
 
     if not isinstance(cad_result, MCPErrorResponse):
         import uuid
@@ -299,8 +343,6 @@ async def upload_coordinates(
         coordinate_hint=coordinate_hint,
         datum_label=datum_label,
         stated_area_ha=stated_area_ha,
-        vision_provider=vision_provider,
-        vision_api_key=vision_api_key,
     )
 
     if result.get("status") in ("error", "EXECUTION_HAZARD"):

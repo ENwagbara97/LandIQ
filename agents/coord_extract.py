@@ -40,16 +40,13 @@ except ImportError:
     _SHAPELY_AVAILABLE = False
 
 try:
-    import pytesseract
     from PIL import Image
-    # Hardcoded path for Windows install via winget (UB-Mannheim)
-    pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
-    _TESSERACT_AVAILABLE = True
+    _PIL_AVAILABLE = True
 except ImportError:
-    _TESSERACT_AVAILABLE = False
+    _PIL_AVAILABLE = False
 
-# Poppler binary path (installed via winget oschwartz10612.Poppler)
-_POPPLER_PATH = r"C:\Users\Admin\AppData\Local\Microsoft\WinGet\Packages\oschwartz10612.Poppler_Microsoft.Winget.Source_8wekyb3d8bbwe\poppler-25.07.0\Library\bin"
+# Legacy flag kept for backwards compat — always False now (pytesseract removed)
+_TESSERACT_AVAILABLE = False
 
 try:
     import geopandas as gpd
@@ -672,6 +669,7 @@ def evaluate_dialog_triggers(
     area_discrepancy_pct: float | None,
     minna_detected: bool,
     dms_converted: bool,
+    anchor_is_grid_ref: bool = False,
 ) -> list[str]:
     """
     Evaluate which CRS dialogs must fire before analysis proceeds.
@@ -680,6 +678,7 @@ def evaluate_dialog_triggers(
     T3: Area discrepancy > 10%
     T4: Minna Datum detected
     T5: DMS format detected
+    T6: Anchor is margin grid reference, not beacon
     """
     triggers = []
     if crs_confidence < 60:
@@ -692,6 +691,8 @@ def evaluate_dialog_triggers(
         triggers.append("T4")
     if dms_converted:
         triggers.append("T5")
+    if anchor_is_grid_ref:
+        triggers.append("T6")
     return triggers
 
 
@@ -786,59 +787,116 @@ def parse_shapefile(file_bytes: bytes, filename: str = "upload.zip") -> list[tup
 # Sent to Gemini / GPT-4o / Claude when a vision API key is configured.
 # =============================================================================
 
-_CADASTRAL_VISION_PROMPT = """You are a specialist coordinate extraction agent for Nigerian survey plans.
+_SURVEYOR_INTELLIGENCE_PROMPT = """
+You are an advanced Digital Surveyor Agent operating with the expert spatial intuition and diagnostic rigor of a licensed cadastral surveyor. Your purpose is to analyze the uploaded document, evaluate its mathematical correctness, and choose the optimal processing track to reconstruct the land parcel boundary with absolute geometric integrity.
 
-You will receive an image of a Nigerian cadastral survey plan.
+[VISUAL ORIENTATION & ANCHORING LOGIC]
+1. Locate the Primary Spatial Anchor: Scan the boundary diagram to identify the unique starting beacon station marked with a crosshair design variation (e.g., a node with protruding cross-lines or targeted symbol indicators). This is your absolute origin station.
+2. Resolve Coordinate Intersections: Identify the perpendicular vertical and horizontal neatlines crossing the plan area. Trace where these lines meet. Read the exact numerical coordinate text (e.g., Easting on the vertical line, Northing on the horizontal line) resting along these axes to determine the absolute coordinate positioning of the anchor station.
+3. Clockwise Traverse Pathing: From the primary anchor station, navigate the boundary loop strictly in a CLOCKWISE direction. As you trace along the corridor of each property leg, sequentially extract:
+   - The verified from_beacon station ID initials.
+   - The whole-circle bearing angle (Degrees and Minutes).
+   - The line distance segment in meters.
+   - The verified to_beacon station ID initials.
 
-Your job:
-1. Locate ALL boundary coordinates — they may be in a table, written along boundary lines, or printed vertically on the page margin.
-2. Extract ALL tie-point or origin coordinates (usually labeled mE / mN, or Easting / Northing).
-3. Extract ALL bearings and distances along boundary legs.
-4. Ignore: red certification stamps, surveyor signatures, title blocks, north arrows.
+[SERIAL BEACON ID VALIDATION LOGIC]
+1. Recognize the Serial ID Pattern: The numeric portion of the beacon station codes (e.g., the '5945' in 'SC/AK/K 5945' or '49700' in 'SC/AK/K 49700') always increments or decrements consecutively (consecutive serial progression) row-by-row as the perimeter loop updates. The registry prefix (e.g., 'SC/AK/K') remains constant.
+2. Self-Correct OCR Confusion: Utilize this continuous serial mathematical progression as a validation layer to automatically correct visual typos and character confusion bugs in smudged or faded text (such as mistaking a '3' for an '8', '0' for 'O', '1' for 'I', or 'B' for '3') before finalizing the output payload. For example, if a sequence is parsed as 49701 -> 49702 -> 4970B -> 49704, auto-correct the third station ID to 49703.
+3. Verify Traverse Direction & Continuity: Use this serial sequence order to confirm that the perimeter loop follows a correct, continuous, and unbroken clockwise traverse path without missing any corners or skipping any station IDs.
 
-Nigerian survey plans use these formats — recognise all of them:
-- Eastings: 6-digit number followed by mE or .000mE (e.g. 387223.007mE)
-- Northings: 6-digit number followed by mN or .000mN
-- Bearings: Whole Circle (93° 02') or Quadrant (N62°15'E)
-- Distances: decimal metres (e.g. 9.73m or 9.730m)
-- Station IDs: SC/AK/K 5946, Beacon 12, etc.
+[PIPELINE ROUTING STRATEGY]
+- Step 1: Scan for an explicit, structured tabular coordinate ledger box (containing columns like "STATIONS", "E(m)", "N(m)").
+- Step 2: IF a coordinate ledger table is present, run [TRACK A]. Extract the direct Eastings and Northings precisely.
+- Step 3: IF no ledger table exists, or if the plan is a pure traverse mapping, run [TRACK B]. Use the Visual Orientation rules to resolve the anchor point and calculate coordinates from scratch using bearings and distances.
+- Step 4: IF both exist, extract both datasets to perform an internal validation cross-check.
 
-Return ONLY this JSON — no explanation, no preamble, no markdown fences:
+[TRACK B TRAVERSE CONSTRAINTS & SANITY BOUNDS]
+- Identify the stated area metric on the plan (e.g., "AREA = 424.846 SQ. METRES"). Use this to mathematically constrain leg dimensions. If an extracted distance violates the scale boundary of the stated area (e.g. reading 11.02m as 110.2m), flag it and re-examine the segment corridor.
+- CRITICAL EXCLUSION: Neatline grid numbers on the margins are reference frame coordinates used to find the intersection of the starting point. Never treat them as floating standalone boundary vertices.
+
+Return ONLY a perfectly formatted JSON object conforming to the schema below. Do not include markdown wrap blocks (```json) or conversational text.
+
 {
-  "origin": {"easting": number_or_null, "northing": number_or_null},
-  "crs_hint": "Minna / WGS84 / unknown",
-  "datum": "UTM Zone 32 / ZONE32 / etc or null",
-  "boundaries": [
-    {
-      "bearing": "string as written on plan",
-      "distance_m": number,
-      "to_easting": number_or_null,
-      "to_northing": number_or_null
-    }
-  ],
-  "raw_coordinates": [[easting, northing]],
-  "confidence": 0_to_100,
-  "warnings": ["list any text you could not read clearly"]
+  "selected_processing_track": "TRACK_A_DIRECT_LEDGER" | "TRACK_B_FORWARD_TRAVERSE" | "TRACK_A_B_VALIDATION",
+  "plan_metadata": {
+    "plan_number": "string",
+    "owner_name": "string",
+    "stated_area_sqm": float,
+    "datum": "string"
+  },
+  "anchor_point_resolution": {
+    "anchor_station_id": "string", // Station ID matching the crosshair symbol
+    "resolved_intersection_easting": float,
+    "resolved_intersection_northing": float
+  },
+  "parsed_data": {
+    "ledger_stations": [
+      {
+        "station_id": "string",          // Full true beacon initials (e.g., SC/AK/K 49700)
+        "easting": float,
+        "northing": float,
+        "sequence_order": int,
+        "ui_clipboard_copy_string": "string" // Format: "Easting, Northing"
+      }
+    ],
+    "traverse_legs": [
+      {
+        "leg_index": int,
+        "from_station": "string",        // Full true beacon initials
+        "to_station": "string",          // Full true beacon initials
+        "bearing_dms": "string",          // Exact text e.g., "70°32'"
+        "bearing_decimal_degrees": float,
+        "distance_meters": float
+      }
+    ]
+  },
+  "surveyor_diagnostic_notes": {
+    "apparent_errors_detected": "string",
+    "scale_validation_passed": boolean
+  }
 }
-
-If you cannot find coordinates, return:
-{"error": "NO_COORDINATES_FOUND", "warnings": ["reason"]}"""
+"""
 
 
 def _vision_result_to_text(vision_json: dict) -> str:
     """
     Convert the structured JSON from a Cloud Vision API into the flat text
     format that the Cadastral Engine and parse_text_input() already understand.
-
-    This means the rest of the pipeline is completely unchanged —
-    Cloud Vision simply replaces Tesseract, not the entire parse chain.
     """
     lines = []
 
+    # Selected track metadata
+    track = vision_json.get("selected_processing_track")
+    if track:
+        lines.append(f"TRACK: {track}")
+
     # Datum / CRS hint
-    datum = vision_json.get("datum") or vision_json.get("crs_hint", "")
+    plan_meta = vision_json.get("plan_metadata") or {}
+    datum = plan_meta.get("datum") or vision_json.get("datum") or vision_json.get("crs_hint", "")
     if datum:
         lines.append(f"DATUM: {datum}")
+
+    # Stated Area
+    stated_area = plan_meta.get("stated_area_sqm") or vision_json.get("stated_area_sqm")
+    if stated_area:
+        lines.append(f"STATED_AREA_SQM: {stated_area:.3f}")
+
+    # Starting beacon
+    anchor = vision_json.get("anchor_point_resolution") or {}
+    starting_beacon = anchor.get("anchor_station_id") or vision_json.get("starting_beacon")
+    if starting_beacon:
+        lines.append(f"STARTING_BEACON: {starting_beacon}")
+
+    # Reference Grid / neighborhood anchor
+    ref_e = anchor.get("resolved_intersection_easting")
+    ref_n = anchor.get("resolved_intersection_northing")
+    if ref_e is None or ref_n is None:
+        ref_grid = vision_json.get("reference_grid") or {}
+        ref_e = ref_grid.get("easting")
+        ref_n = ref_grid.get("northing")
+
+    if ref_e and ref_n:
+        lines.append(f"GRID_REF: E {ref_e:.3f} N {ref_n:.3f}")
 
     # Origin / tie-point
     origin = vision_json.get("origin") or {}
@@ -848,12 +906,45 @@ def _vision_result_to_text(vision_json: dict) -> str:
         lines.append(f"{e:.3f}mE")
         lines.append(f"{n:.3f}mN")
 
-    # Explicit raw coordinate table (Type A plans)
+    parsed_data = vision_json.get("parsed_data") or {}
+
+    # Explicit raw coordinate table (Type A plans / TRACK_A_DIRECT_LEDGER)
+    ledger_stations = parsed_data.get("ledger_stations") or []
+    for s in ledger_stations:
+        sid = s.get("station_id")
+        easting = s.get("easting")
+        northing = s.get("northing")
+        if easting is not None and northing is not None:
+            if sid:
+                lines.append(f"{sid} E: {easting:.3f}  N: {northing:.3f}")
+            else:
+                lines.append(f"E: {easting:.3f}  N: {northing:.3f}")
+
+    # Explicit raw coordinate table fallback
     for pair in vision_json.get("raw_coordinates", []):
         if len(pair) == 2:
             lines.append(f"E: {pair[0]:.3f}  N: {pair[1]:.3f}")
 
-    # Boundary traverse lines (Type B plans)
+    # Traverse legs (Type B plans / TRACK_B_FORWARD_TRAVERSE)
+    traverse_legs = parsed_data.get("traverse_legs") or []
+    for leg in traverse_legs:
+        from_st = leg.get("from_station")
+        to_st = leg.get("to_station")
+        bearing = leg.get("bearing_dms") or leg.get("bearing")
+        dist = leg.get("distance_meters") or leg.get("distance_m")
+        if from_st and to_st and bearing and dist is not None:
+            lines.append(f"{from_st} to {to_st}: {bearing} {dist:.3f}m")
+        elif bearing and dist is not None:
+            lines.append(f"{bearing}  {dist:.3f}m")
+
+    # Traverse legs fallback
+    for leg in vision_json.get("legs", []):
+        bearing = leg.get("bearing_dms") or leg.get("bearing")
+        dist = leg.get("distance_m")
+        if bearing and dist is not None:
+            lines.append(f"{bearing}  {dist:.3f}m")
+
+    # Boundary traverse lines (Type B plans fallback)
     for leg in vision_json.get("boundaries", []):
         bearing = leg.get("bearing", "")
         dist = leg.get("distance_m")
@@ -867,35 +958,140 @@ def _vision_result_to_text(vision_json: dict) -> str:
     return "\n".join(lines)
 
 
-def _ocr_via_gemini(image_bytes: bytes, api_key: str) -> str:
-    """Call Gemini 1.5 Flash Vision API and return extracted text."""
+def _ocr_via_gemini(image_bytes: bytes, api_key: str, stated_area_ha: float | None = None) -> str:
+    """Call Gemini 2.5 Flash Vision API and return extracted coordinate text.
+
+    Uses the direct Google Generative AI REST API with an AIzaSy... key.
+    """
     import base64
     import json as _json
+    import os
+    import math
+    import logging
     import requests as _req
+    from dotenv import load_dotenv
+    load_dotenv(override=True)
 
-    url = (
-        "https://generativelanguage.googleapis.com/v1beta/models/"
-        f"gemini-1.5-flash:generateContent?key={api_key}"
-    )
+    _logger = logging.getLogger("landiq.vision_ocr")
+
+    # Always resolve the freshest key from .env
+    _key = api_key if (api_key and api_key.startswith("AIzaSy")) else os.getenv("GEMINI_API_KEY", "")
+    if not _key or not _key.startswith("AIzaSy"):
+        raise RuntimeError(
+            "Gemini Vision requires a Google AI Studio key (starting with AIzaSy) "
+            "set as GEMINI_API_KEY in your .env file."
+        )
+
     b64 = base64.b64encode(image_bytes).decode()
     payload = {
         "contents": [{
             "parts": [
-                {"text": _CADASTRAL_VISION_PROMPT},
+                {"text": _SURVEYOR_INTELLIGENCE_PROMPT},
                 {"inline_data": {"mime_type": "image/png", "data": b64}},
             ]
         }]
     }
-    resp = _req.post(url, json=payload, timeout=30)
-    resp.raise_for_status()
-    data = resp.json()
-    raw = data["candidates"][0]["content"]["parts"][0]["text"].strip()
+
+    fallback_models = [
+        "gemini-2.5-flash",
+        "gemini-2.0-flash",
+        "gemini-1.5-pro",
+        "gemini-1.5-flash"
+    ]
+
+    raw = None
+    last_error = None
+
+    for model_name in fallback_models:
+        url = (
+            "https://generativelanguage.googleapis.com/v1beta/models/"
+            f"{model_name}:generateContent?key={_key}"
+        )
+        try:
+            _logger.info(f"Attempting Gemini OCR with model: {model_name}")
+            resp = _req.post(url, json=payload, timeout=60)
+            resp.raise_for_status()
+            data = resp.json()
+            raw = data["candidates"][0]["content"]["parts"][0]["text"].strip()
+            _logger.info(f"Successfully extracted coordinates using {model_name}")
+            break
+        except Exception as e:
+            last_error = e
+            _logger.warning(f"Failed with {model_name}: {e}. Trying next fallback...")
+
+    if raw is None:
+        raise RuntimeError(f"All Gemini models failed. Last error: {last_error}")
+
     # Strip markdown fences if model adds them
     raw = raw.strip("```json").strip("```").strip()
     result = _json.loads(raw)
     if "error" in result:
         raise RuntimeError(f"Gemini Vision: {result.get('warnings', result['error'])}")
+
+    # ── Distance sanity check & inline re-check ──────────────────────────────
+    stated_area_sqm = None
+    if stated_area_ha is not None and stated_area_ha > 0:
+        stated_area_sqm = stated_area_ha * 10000.0
+    elif result.get("stated_area_sqm") is not None:
+        stated_area_sqm = result.get("stated_area_sqm")
+
+    # Find where the legs are in the result JSON
+    legs_list = None
+    is_parsed_data_traverse_legs = False
+    if result.get("parsed_data", {}).get("traverse_legs"):
+        legs_list = result["parsed_data"]["traverse_legs"]
+        is_parsed_data_traverse_legs = True
+    elif result.get("legs"):
+        legs_list = result["legs"]
+
+    if stated_area_sqm and legs_list:
+        max_plausible_leg = 4.0 * math.sqrt(stated_area_sqm)
+        for i, leg in enumerate(legs_list):
+            dist = leg.get("distance_m")
+            if dist is not None and dist > max_plausible_leg:
+                from_b = leg.get("from_station") or leg.get("from_beacon") or f"Leg {i+1}"
+                to_b = leg.get("to_station") or leg.get("to_beacon") or f"Leg {i+1}"
+                seq = leg.get("sequence") or (i + 1)
+                _logger.warning(
+                    f"[DISTANCE_IMPLAUSIBLE] Leg {seq}: {dist}m "
+                    f"exceeds max plausible {max_plausible_leg:.1f}m for stated area {stated_area_sqm:.1f} m2"
+                )
+                # inline re-check prompt
+                recheck_prompt = (
+                    f"In the survey plan image, you previously extracted leg {seq} "
+                    f"from beacon {from_b} to {to_b} with distance {dist}m. "
+                    f"However, the parcel stated area is {stated_area_sqm:.1f} m², which suggests the maximum plausible "
+                    f"leg distance is approximately {max_plausible_leg:.1f}m. A distance of {dist}m is implausible. "
+                    f"Please re-examine the image for this specific line segment. "
+                    f"Common OCR errors: decimal point shift (e.g. 11.02 read as 110.2 or 1102), merged digits. "
+                    f"Return ONLY a JSON object with the corrected distance_m: {{\"distance_m\": number}}."
+                )
+                try:
+                    recheck_payload = {
+                        "contents": [{
+                            "parts": [
+                                {"text": recheck_prompt},
+                                {"inline_data": {"mime_type": "image/png", "data": b64}},
+                            ]
+                        }]
+                    }
+                    recheck_resp = _req.post(url, json=recheck_payload, timeout=60)
+                    recheck_resp.raise_for_status()
+                    recheck_raw = recheck_resp.json()["candidates"][0]["content"]["parts"][0]["text"].strip()
+                    recheck_raw = recheck_raw.strip("```json").strip("```").strip()
+                    recheck_res = _json.loads(recheck_raw)
+                    corrected_dist = recheck_res.get("distance_m")
+                    if corrected_dist is not None:
+                        _logger.info(f"Corrected leg {seq} distance from {dist}m to {corrected_dist}m")
+                        if is_parsed_data_traverse_legs:
+                            result["parsed_data"]["traverse_legs"][i]["distance_m"] = corrected_dist
+                        else:
+                            result["legs"][i]["distance_m"] = corrected_dist
+                except Exception as e:
+                    _logger.error(f"Failed inline recheck for leg {seq}: {e}")
+
     return _vision_result_to_text(result)
+
 
 
 def _ocr_via_openai(image_bytes: bytes, api_key: str) -> str:
@@ -911,7 +1107,7 @@ def _ocr_via_openai(image_bytes: bytes, api_key: str) -> str:
         "messages": [{
             "role": "user",
             "content": [
-                {"type": "text", "text": _CADASTRAL_VISION_PROMPT},
+                {"type": "text", "text": _SURVEYOR_INTELLIGENCE_PROMPT},
                 {"type": "image_url", "image_url": {"url": f"data:image/png;base64,{b64}"}},
             ]
         }],
@@ -949,7 +1145,7 @@ def _ocr_via_anthropic(image_bytes: bytes, api_key: str) -> str:
                 {"type": "image", "source": {
                     "type": "base64", "media_type": "image/png", "data": b64
                 }},
-                {"type": "text", "text": _CADASTRAL_VISION_PROMPT},
+                {"type": "text", "text": _SURVEYOR_INTELLIGENCE_PROMPT},
             ]
         }]
     }
@@ -973,6 +1169,7 @@ def ocr_file(
     filename: str,
     vision_provider: str | None = None,
     vision_api_key: str | None = None,
+    stated_area_ha: float | None = None,
 ) -> str:
     """
     Extract text from a PDF or image file.
@@ -990,10 +1187,23 @@ def ocr_file(
     Returns raw text string.
     """
     import io
+    import os
     import logging
+    from dotenv import load_dotenv
+    load_dotenv(override=True)
     _logger = logging.getLogger("landiq.vision_ocr")
 
     ext = Path(filename).suffix.lower()
+
+    # Auto-detect Gemini from environment if not explicitly provided
+    if not vision_provider and os.getenv("GEMINI_API_KEY"):
+        vision_provider = "gemini"
+        vision_api_key = os.getenv("GEMINI_API_KEY")
+
+    _logger.info(
+        f"[vision_ocr] ocr_file called: ext={ext}, provider={vision_provider}, "
+        f"key_set={bool(vision_api_key)}, proxy_url={bool(os.getenv('MODEL_PROXY_URL'))}"
+    )
 
     # ── CLOUD VISION PATH ────────────────────────────────────────────────────
     if vision_provider and vision_api_key:
@@ -1028,7 +1238,7 @@ def ocr_file(
             try:
                 if provider == "gemini":
                     _logger.info("[vision_ocr] Using Gemini 1.5 Flash Vision")
-                    return _ocr_via_gemini(image_bytes_for_api, vision_api_key)
+                    return _ocr_via_gemini(image_bytes_for_api, vision_api_key, stated_area_ha=stated_area_ha)
                 elif provider == "openai":
                     _logger.info("[vision_ocr] Using GPT-4o Vision")
                     return _ocr_via_openai(image_bytes_for_api, vision_api_key)
@@ -1041,7 +1251,10 @@ def ocr_file(
                 _logger.warning(f"[vision_ocr] Cloud Vision call failed ({exc}). Falling back to Tesseract.")
                 # Fall through to Tesseract below
 
-    # ── LOCAL TESSERACT PATH (default / fallback) ───────────────────────────
+    # ── GEMINI FALLBACK (no explicit provider but key found) ─────────────────
+    # At this point, cloud vision routing above was attempted but image_bytes
+    # could not be produced (e.g. pdf2image/Poppler missing).  Try a last-resort
+    # Gemini call on raw PDF bytes OR direct image bytes.
     if ext == ".pdf":
         # 1. Try direct text extraction via pypdf (for digital/vector PDFs)
         try:
@@ -1056,155 +1269,33 @@ def ocr_file(
         except Exception:
             pass
 
-        # 2. Fall back to Tesseract OCR (for scanned image PDFs)
-        if not _TESSERACT_AVAILABLE:
-            raise RuntimeError(
-                "pytesseract not available on this server. "
-                "Unable to read scanned PDFs. Please use a digital PDF or paste the text directly."
-            )
-
-        try:
+        # 2. Gemini Vision fallback for scanned PDFs
+        _key = os.getenv("GEMINI_API_KEY")
+        if _key:
+            _logger.info("[vision_ocr] Gemini Vision fallback for scanned PDF (via base64 inline)")
             try:
-                from pdf2image import convert_from_bytes
-                from pdf2image.exceptions import PDFInfoNotInstalledError
-                from agents.vision_preprocessor import preprocess_image_for_ocr
-                try:
-                    pages = convert_from_bytes(file_bytes, dpi=300, poppler_path=_POPPLER_PATH)
-                except PDFInfoNotInstalledError:
-                    raise ImportError("Poppler is missing")
+                return _ocr_via_gemini(file_bytes, _key, stated_area_ha=stated_area_ha)
+            except Exception as exc:
+                _logger.warning(f"[vision_ocr] Gemini fallback failed: {exc}")
 
-                texts = []
-                for page in pages:
-                    img_byte_arr = io.BytesIO()
-                    page.save(img_byte_arr, format='PNG')
-                    img_bytes = img_byte_arr.getvalue()
-                    processed_bytes = preprocess_image_for_ocr(img_bytes)
-                    processed_img = Image.open(io.BytesIO(processed_bytes))
-                    text = pytesseract.image_to_string(processed_img, lang="eng", config="--psm 6")
-                    texts.append(text)
-                return "\n".join(texts)
-            except ImportError:
-                raise RuntimeError(
-                    "PDF/image processing tools are not configured correctly. "
-                    "Please paste coordinate text directly instead."
-                )
-        except Exception as exc:
-            if "TesseractNotFoundError" in type(exc).__name__ or "tesseract is not installed" in str(exc).lower():
-                raise RuntimeError(
-                    "Tesseract OCR could not be found. "
-                    "Please paste coordinate text directly."
-                ) from exc
-            raise
+        raise RuntimeError(
+            "This appears to be a scanned PDF. Please upload a digital PDF "
+            "or paste the coordinate text directly."
+        )
 
     elif ext in (".jpg", ".jpeg", ".png", ".tiff", ".bmp"):
-        if not _TESSERACT_AVAILABLE:
-            raise RuntimeError(
-                "pytesseract not available on this server. "
-                "Image parsing is unavailable. Please paste coordinate text directly."
-            )
-
-        try:
-            from agents.vision_preprocessor import preprocess_image_for_ocr
-            processed_bytes = preprocess_image_for_ocr(file_bytes)
-            img = Image.open(io.BytesIO(processed_bytes))
-            return pytesseract.image_to_string(img, lang="eng", config="--psm 6")
-        except Exception as exc:
-            if "TesseractNotFoundError" in type(exc).__name__ or "tesseract is not installed" in str(exc).lower():
-                raise RuntimeError(
-                    "Tesseract OCR is not installed on this system. "
-                    "Image parsing is unavailable. Please paste coordinate text directly."
-                ) from exc
-            raise
-    else:
-        raise RuntimeError(f"Unsupported file extension for text extraction: {ext}")
-
-    """
-    Extract text from a PDF or image file.
-    Returns raw text string.
-    """
-    import io
-
-    ext = Path(filename).suffix.lower()
-
-    if ext == ".pdf":
-        # 1. Try direct text extraction via pypdf (for digital/vector PDFs)
-        try:
-            import pypdf
-            reader = pypdf.PdfReader(io.BytesIO(file_bytes))
-            text = ""
-            for page in reader.pages:
-                text += page.extract_text() or ""
-            text = text.strip()
-            if len(text) > 50 and any(char.isdigit() for char in text):
-                return text
-        except Exception as exc:
-            pass
-
-        # 2. Fall back to Tesseract OCR (for scanned image PDFs)
-        if not _TESSERACT_AVAILABLE:
-            raise RuntimeError(
-                "pytesseract not available on this server. "
-                "Unable to read scanned PDFs. Please use a digital PDF or paste the text directly."
-            )
-
-        try:
-            # Try pdf2image if available
+        # Direct image — send straight to Gemini Vision
+        _key = os.getenv("GEMINI_API_KEY")
+        if _key:
+            _logger.info("[vision_ocr] Gemini Vision for image file")
             try:
-                from pdf2image import convert_from_bytes
-                from pdf2image.exceptions import PDFInfoNotInstalledError
-                from agents.vision_preprocessor import preprocess_image_for_ocr
-                try:
-                    pages = convert_from_bytes(file_bytes, dpi=300, poppler_path=_POPPLER_PATH)
-                except PDFInfoNotInstalledError:
-                    raise ImportError("Poppler is missing")
-                
-                texts = []
-                for page in pages:
-                    # Convert PIL Image back to bytes for preprocessor
-                    img_byte_arr = io.BytesIO()
-                    page.save(img_byte_arr, format='PNG')
-                    img_bytes = img_byte_arr.getvalue()
-                    
-                    processed_bytes = preprocess_image_for_ocr(img_bytes)
-                    processed_img = Image.open(io.BytesIO(processed_bytes))
-                    
-                    # Try PSM 6 (uniform block) which is best for coordinate tables
-                    text = pytesseract.image_to_string(processed_img, lang="eng", config="--psm 6")
-                    texts.append(text)
-                    
-                return "\n".join(texts)
-            except ImportError:
-                raise RuntimeError(
-                    "PDF/image processing tools are not configured correctly. "
-                    "Please paste coordinate text directly instead."
-                )
-        except Exception as exc:
-            if "TesseractNotFoundError" in type(exc).__name__ or "tesseract is not installed" in str(exc).lower():
-                raise RuntimeError(
-                    "Tesseract OCR could not be found. "
-                    "Please paste coordinate text directly."
-                ) from exc
-            raise
-
-    elif ext in (".jpg", ".jpeg", ".png", ".tiff", ".bmp"):
-        if not _TESSERACT_AVAILABLE:
-            raise RuntimeError(
-                "pytesseract not available on this server. "
-                "Image parsing is unavailable. Please paste coordinate text directly."
-            )
-
-        try:
-            from agents.vision_preprocessor import preprocess_image_for_ocr
-            processed_bytes = preprocess_image_for_ocr(file_bytes)
-            img = Image.open(io.BytesIO(processed_bytes))
-            return pytesseract.image_to_string(img, lang="eng", config="--psm 6")
-        except Exception as exc:
-            if "TesseractNotFoundError" in type(exc).__name__ or "tesseract is not installed" in str(exc).lower():
-                raise RuntimeError(
-                    "Tesseract OCR is not installed on this system. "
-                    "Image parsing is unavailable. Please paste coordinate text directly."
-                ) from exc
-            raise
+                return _ocr_via_gemini(file_bytes, _key, stated_area_ha=stated_area_ha)
+            except Exception as exc:
+                _logger.warning(f"[vision_ocr] Gemini image OCR failed: {exc}")
+        raise RuntimeError(
+            "Image parsing requires a Gemini API key set in your environment. "
+            "Please paste the coordinate text directly."
+        )
     else:
         raise RuntimeError(f"Unsupported file extension for text extraction: {ext}")
 
@@ -1289,6 +1380,7 @@ def run(
                     file_bytes, filename,
                     vision_provider=vision_provider,
                     vision_api_key=vision_api_key,
+                    stated_area_ha=stated_area_ha,
                 )
             else:
                 return MCPErrorResponse(
@@ -1462,6 +1554,12 @@ def run(
                 f"from stated area ({stated_area_ha:.2f} ha) by {area_discrepancy_pct:+.1f}%."
             )
 
+    # ── STEP B-1: Check if raw_text contains GRID_REF: (which indicates grid ref margin anchor)
+    anchor_is_grid_ref = False
+    if raw_text and "GRID_REF" in raw_text:
+        anchor_is_grid_ref = True
+        warnings.append("[ANCHOR_IS_GRID_REF_NOT_BEACON]")
+
     # ── STEP I: Dialog trigger evaluation ────────────────────────────────
     dialog_triggers = evaluate_dialog_triggers(
         crs_confidence=crs_confidence,
@@ -1470,6 +1568,7 @@ def run(
         area_discrepancy_pct=area_discrepancy_pct,
         minna_detected=minna_detected,
         dms_converted=is_dms,
+        anchor_is_grid_ref=anchor_is_grid_ref,
     )
 
     # ── OUTPUT ────────────────────────────────────────────────────────────

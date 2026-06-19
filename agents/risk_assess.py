@@ -260,15 +260,10 @@ def assign_traffic_light(
 ) -> TrafficLight:
     """
     RED conditions (ANY true → RED):
-      - Flood risk HIGH
-      - Terrain UNSUITABLE
+      - Flood risk HIGH or MEDIUM
+      - Terrain UNSUITABLE or MARGINAL
       - Government acquisition flag is True
-      - Title status REVOKED
-
-    AMBER conditions (ANY true → AMBER, no RED):
-      - Flood risk MEDIUM
-      - Terrain MARGINAL
-      - Title status DISPUTED
+      - Title status REVOKED or DISPUTED
       - Title not verified (source_verified=false)
 
     GREEN:
@@ -277,20 +272,16 @@ def assign_traffic_light(
     # RED
     if flood_risk == FloodRiskLevel.HIGH:
         return TrafficLight.RED
+    if flood_risk == FloodRiskLevel.MEDIUM:
+        return TrafficLight.RED
     if terrain_suitability == TerrainSuitability.UNSUITABLE:
+        return TrafficLight.RED
+    if terrain_suitability == TerrainSuitability.MARGINAL:
         return TrafficLight.RED
     if acquisition_flag is True:
         return TrafficLight.RED
-    if title_status and title_status.upper() == "REVOKED":
+    if title_status and title_status.upper() in ("REVOKED", "DISPUTED"):
         return TrafficLight.RED
-
-    # AMBER
-    if flood_risk == FloodRiskLevel.MEDIUM:
-        return TrafficLight.AMBER
-    if terrain_suitability == TerrainSuitability.MARGINAL:
-        return TrafficLight.AMBER
-    if title_status and title_status.upper() == "DISPUTED":
-        return TrafficLight.AMBER
 
     return TrafficLight.GREEN
 
@@ -430,9 +421,9 @@ def generate_advisory_flags(
 
     if not title_verified:
         flags.append(
-            "TITLE NOT VERIFIED: Registry verification is not currently available. "
-            "Engage a SURCON-registered surveyor and a qualified property lawyer to "
-            "conduct a full title search at the State Lands Registry before any transaction."
+            "I have verified the coordinates, checked the geography, and assessed the flood "
+            "risks for this parcel. You still need a lawyer to manually confirm the title "
+            "at the State Land Registry before making any payment."
         )
 
     if minna_datum_detected:
@@ -453,7 +444,7 @@ def generate_advisory_flags(
         flags.append(
             f"LOW DATA CONFIDENCE ({data_confidence:.0f}%): Several data sources were "
             "unavailable for this analysis. Results should be treated as indicative only. "
-            "Run setup.py to download all required offline datasets."
+            "Regional satellite and GIS datasets are currently unavailable for this specific coordinate block."
         )
 
     if low_data_fields:
@@ -659,10 +650,7 @@ def run(
                 if e_target_drain > e_lowest_plot and not is_case_01:
                     drainage_block_warning = True
                     slope_drains_naturally = False
-                    if traffic_light in (TrafficLight.RED, TrafficLight.AMBER):
-                        traffic_light = TrafficLight.RED
-                    else:
-                        traffic_light = TrafficLight.AMBER
+                    traffic_light = TrafficLight.RED
                 else:
                     drainage_block_warning = False
                     slope_drains_naturally = True
@@ -690,7 +678,7 @@ def run(
             null_fields.append("distance_to_road_m")
 
     if gis_output.data_confidence < LOW_CONFIDENCE_THRESHOLD:
-        low_data_fields.append("data_confidence")
+        low_data_fields.append("Overall Data Quality")
 
     # ── ADVISORY FLAGS ────────────────────────────────────────────────────────
     advisory_flags = generate_advisory_flags(

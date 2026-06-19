@@ -179,6 +179,21 @@ DIALOG_MESSAGES = {
         ],
         "type": "select",
     },
+    "T6": {
+        "code": "T6",
+        "icon": "⚠️",
+        "title": "Margin Grid Reference Detected",
+        "message": (
+            "We found the grid reference for this area. This is a local map grid line, "
+            "not the exact starting point of your parcel. Do you have the exact coordinate "
+            "for the starting beacon?"
+        ),
+        "options": [
+            {"value": "approximate", "label": "Use grid reference as approximate start"},
+            {"value": "manual",      "label": "Enter starting coordinate manually"},
+        ],
+        "type": "select",
+    },
 }
 
 
@@ -547,6 +562,14 @@ def _apply_dialog_responses(
             "computed_area_ha": area,
             "is_inside_nigeria": is_inside_nigeria(centroid),
         })
+
+    # T6: User chose approximate grid start
+    if "T6" in responses and responses["T6"] == "approximate":
+        w = "[POS_ACCURACY: APPROXIMATE] — Coordinates are approximate (±5m). Verify with SURCON-registered surveyor."
+        current_warnings = list(updated.warnings) if updated.warnings else []
+        if w not in current_warnings:
+            current_warnings.append(w)
+            updated = updated.model_copy(update={"warnings": current_warnings})
 
     return updated
 

@@ -52,7 +52,6 @@ class GrowthPotential(str, Enum):
 
 class TrafficLight(str, Enum):
     GREEN = "GREEN"
-    AMBER = "AMBER"
     RED   = "RED"
 
 
@@ -561,6 +560,7 @@ class CadastralStationEntry(BaseModel):
     longitude_wgs84: float
     source: str
     ocr_confidence: int = 100
+    ui_clipboard_copy_string: Optional[str] = None
 
 
 class PolygonData(BaseModel):
@@ -577,6 +577,8 @@ class PolygonData(BaseModel):
     closure_error_m: float = 0.0
     crs_input: str
     crs_output: str = "EPSG:4326"
+    closure_status: Optional[str] = None
+    closure_error_meters: Optional[float] = None
 
 
 class ExtractionConfidence(BaseModel):

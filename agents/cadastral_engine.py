@@ -72,6 +72,8 @@ class _BearingDistance:
     bearing_decimal_deg : float   # Decimal degrees (converted from DMS)
     distance_m          : float
     label               : str = ""   # e.g. "L1", "LINE 1", or empty
+    from_station        : str = ""
+    to_station          : str = ""
 
 
 # =============================================================================
@@ -429,10 +431,28 @@ def _scan_cogo_text(raw_text: str) -> tuple[Optional[tuple[float, float]], list[
         lbl_match = _LEG_LABEL_RE.search(line)
         label = lbl_match.group(0).strip() if lbl_match else ""
 
+        # Parse from/to stations
+        from_st = ""
+        to_st = ""
+        if ":" in line:
+            parts = line.split(":", 1)
+            header = parts[0]
+            to_match = re.search(r"\bto\b", header, re.IGNORECASE)
+            if to_match:
+                start_to, end_to = to_match.span()
+                raw_from = header[:start_to].strip()
+                raw_to = header[end_to:].strip()
+                # Clean up leading numbers/dots
+                raw_from = re.sub(r"^\d+[\s.)\-:]+", "", raw_from).strip()
+                from_st = raw_from
+                to_st = raw_to
+
         vectors.append(_BearingDistance(
             bearing_decimal_deg=bearing_dd,
             distance_m=distance,
             label=label,
+            from_station=from_st,
+            to_station=to_st,
         ))
 
     return anchor, vectors
@@ -521,8 +541,12 @@ def _run_track_b(
     E_curr, N_curr = anchor
 
     # Station 0 — tie-point / anchor
+    tp_id = "TP0 (Tie-Point)"
+    if vectors and vectors[0].from_station:
+        tp_id = vectors[0].from_station
+
     stations.append(_Station(
-        station_id="TP0 (Tie-Point)",
+        station_id=tp_id,
         stated_easting=E_curr,
         stated_northing=N_curr,
         calculated_easting=E_curr,
@@ -534,7 +558,7 @@ def _run_track_b(
         E_next = E_curr + vec.distance_m * math.sin(bearing_rad)
         N_next = N_curr + vec.distance_m * math.cos(bearing_rad)
 
-        label = vec.label if vec.label else f"S{i + 1}"
+        label = vec.to_station if vec.to_station else (vec.label if vec.label else f"S{i + 1}")
         stations.append(_Station(
             station_id=label,
             stated_easting=None,        # COGO: no stated coords
@@ -707,6 +731,166 @@ def _flag_area_accuracy(
 
 
 # =============================================================================
+# § 10.5 · SANITY GATES & SEQUENCE ENFORCEMENT
+# =============================================================================
+
+def pre_plot_sanity_check(
+    computed_area_sqm: float,
+    stated_area_sqm: Optional[float],
+    polygon_bbox_m: float,
+    wgs84_coords: list[tuple[float, float]],
+    has_self_intersection: bool,
+) -> tuple[bool, str]:
+    """
+    Runs before ANY polygon is plotted or any analysis is triggered.
+    Hard blocks on failure.
+    Returns (passed, message).
+    """
+    # Check 4: Self-intersection
+    if has_self_intersection:
+        return False, "Self-intersecting polygon detected."
+
+    # If no stated area is provided, we can't perform ratio/bbox comparisons
+    if stated_area_sqm and stated_area_sqm > 0:
+        # Check 1: Area ratio
+        ratio = computed_area_sqm / stated_area_sqm
+        if ratio > 5.0 or ratio < 0.1:
+            return False, (
+                f"Computed area ({computed_area_sqm:.1f} m²) "
+                f"is {ratio:.1f}x the stated area "
+                f"({stated_area_sqm:.1f} m²). "
+                f"Extraction likely failed."
+            )
+
+        # Check 2: Bounding box plausibility
+        # Max diagonal of a polygon = 2*sqrt(area) roughly.
+        # Max plausible leg = 4 * sqrt(area)
+        # We check if bounding box diagonal exceeds max plausible leg * 3
+        max_diagonal = 4.0 * math.sqrt(stated_area_sqm)
+        if polygon_bbox_m > max_diagonal * 3.0:
+            return False, (
+                f"Polygon spans {polygon_bbox_m:.1f}m but "
+                f"stated area is only {stated_area_sqm:.1f} m². "
+                f"Coordinates are likely wrong."
+            )
+
+    # Check 3: Nigeria geographic bounds
+    for lat, lon in wgs84_coords:
+        if not (4.0 <= lat <= 14.0 and 2.5 <= lon <= 15.0):
+            return False, (
+                f"Coordinate ({lat:.4f}, {lon:.4f}) is "
+                f"outside Nigeria. CRS transform may be wrong."
+            )
+
+    return True, "Sanity checks passed."
+
+
+def _reorder_stations(
+    stations: list[_Station],
+    new_pts: list[tuple[float, float]],
+    has_closing_dup: bool,
+) -> list[_Station]:
+    # Exclude the closing duplicate from stations if it exists
+    active_stations = stations[:-1] if has_closing_dup else list(stations)
+    
+    # Map each point to its station by coordinates
+    ordered_stations = []
+    for pt in new_pts:
+        matched = None
+        for s in active_stations:
+            se = s.calculated_easting if s.calculated_easting is not None else s.stated_easting
+            sn = s.calculated_northing if s.calculated_northing is not None else s.stated_northing
+            if se is not None and sn is not None:
+                if abs(se - pt[0]) < 0.01 and abs(sn - pt[1]) < 0.01:
+                    matched = s
+                    break
+        if matched:
+            ordered_stations.append(matched)
+
+    if len(ordered_stations) != len(new_pts):
+        return stations
+
+    if has_closing_dup:
+        # Re-append a copy of the first station as the closing station
+        first = ordered_stations[0]
+        close_station = _Station(
+            station_id=f"{first.station_id} (close)",
+            stated_easting=first.stated_easting,
+            stated_northing=first.stated_northing,
+            calculated_easting=first.calculated_easting,
+            calculated_northing=first.calculated_northing,
+            wgs84_lng=first.wgs84_lng,
+            wgs84_lat=first.wgs84_lat,
+        )
+        ordered_stations.append(close_station)
+
+    return ordered_stations
+
+
+def _enforce_simple_polygon_sequence(stations: list[_Station]) -> tuple[list[_Station], bool]:
+    """
+    If the polygon self-intersects, try reversing the sequence or trying all rotations.
+    Returns (fixed_stations, has_self_intersection).
+    """
+    if len(stations) < 3:
+        return stations, False
+
+    # Extract coordinates
+    pts = []
+    for s in stations:
+        e = s.calculated_easting if s.calculated_easting is not None else s.stated_easting
+        n = s.calculated_northing if s.calculated_northing is not None else s.stated_northing
+        if e is not None and n is not None:
+            pts.append((e, n))
+
+    if len(pts) < 3:
+        return stations, False
+
+    # Check if last point duplicates first
+    has_closing_dup = False
+    if len(pts) >= 4 and abs(pts[0][0] - pts[-1][0]) < 0.01 and abs(pts[0][1] - pts[-1][1]) < 0.01:
+        pts = pts[:-1]
+        has_closing_dup = True
+
+    try:
+        from shapely.geometry import LinearRing
+        ring = LinearRing(pts)
+        if ring.is_simple:
+            return stations, False
+
+        # Self-intersection detected! Try permutations
+        rev_pts = pts[::-1]
+        if LinearRing(rev_pts).is_simple:
+            fixed_stations = _reorder_stations(stations, rev_pts, has_closing_dup)
+            return fixed_stations, False
+
+        n = len(pts)
+        for start_idx in range(1, n):
+            rot_pts = pts[start_idx:] + pts[:start_idx]
+            if LinearRing(rot_pts).is_simple:
+                fixed_stations = _reorder_stations(stations, rot_pts, has_closing_dup)
+                return fixed_stations, False
+
+            rot_rev_pts = rev_pts[start_idx:] + rev_pts[:start_idx]
+            if LinearRing(rot_rev_pts).is_simple:
+                fixed_stations = _reorder_stations(stations, rot_rev_pts, has_closing_dup)
+                return fixed_stations, False
+
+        # Fallback: Radial/polar angle sort around centroid
+        cx = sum(p[0] for p in pts) / len(pts)
+        cy = sum(p[1] for p in pts) / len(pts)
+        radial_pts = sorted(pts, key=lambda p: math.atan2(p[1] - cy, p[0] - cx))
+        if LinearRing(radial_pts).is_simple:
+            fixed_stations = _reorder_stations(stations, radial_pts, has_closing_dup)
+            return fixed_stations, False
+
+        return stations, True
+    except Exception as exc:
+        logger.warning(f"[cadastral] LinearRing check failed: {exc}")
+        return stations, False
+
+
+# =============================================================================
 # § 11 · MAIN run() ENTRYPOINT
 # =============================================================================
 
@@ -863,9 +1047,91 @@ def run(
     # ── WGS84 reprojection ─────────────────────────────────────────────────────
     _reproject_stations(active_stations, datum_label, utm_zone, raw_text, location_context)
 
+    # ── Self-intersection check and fixer ─────────────────────────────────────
+    active_stations, has_self_intersection = _enforce_simple_polygon_sequence(active_stations)
+
+    # ── Clockwise orientation enforcement ──────────────────────────────────────
+    try:
+        active_pts = []
+        for s in active_stations:
+            e = s.calculated_easting if s.calculated_easting is not None else s.stated_easting
+            n = s.calculated_northing if s.calculated_northing is not None else s.stated_northing
+            if e is not None and n is not None:
+                active_pts.append((e, n))
+        
+        # Exclude closing duplicate if present
+        if len(active_pts) >= 4 and abs(active_pts[0][0] - active_pts[-1][0]) < 0.01 and abs(active_pts[0][1] - active_pts[-1][1]) < 0.01:
+            active_pts = active_pts[:-1]
+            has_dup = True
+        else:
+            has_dup = False
+            
+        if len(active_pts) >= 3:
+            from shapely.geometry import Polygon as ShapelyPolygon
+            poly = ShapelyPolygon(active_pts)
+            if poly.exterior.is_ccw:
+                # Reverse the order of active_stations (excluding the closing duplicate)
+                non_dup_stations = active_stations[:-1] if has_dup else active_stations
+                reversed_stations = non_dup_stations[::-1]
+                if has_dup:
+                    first = reversed_stations[0]
+                    close_station = _Station(
+                        station_id=f"{first.station_id} (close)",
+                        stated_easting=first.stated_easting,
+                        stated_northing=first.stated_northing,
+                        calculated_easting=first.calculated_easting,
+                        calculated_northing=first.calculated_northing,
+                        wgs84_lng=first.wgs84_lng,
+                        wgs84_lat=first.wgs84_lat,
+                    )
+                    active_stations = reversed_stations + [close_station]
+                else:
+                    active_stations = reversed_stations
+                # Re-run WGS84 reprojection for reversed stations to keep coordinates in sync
+                _reproject_stations(active_stations, datum_label, utm_zone, raw_text, location_context)
+    except Exception as exc:
+        logger.warning(f"[cadastral] Orientation enforcement failed: {exc}")
+
+    # ── Collect coordinates for sanity check ──────────────────────────────────
+    wgs84_coords = []
+    for s in active_stations:
+        if s.wgs84_lat is not None and s.wgs84_lng is not None:
+            wgs84_coords.append((s.wgs84_lat, s.wgs84_lng))
+            
+    # Calculate polygon_bbox_m
+    polygon_bbox_m = 0.0
+    x_coords = [s.calculated_easting or s.stated_easting or 0.0 for s in active_stations]
+    y_coords = [s.calculated_northing or s.stated_northing or 0.0 for s in active_stations]
+    if x_coords and y_coords:
+        dx = max(x_coords) - min(x_coords)
+        dy = max(y_coords) - min(y_coords)
+        polygon_bbox_m = math.sqrt(dx**2 + dy**2)
+
     # ── Area computation ───────────────────────────────────────────────────────
     area_m2 = _shoelace_area_m2(active_stations)
     area_ha = round(area_m2 / 10_000, 6)
+
+    # ── Pre-plot Sanity Gate (hard block) ─────────────────────────────────────
+    is_ocr_plan = filename and Path(filename).suffix.lower() in (".pdf", ".png", ".jpg", ".jpeg", ".tiff", ".bmp")
+    if is_ocr_plan:
+        from pathlib import Path
+        stated_sqm = stated_area_ha * 10000.0 if stated_area_ha else None
+        passed_sanity, sanity_msg = pre_plot_sanity_check(
+            computed_area_sqm=area_m2,
+            stated_area_sqm=stated_sqm,
+            polygon_bbox_m=polygon_bbox_m,
+            wgs84_coords=wgs84_coords,
+            has_self_intersection=has_self_intersection,
+        )
+        
+        if not passed_sanity:
+            logger.error(f"[cadastral] Pre-plot sanity check FAIL: {sanity_msg}")
+            return MCPErrorResponse(
+                error_code="SANITY_CHECK_FAILED",
+                instruction=f"[SANITY_CHECK_FAILED] {sanity_msg}",
+                stage=PipelineStage.COORD_EXTRACT,
+                detail=sanity_msg
+            )
 
     # ── Area accuracy flag ─────────────────────────────────────────────────────
     area_status, delta_ha, simple_msg = _flag_area_accuracy(stated_area_ha, area_ha)
@@ -881,18 +1147,22 @@ def run(
         simple_msg += " | Notes: " + " | ".join(extra_notes)
 
     # ── Build station ledger ───────────────────────────────────────────────────
-    ledger = [
-        CadastralStationEntry(
-            station_id=s.station_id,
-            easting_utm=s.calculated_easting if s.calculated_easting is not None else (s.stated_easting or 0.0),
-            northing_utm=s.calculated_northing if s.calculated_northing is not None else (s.stated_northing or 0.0),
-            latitude_wgs84=s.wgs84_lat or 0.0,
-            longitude_wgs84=s.wgs84_lng or 0.0,
-            source="computed" if comp_track == ComputationTrack.COGO_TRAVERSE else "table",
-            ocr_confidence=100
+    ledger = []
+    for s in active_stations:
+        e = s.calculated_easting if s.calculated_easting is not None else (s.stated_easting or 0.0)
+        n = s.calculated_northing if s.calculated_northing is not None else (s.stated_northing or 0.0)
+        ledger.append(
+            CadastralStationEntry(
+                station_id=s.station_id,
+                easting_utm=e,
+                northing_utm=n,
+                latitude_wgs84=s.wgs84_lat or 0.0,
+                longitude_wgs84=s.wgs84_lng or 0.0,
+                source="computed" if comp_track == ComputationTrack.COGO_TRAVERSE else "table",
+                ocr_confidence=100,
+                ui_clipboard_copy_string=f"{e:.3f}, {n:.3f}"
+            )
         )
-        for s in active_stations
-    ]
 
     extraction_meta = ExtractionMeta(
         source_file=filename or "manual_entry",
@@ -912,8 +1182,10 @@ def run(
 
     traverse_data = None
     if comp_track == ComputationTrack.COGO_TRAVERSE and anchor:
+        # Use propagated starting beacon name if available
+        start_beacon = cogo_vectors[0].from_station if cogo_vectors and cogo_vectors[0].from_station else "TP0"
         traverse_data = TraverseData(
-            starting_beacon="TP0",
+            starting_beacon=start_beacon,
             starting_easting=anchor[0],
             starting_northing=anchor[1],
             closure_error_m=misclosure_m,
@@ -922,19 +1194,25 @@ def run(
 
     is_closed_poly = len(active_stations) >= 3
 
+    closure_status = "UNCLOSED" if (comp_track == ComputationTrack.COGO_TRAVERSE and misclosure_m > 2.0) else "CLOSED"
+    is_closed = False if closure_status == "UNCLOSED" else is_closed_poly
+    is_valid = False if closure_status == "UNCLOSED" else is_closed_poly
+
     polygon_data = PolygonData(
-        wgs84_coordinates=[[s.wgs84_lat or 0.0, s.wgs84_lng or 0.0] for s in active_stations] if is_closed_poly else [],
-        utm_coordinates=[[s.calculated_easting or 0.0, s.calculated_northing or 0.0] for s in active_stations] if is_closed_poly else [],
-        computed_area_sqm=area_m2 if is_closed_poly else 0.0,
-        computed_area_ha=area_ha if is_closed_poly else 0.0,
+        wgs84_coordinates=[[s.wgs84_lat or 0.0, s.wgs84_lng or 0.0] for s in active_stations],
+        utm_coordinates=[[s.calculated_easting or 0.0, s.calculated_northing or 0.0] for s in active_stations],
+        computed_area_sqm=area_m2,
+        computed_area_ha=area_ha,
         stated_area_sqm=stated_area_ha * 10000 if stated_area_ha else None,
         area_discrepancy_pct=(area_variance_m2 / (stated_area_ha * 10000) * 100) if stated_area_ha and stated_area_ha > 0 else None,
-        is_closed=is_closed_poly,
-        is_valid=is_closed_poly,
+        is_closed=is_closed,
+        is_valid=is_valid,
         has_self_intersection=False,
-        vertex_count=(len(active_stations) - 1) if is_closed_poly else len(active_stations),
+        vertex_count=(len(active_stations) - 1) if is_closed else len(active_stations),
         closure_error_m=misclosure_m,
         crs_input=datum_label or "MINNA",
+        closure_status=closure_status,
+        closure_error_meters=misclosure_m,
     )
 
     # ── Assemble output ────────────────────────────────────────────────────────

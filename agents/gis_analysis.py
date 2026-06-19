@@ -267,7 +267,7 @@ def run(
     if elevation_m is None:
         warnings.append(
             "SRTM elevation data not available for this location. "
-            "Run setup.py to download SRTM tiles."
+            "Regional elevation terrain data is currently unavailable for this specific coordinate block."
         )
 
     # ── HYDROLOGY ─────────────────────────────────────────────────────────────
@@ -284,7 +284,7 @@ def run(
     if distance_to_river_m is None:
         warnings.append(
             "HydroRIVERS data not available. "
-            "Run setup.py to download HydroSHEDS river network."
+            "Regional river network data is currently unavailable for this specific coordinate block."
         )
 
     # ── SENTINEL-2 NDWI / NDVI ────────────────────────────────────────────────
@@ -315,7 +315,7 @@ def run(
     if distance_to_road_m is None:
         warnings.append(
             "OSM road network data not available. "
-            "Run setup.py to download OSM Nigeria extract."
+            "Regional road network data is currently unavailable for this specific coordinate block."
         )
 
     # ── FLOOD PROXIMITY SCORE ─────────────────────────────────────────────────

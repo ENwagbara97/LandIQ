@@ -157,3 +157,175 @@ def test_json_schema_compliance():
     assert all("longitude_wgs84" in s and "latitude_wgs84" in s for s in payload["beacons"])
     assert "datum_detected" in payload["extraction_meta"]
     assert "extraction_method" in payload["extraction_meta"]
+
+
+def test_pre_plot_sanity_check():
+    from agents.cadastral_engine import pre_plot_sanity_check
+
+    # 1. Successful pass
+    passed, msg = pre_plot_sanity_check(
+        computed_area_sqm=424.0,
+        stated_area_sqm=424.0,
+        polygon_bbox_m=25.0,
+        wgs84_coords=[(6.5, 3.5), (6.5, 3.6), (6.6, 3.6), (6.6, 3.5), (6.5, 3.5)],
+        has_self_intersection=False
+    )
+    assert passed
+    assert "Sanity checks passed" in msg
+
+    # 2. Area ratio fail (ratio > 5)
+    passed, msg = pre_plot_sanity_check(
+        computed_area_sqm=2500.0,
+        stated_area_sqm=424.0,
+        polygon_bbox_m=25.0,
+        wgs84_coords=[(6.5, 3.5), (6.5, 3.6), (6.6, 3.6), (6.6, 3.5), (6.5, 3.5)],
+        has_self_intersection=False
+    )
+    assert not passed
+    assert "ratio" in msg.lower() or "area" in msg.lower()
+
+    # 3. Area ratio fail (ratio < 0.1)
+    passed, msg = pre_plot_sanity_check(
+        computed_area_sqm=30.0,
+        stated_area_sqm=424.0,
+        polygon_bbox_m=25.0,
+        wgs84_coords=[(6.5, 3.5), (6.5, 3.6), (6.6, 3.6), (6.6, 3.5), (6.5, 3.5)],
+        has_self_intersection=False
+    )
+    assert not passed
+    assert "ratio" in msg.lower() or "area" in msg.lower()
+
+    # 4. Bounding box plausibility fail
+    passed, msg = pre_plot_sanity_check(
+        computed_area_sqm=424.0,
+        stated_area_sqm=424.0,
+        polygon_bbox_m=500.0, # too large for 424 sqm
+        wgs84_coords=[(6.5, 3.5), (6.5, 3.6), (6.6, 3.6), (6.6, 3.5), (6.5, 3.5)],
+        has_self_intersection=False
+    )
+    assert not passed
+    assert "spans" in msg.lower() or "bounding box" in msg.lower() or "wrong" in msg.lower()
+
+    # 5. Outside Nigeria bounds
+    passed, msg = pre_plot_sanity_check(
+        computed_area_sqm=424.0,
+        stated_area_sqm=424.0,
+        polygon_bbox_m=25.0,
+        wgs84_coords=[(51.5, -0.12), (51.5, -0.11), (51.6, -0.11), (51.6, -0.12)], # London
+        has_self_intersection=False
+    )
+    assert not passed
+    assert "nigeria" in msg.lower()
+
+    # 6. Self-intersection fail
+    passed, msg = pre_plot_sanity_check(
+        computed_area_sqm=424.0,
+        stated_area_sqm=424.0,
+        polygon_bbox_m=25.0,
+        wgs84_coords=[(6.5, 3.5), (6.5, 3.6), (6.6, 3.6), (6.6, 3.5), (6.5, 3.5)],
+        has_self_intersection=True
+    )
+    assert not passed
+    assert "self-intersecting" in msg.lower()
+
+
+def test_linear_ring_self_intersection_fix():
+    from agents.cadastral_engine import _enforce_simple_polygon_sequence, _Station
+    # Create a bowtie polygon sequence of stations:
+    # (0, 0), (2, 2), (2, 0), (0, 2)
+    # The edges (0,0)-(2,2) and (2,0)-(0,2) cross at (1,1).
+    # Reordering the unique coordinates to (0,0), (2,0), (2,2), (0,2) will form a simple square.
+    
+    stations = [
+        _Station(station_id="S1", calculated_easting=0.0, calculated_northing=0.0),
+        _Station(station_id="S2", calculated_easting=2.0, calculated_northing=2.0),
+        _Station(station_id="S3", calculated_easting=2.0, calculated_northing=0.0),
+        _Station(station_id="S4", calculated_easting=0.0, calculated_northing=2.0),
+        _Station(station_id="S1 (close)", calculated_easting=0.0, calculated_northing=0.0),
+    ]
+    
+    fixed_stations, has_self_intersection = _enforce_simple_polygon_sequence(stations)
+    assert not has_self_intersection
+    assert len(fixed_stations) == 5
+    
+    # Extract fixed coordinates sequence
+    fixed_coords = []
+    for s in fixed_stations:
+        fixed_coords.append((s.calculated_easting, s.calculated_northing))
+        
+    # The fixed unique sequence should be a simple square
+    unique_fixed_coords = fixed_coords[:-1]
+    from shapely.geometry import LinearRing
+    ring = LinearRing(unique_fixed_coords)
+    assert ring.is_simple
+
+
+def test_surveyor_intelligence_beacons():
+    # Track B: COGO traverse with authentic beacon names
+    cogo_text = """
+    MINNA UTM ZONE 32
+    Tie-Point: E 387500.000 N 550600.000
+    
+    SC/AK/K 5948 to SC/AK/K 5949: N 62°15'30"E 120.50m
+    SC/AK/K 5949 to SC/AK/K 5950: S 27°44'30"E 95.75m
+    SC/AK/K 5950 to SC/AK/K 5951: S 62°15'30"W 120.50m
+    SC/AK/K 5951 to SC/AK/K 5948: N 27°44'30"W 95.75m
+    """
+    result = cadastral_run(raw_text=cogo_text)
+    assert not isinstance(result, MCPErrorResponse)
+    
+    beacons = result.beacons
+    assert len(beacons) == 5
+    assert beacons[0].station_id == "SC/AK/K 5948"
+    assert beacons[1].station_id == "SC/AK/K 5949"
+    assert beacons[2].station_id == "SC/AK/K 5950"
+    assert beacons[3].station_id == "SC/AK/K 5951"
+    assert beacons[4].station_id == "SC/AK/K 5948" # closed station ID (since vec[-1].to_station is SC/AK/K 5948)
+    
+    # Assert clipboard copy string is populated
+    for b in beacons:
+        assert b.ui_clipboard_copy_string is not None
+        assert "," in b.ui_clipboard_copy_string
+        e_str, n_str = b.ui_clipboard_copy_string.split(",")
+        # Should be float strings
+        float(e_str.strip())
+        float(n_str.strip())
+
+
+def test_unclosed_traverse_misclosure():
+    # Misclosure error is large because final leg is way too short (10.0m instead of 95.75m)
+    cogo_text_unclosed = """
+    MINNA UTM ZONE 32
+    Tie-Point: E 387500.000 N 550600.000
+    
+    SC/AK/K 5948 to SC/AK/K 5949: N 62°15'30"E 120.50m
+    SC/AK/K 5949 to SC/AK/K 5950: S 27°44'30"E 95.75m
+    SC/AK/K 5950 to SC/AK/K 5951: S 62°15'30"W 120.50m
+    SC/AK/K 5951 to SC/AK/K 5948: N 27°44'30"W 10.00m
+    """
+    result = cadastral_run(raw_text=cogo_text_unclosed)
+    assert not isinstance(result, MCPErrorResponse)
+    
+    polygon = result.polygon
+    assert polygon is not None
+    assert polygon.is_closed is False
+    assert polygon.is_valid is False
+    assert polygon.closure_status == "UNCLOSED"
+    assert polygon.closure_error_meters > 2.0
+    
+    # Verify open coordinates sequence is still constructed and returned
+    assert len(polygon.wgs84_coordinates) == 5
+    assert len(polygon.utm_coordinates) == 5
+    assert polygon.wgs84_coordinates[0] != [0.0, 0.0]
+
+
+def test_clipboard_copy_string_tabular():
+    result = cadastral_run(raw_text=TRACK_A_TEXT)
+    assert not isinstance(result, MCPErrorResponse)
+    
+    beacons = result.beacons
+    assert len(beacons) >= 4
+    for b in beacons:
+        assert b.ui_clipboard_copy_string is not None
+        assert "," in b.ui_clipboard_copy_string
+

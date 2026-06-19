@@ -1,0 +1,356 @@
+<!DOCTYPE html><html class="light" lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>LandIQ | Report</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+<style>
+        body {
+            font-family: 'DM Sans', sans-serif;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .gauge-container {
+            position: relative;
+            width: 80px;
+            height: 80px;
+        }
+        .gauge-svg {
+            transform: rotate(-90deg);
+        }
+        .gauge-bg {
+            fill: none;
+            stroke: #efedf1;
+            stroke-width: 8;
+        }
+        .gauge-fill {
+            fill: none;
+            stroke: #006a61;
+            stroke-width: 8;
+            stroke-linecap: round;
+            stroke-dasharray: 226.19;
+            stroke-dashoffset: 40.71; /* 82% of 226.19 */
+            transition: stroke-dashoffset 1s ease-out;
+        }
+        .terrain-chart-gradient {
+            background: linear-gradient(180deg, rgba(39, 113, 223, 0.1) 0%, rgba(39, 113, 223, 0) 100%);
+        }
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .hide-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface-tint": "#005ac1",
+                        "primary-container": "#2771df",
+                        "outline-variant": "#c2c6d5",
+                        "surface": "#faf9fd",
+                        "on-tertiary": "#ffffff",
+                        "on-surface": "#1a1b1e",
+                        "on-surface-variant": "#424753",
+                        "surface-container-lowest": "#ffffff",
+                        "inverse-on-surface": "#f1f0f4",
+                        "error-container": "#ffdad6",
+                        "on-error-container": "#93000a",
+                        "surface-variant": "#e3e2e6",
+                        "secondary-fixed": "#7df6e6",
+                        "on-primary-fixed": "#001a41",
+                        "on-secondary-container": "#006f65",
+                        "on-primary-fixed-variant": "#004494",
+                        "background": "#faf9fd",
+                        "error": "#ba1a1a",
+                        "surface-dim": "#dbd9dd",
+                        "surface-bright": "#faf9fd",
+                        "surface-container": "#efedf1",
+                        "secondary-fixed-dim": "#5edaca",
+                        "on-secondary-fixed": "#00201c",
+                        "inverse-surface": "#2f3033",
+                        "on-secondary": "#ffffff",
+                        "surface-container-high": "#e9e7eb",
+                        "outline": "#727785",
+                        "on-primary-container": "#fefcff",
+                        "on-secondary-fixed-variant": "#005049",
+                        "on-error": "#ffffff",
+                        "primary": "#0058bd",
+                        "on-tertiary-container": "#fefcff",
+                        "surface-container-highest": "#e3e2e6",
+                        "primary-fixed": "#d8e2ff",
+                        "secondary-container": "#7af4e3",
+                        "on-primary": "#ffffff",
+                        "on-tertiary-fixed-variant": "#004493",
+                        "tertiary-fixed-dim": "#adc7ff",
+                        "tertiary-container": "#1471e6",
+                        "on-background": "#1a1b1e",
+                        "on-tertiary-fixed": "#001a41",
+                        "inverse-primary": "#adc6ff",
+                        "tertiary": "#0058bb",
+                        "secondary": "#006a61",
+                        "primary-fixed-dim": "#adc6ff",
+                        "surface-container-low": "#f4f3f7",
+                        "tertiary-fixed": "#d8e2ff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "bottom-nav-height": "80px",
+                        "element-gap-sm": "8px",
+                        "container-margin": "16px",
+                        "sheet-top-padding": "24px",
+                        "element-gap-md": "16px",
+                        "gutter": "12px"
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+</head>
+<body class="bg-surface text-on-surface min-h-screen pb-bottom-nav-height">
+<!-- Top AppBar -->
+<header class="fixed top-0 w-full z-40 bg-surface/80 backdrop-blur-md shadow-sm flex justify-between items-center px-container-margin h-16 w-full">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-surface-container overflow-hidden">
+<img alt="User Profile" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBBmEe0uZcyFC7aOuEiKnHbA2uJBUgDQjtFbXrXjkA_1zM4XT8bDDkSuPnVGj9agSblkQOIYO8BPMIxfiMdfICiK-VGSkR9qKhv_HRSfFkFQRf2JwryQrSHE7xa-kH7BwT8J1bQo1Pc4pELBjfaaUkbR_WwYNmp6IAIUN8hGgBz-9zDOjgJd5ARpjsdln2ejlOAREOafmUBAhLBVNcdPVfftpD2wVETIKvWhyvLcFKx3PLicLlIZlUTgmIT1Y-tybYiXJj97VdcAFiN">
+</div>
+<span class="font-display-lg text-display-lg font-bold text-primary">LandIQ</span>
+</div>
+<button class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-surface-variant/50 transition-all">
+<span class="material-symbols-outlined text-primary">notifications</span>
+</button>
+</header>
+<!-- Map Background / Context Layer -->
+<div class="fixed inset-0 z-0">
+<img class="w-full h-full object-cover opacity-40 grayscale-[20%]" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA8T5O_ZYg0H1AJZfvy26mzt5skY1bgzviSJBdjMwyNqnnDAo-rk0lyLQ9mLCViaDribXAHG1snnBk8Lus4aUnjxWqtqN9S61RhAS5SBVLkwztBeA5PubAaGQusoDtMVY7BlxM6DTBBEIp-nzp7dakzJ3GNkhtoqkxwsjIeDJVkaRTkYRoXSB7lxNY7VcImc1ymDBv8chEGepeeRV4W4X3qhveXO622ECWurqLsBmbLiuh5aTOvamL62v3570mnfO71oi3JuC0CvtAI">
+</div>
+<!-- Content Sheet -->
+<main class="relative z-10 mt-20 px-container-margin pb-10">
+<div class="bg-surface-container-lowest rounded-[28px] shadow-lg p-6 max-w-2xl mx-auto border border-outline-variant/30">
+<!-- Drag Handle -->
+<div class="flex justify-center mb-6">
+<div class="w-10 h-1 rounded-full bg-outline-variant"></div>
+</div>
+<!-- Header Section -->
+<div class="flex justify-between items-start mb-6">
+<div>
+<h1 class="font-display-lg text-display-lg text-on-surface">Byron Shire</h1>
+<p class="font-body-md text-body-md text-on-surface-variant flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px]">location_on</span>
+                        New South Wales, AU
+                    </p>
+<div class="mt-3 inline-flex items-center gap-2 px-3 py-1 bg-secondary-container text-on-secondary-container rounded-full font-label-md text-label-md tracking-wider">
+<span class="material-symbols-outlined text-[14px]" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+                        GREEN · PROCEED
+                    </div>
+</div>
+<div class="flex flex-col items-center">
+<div class="gauge-container">
+<svg class="gauge-svg w-full h-full" viewBox="0 0 80 80">
+<circle class="gauge-bg" cx="40" cy="40" r="36"></circle>
+<circle class="gauge-fill" cx="40" cy="40" r="36"></circle>
+</svg>
+<div class="absolute inset-0 flex items-center justify-center">
+<span class="font-title-lg text-title-lg font-bold text-on-secondary-container">82%</span>
+</div>
+</div>
+<span class="font-label-sm text-label-sm text-on-surface-variant mt-1 uppercase tracking-tighter">Viability</span>
+</div>
+</div>
+<!-- Analysis Summary -->
+<div class="mb-8 p-4 bg-surface-container rounded-2xl">
+<p class="font-body-lg text-body-lg text-on-surface leading-relaxed">
+                    This parcel demonstrates exceptional suitability for sustainable development. High natural elevation and robust vegetation density offer natural mitigation against climate-related risks, with only minor slope considerations on the western boundary.
+                </p>
+</div>
+<!-- Metric Grid -->
+<div class="grid grid-cols-2 gap-4 mb-8">
+<!-- Elevation -->
+<div class="p-4 bg-surface-container-low border border-outline-variant/20 rounded-2xl flex flex-col gap-2">
+<div class="w-10 h-10 rounded-xl bg-primary-container/10 flex items-center justify-center">
+<span class="material-symbols-outlined text-primary">filter_hdr</span>
+</div>
+<div>
+<span class="font-label-md text-label-md text-on-surface-variant block">Elevation</span>
+<span class="font-title-lg text-title-lg font-bold">142m MSL</span>
+</div>
+</div>
+<!-- Slope -->
+<div class="p-4 bg-surface-container-low border border-outline-variant/20 rounded-2xl flex flex-col gap-2">
+<div class="w-10 h-10 rounded-xl bg-tertiary-container/10 flex items-center justify-center">
+<span class="material-symbols-outlined text-tertiary">trending_down</span>
+</div>
+<div>
+<span class="font-label-md text-label-md text-on-surface-variant block">Slope</span>
+<span class="font-title-lg text-title-lg font-bold">4.2° Avg</span>
+</div>
+</div>
+<!-- Flood Risk -->
+<div class="p-4 bg-surface-container-low border border-outline-variant/20 rounded-2xl flex flex-col gap-2">
+<div class="w-10 h-10 rounded-xl bg-secondary-container/20 flex items-center justify-center">
+<span class="material-symbols-outlined text-secondary">water_drop</span>
+</div>
+<div>
+<span class="font-label-md text-label-md text-on-surface-variant block">Flood Risk</span>
+<span class="font-title-lg text-title-lg font-bold">Low (0.1%)</span>
+</div>
+</div>
+<!-- Veg Density -->
+<div class="p-4 bg-surface-container-low border border-outline-variant/20 rounded-2xl flex flex-col gap-2">
+<div class="w-10 h-10 rounded-xl bg-green-100 flex items-center justify-center">
+<span class="material-symbols-outlined text-green-700">forest</span>
+</div>
+<div>
+<span class="font-label-md text-label-md text-on-surface-variant block">Veg Density</span>
+<span class="font-title-lg text-title-lg font-bold">64% NDVI</span>
+</div>
+</div>
+</div>
+<!-- Terrain Profile Chart -->
+<div class="mb-8">
+<div class="flex justify-between items-end mb-4">
+<h3 class="font-title-lg text-title-lg font-bold">Terrain Profile</h3>
+<span class="font-label-sm text-label-sm text-outline">X-Section: 450m</span>
+</div>
+<div class="h-32 w-full relative terrain-chart-gradient rounded-xl border-b border-outline-variant flex items-end">
+<!-- Faux Area Chart via SVG -->
+<svg class="w-full h-full" preserveAspectRatio="none" viewBox="0 0 400 100">
+<path d="M0,100 C50,80 100,90 150,60 C200,30 250,50 300,20 C350,10 400,30 400,30 L400,100 L0,100 Z" fill="rgba(39, 113, 223, 0.1)"></path>
+<path d="M0,100 C50,80 100,90 150,60 C200,30 250,50 300,20 C350,10 400,30 400,30" fill="none" stroke="#2771df" stroke-linecap="round" stroke-width="3"></path>
+<!-- Dots for markers -->
+<circle cx="150" cy="60" fill="#0058bd" r="4"></circle>
+<circle cx="300" cy="20" fill="#0058bd" r="4"></circle>
+</svg>
+<!-- Tooltip overlay mock -->
+<div class="absolute left-[37%] bottom-[50%] p-2 bg-inverse-surface text-inverse-on-surface rounded-lg text-[10px] shadow-md">
+                        Peak: 154m
+                    </div>
+</div>
+<div class="flex justify-between mt-2 font-label-sm text-label-sm text-on-surface-variant px-1">
+<span>West Boundary</span>
+<span>East Boundary</span>
+</div>
+</div>
+<!-- Strategic Recommendation -->
+<div class="p-5 border-2 border-secondary rounded-2xl bg-secondary-container/10 mb-8 relative overflow-hidden">
+<div class="absolute top-0 right-0 p-2 opacity-10">
+<span class="material-symbols-outlined text-[64px]">verified</span>
+</div>
+<h4 class="font-title-lg text-title-lg font-bold text-on-secondary-container flex items-center gap-2 mb-2">
+<span class="material-symbols-outlined">lightbulb</span>
+                    Strategic Recommendation
+                </h4>
+<p class="font-body-md text-body-md text-on-surface leading-relaxed">
+                    Prioritize development in the North-East quadrant where elevation peaks provide optimal natural drainage. We recommend a minimal-clearance architectural approach to maintain the high NDVI rating, which will enhance the resale value and environmental rating of any future structure.
+                </p>
+</div>
+<!-- Actions -->
+<div class="mb-8">
+<div class="bg-surface-container-high p-1 rounded-full flex items-center mb-3">
+<button class="flex-1 py-2 rounded-full font-label-md text-label-md transition-all bg-secondary-container text-on-secondary-container shadow-sm" id="toggle-simple">
+            Simple Report
+        </button>
+<button class="flex-1 py-2 rounded-full font-label-md text-label-md transition-all text-on-surface-variant hover:bg-surface-variant/30" id="toggle-expert">
+            Expert Report
+        </button>
+</div>
+<p class="px-4 font-label-sm text-label-sm text-on-surface-variant leading-relaxed" id="report-helper-text">
+        Includes plain-language safety scores, general flood risks, and basic terrain summaries perfect for buyers.
+    </p>
+</div>
+<script>
+    (function() {
+        const btnSimple = document.getElementById('toggle-simple');
+        const btnExpert = document.getElementById('toggle-expert');
+        const helperText = document.getElementById('report-helper-text');
+
+        const activeClasses = ['bg-secondary-container', 'text-on-secondary-container', 'shadow-sm'];
+        const inactiveClasses = ['text-on-surface-variant', 'hover:bg-surface-variant/30'];
+
+        function setSimple() {
+            btnSimple.classList.add(...activeClasses);
+            btnSimple.classList.remove(...inactiveClasses);
+            btnExpert.classList.add(...inactiveClasses);
+            btnExpert.classList.remove(...activeClasses);
+            helperText.textContent = 'Includes plain-language safety scores, general flood risks, and basic terrain summaries perfect for buyers.';
+        }
+
+        function setExpert() {
+            btnExpert.classList.add(...activeClasses);
+            btnExpert.classList.remove(...inactiveClasses);
+            btnSimple.classList.add(...inactiveClasses);
+            btnSimple.classList.remove(...activeClasses);
+            helperText.textContent = 'Includes raw coordinate tables, NDVI vegetation indices, precise cross-sectional elevations, and GIS-ready metadata charts.';
+        }
+
+        btnSimple.addEventListener('click', setSimple);
+        btnExpert.addEventListener('click', setExpert);
+    })();
+</script><div class="flex flex-col gap-3">
+<button class="w-full bg-primary text-on-primary py-4 rounded-2xl font-title-lg text-title-lg shadow-sm hover:bg-primary/90 transition-colors flex items-center justify-center gap-2">
+<span class="material-symbols-outlined">picture_as_pdf</span>
+                    Export Full Analysis (PDF)
+                </button>
+<button class="w-full bg-surface-container-high text-on-surface-variant py-3 rounded-2xl font-label-md text-label-md uppercase tracking-wider hover:bg-surface-variant/50 transition-colors">
+                    Save to My Assets
+                </button>
+</div>
+</div>
+</main>
+<!-- Bottom Navigation Bar -->
+<nav class="fixed bottom-0 w-full z-50 h-bottom-nav-height bg-surface shadow-lg border-t border-outline-variant flex justify-around items-center px-gutter pb-safe">
+<button class="flex flex-col items-center justify-center text-on-surface-variant transition-transform active:scale-90">
+<span class="material-symbols-outlined">map</span>
+<span class="font-label-md text-label-md">Map</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-surface-variant transition-transform active:scale-90">
+<span class="material-symbols-outlined">analytics</span>
+<span class="font-label-md text-label-md">Analyse</span>
+</button>
+<button class="flex flex-col items-center justify-center bg-secondary-container text-on-secondary-container rounded-full px-5 py-1 scale-95 transition-transform active:scale-90">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">description</span>
+<span class="font-label-md text-label-md">Report</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-surface-variant transition-transform active:scale-90">
+<span class="material-symbols-outlined">history</span>
+<span class="font-label-md text-label-md">History</span>
+</button>
+</nav>
+<!-- Micro-interaction Scripts -->
+<script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // Animate gauge on load
+            const gauge = document.querySelector('.gauge-fill');
+            setTimeout(() => {
+                gauge.style.strokeDashoffset = '40.71';
+            }, 300);
+
+            // Simple click feedback for all buttons
+            const buttons = document.querySelectorAll('button');
+            buttons.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    btn.classList.add('scale-95');
+                    setTimeout(() => btn.classList.remove('scale-95'), 150);
+                });
+            });
+        });
+    </script>
+</body></html>

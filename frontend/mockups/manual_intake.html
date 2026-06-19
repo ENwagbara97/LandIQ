@@ -1,0 +1,314 @@
+<!DOCTYPE html><html class="light" lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>LandIQ | Manual Intake</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght@100..700,0..1&display=swap" rel="stylesheet">
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .glass-sheet {
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+        }
+        .drag-handle {
+            width: 32px;
+            height: 4px;
+            background: #e3e2e6;
+            border-radius: 2px;
+            margin: 12px auto;
+        }
+        .dropzone-animate {
+            background-image: url("data:image/svg+xml,%3csvg width='100%25' height='100%25' xmlns='http://www.w3.org/2000/svg'%3e%3crect width='100%25' height='100%25' fill='none' rx='24' ry='24' stroke='%230058BD' stroke-width='2' stroke-dasharray='8%2c 8' stroke-dashoffset='0' stroke-linecap='square'/%3e%3c/svg%3e");
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "tertiary-fixed-dim": "#adc7ff",
+                        "surface-container-lowest": "#ffffff",
+                        "outline": "#727785",
+                        "on-primary": "#ffffff",
+                        "secondary-container": "#7af4e3",
+                        "on-surface": "#1a1b1e",
+                        "on-secondary": "#ffffff",
+                        "surface-container-low": "#f4f3f7",
+                        "on-tertiary-fixed-variant": "#004493",
+                        "surface-dim": "#dbd9dd",
+                        "primary-fixed-dim": "#adc6ff",
+                        "on-primary-container": "#fefcff",
+                        "surface": "#faf9fd",
+                        "on-tertiary": "#ffffff",
+                        "on-secondary-fixed": "#00201c",
+                        "on-background": "#1a1b1e",
+                        "primary": "#0058bd",
+                        "on-surface-variant": "#424753",
+                        "on-secondary-container": "#006f65",
+                        "on-primary-fixed": "#001a41",
+                        "surface-tint": "#005ac1",
+                        "surface-container-highest": "#e3e2e6",
+                        "surface-bright": "#faf9fd",
+                        "on-tertiary-container": "#fefcff",
+                        "on-secondary-fixed-variant": "#005049",
+                        "error": "#ba1a1a",
+                        "background": "#faf9fd",
+                        "on-tertiary-fixed": "#001a41",
+                        "inverse-primary": "#adc6ff",
+                        "error-container": "#ffdad6",
+                        "surface-container": "#efedf1",
+                        "tertiary": "#0058bb",
+                        "secondary-fixed-dim": "#5edaca",
+                        "on-error-container": "#93000a",
+                        "secondary-fixed": "#7df6e6",
+                        "inverse-on-surface": "#f1f0f4",
+                        "secondary": "#006a61",
+                        "on-error": "#ffffff",
+                        "primary-fixed": "#d8e2ff",
+                        "tertiary-container": "#1471e6",
+                        "surface-container-high": "#e9e7eb",
+                        "primary-container": "#2771df",
+                        "on-primary-fixed-variant": "#004494",
+                        "tertiary-fixed": "#d8e2ff",
+                        "surface-variant": "#e3e2e6",
+                        "inverse-surface": "#2f3033",
+                        "outline-variant": "#c2c6d5"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "2xl": "1rem",
+                        "3xl": "1.5rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "element-gap-md": "16px",
+                        "container-margin": "16px",
+                        "gutter": "12px",
+                        "element-gap-sm": "8px",
+                        "sheet-top-padding": "24px",
+                        "bottom-nav-height": "80px"
+                    },
+                    "fontFamily": {
+                        "title-lg": ["DM Sans"],
+                        "label-sm": ["DM Sans"],
+                        "label-md": ["DM Sans"],
+                        "headline-md": ["DM Sans"],
+                        "body-lg": ["DM Sans"],
+                        "display-lg": ["DM Sans"],
+                        "body-md": ["DM Sans"]
+                    },
+                    "fontSize": {
+                        "title-lg": ["18px", { "lineHeight": "24px", "fontWeight": "500" }],
+                        "label-sm": ["11px", { "lineHeight": "16px", "fontWeight": "500" }],
+                        "label-md": ["12px", { "lineHeight": "16px", "letterSpacing": "0.5px", "fontWeight": "500" }],
+                        "headline-md": ["22px", { "lineHeight": "28px", "fontWeight": "500" }],
+                        "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "display-lg": ["28px", { "lineHeight": "36px", "letterSpacing": "-0.5px", "fontWeight": "500" }],
+                        "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            min-height: max(884px, 100dvh);
+        }
+    </style>
+</head>
+<body class="bg-background font-body-md text-on-surface overflow-hidden">
+<!-- Top App Bar -->
+<header class="fixed top-0 w-full z-40 bg-surface/80 backdrop-blur-md border-b border-surface-container-highest flex justify-between items-center px-container-margin h-16">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-primary cursor-pointer">arrow_back</span>
+<h1 class="font-headline-md text-headline-md text-primary font-bold">LandIQ</h1>
+</div>
+<div class="flex items-center gap-4">
+<span class="material-symbols-outlined text-on-surface-variant">help_outline</span>
+<div class="w-8 h-8 rounded-full bg-surface-container-highest flex items-center justify-center overflow-hidden border border-outline-variant">
+<img alt="Profile" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCmzYfMCtxFLKsRbpBU81RCG5lkLFnxGJX2VmRQFVfOGjKj_mrxQKOybFJiHs1du-G3nCcCaXAs1mG35kvLQ-aVGnf3ikomwn08Ass9mhxxx2PK9VxSxZQFsLEeIFStu1mDqqXvW4TTeuC5OPlI6bFsD9uxtQkrx6D-g-c3TO-T3waWCHKjiipMLZ3ShOrND5_g86-VsiuFkwOp95gTc-DX6C6ssUhK50Em4LhjlqyMWncTOLAZ9mTklSDfUvYT59o4rdLQnNw_4jdq">
+</div>
+</div>
+</header>
+<!-- Main Content Area -->
+<main class="pt-20 pb-bottom-nav-height h-screen flex flex-col gap-6 overflow-y-auto px-container-margin">
+<!-- Boundary Parsing Progress Indicator -->
+<section class="mt-2 bg-surface-container-low p-4 rounded-3xl border border-surface-container-highest">
+<div class="flex justify-between items-center mb-3">
+<span class="font-label-md text-label-md text-on-surface-variant">Step 1 of 3: Parsing Boundary</span>
+<span class="font-label-sm text-label-sm text-primary font-bold">35%</span>
+</div>
+<div class="h-1.5 w-full bg-surface-container-highest rounded-full overflow-hidden relative">
+<div class="absolute left-0 top-0 h-full w-[35%] bg-primary transition-all duration-700 ease-out"></div>
+<div class="absolute left-[35%] top-1/2 -translate-y-1/2 -translate-x-1/2 w-3 h-3 bg-primary border-2 border-white rounded-full shadow-sm"></div>
+</div>
+<div class="flex justify-between mt-4 px-1">
+<div class="flex flex-col items-center">
+<span class="material-symbols-outlined text-primary text-[20px]" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+<span class="font-label-sm text-label-sm text-primary mt-1">Upload</span>
+</div>
+<div class="flex flex-col items-center">
+<span class="material-symbols-outlined text-primary text-[20px]">circle</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant mt-1">Parsing</span>
+</div>
+<div class="flex flex-col items-center opacity-40">
+<span class="material-symbols-outlined text-on-surface-variant text-[20px]">circle</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant mt-1">Validation</span>
+</div>
+</div>
+</section>
+<!-- Multi-Format Dropzone -->
+<section class="relative">
+<div class="dropzone-animate flex flex-col items-center justify-center py-10 px-8 rounded-[24px] bg-surface-container-lowest transition-all hover:bg-surface-container-low group cursor-pointer">
+<div class="w-14 h-14 bg-primary-container rounded-2xl flex items-center justify-center mb-4 group-hover:scale-105 transition-transform">
+<span class="material-symbols-outlined text-on-primary-container text-[28px]">upload_file</span>
+</div>
+<h3 class="font-title-lg text-title-lg text-on-surface mb-1">Upload Survey Files</h3>
+<p class="font-body-md text-body-md text-on-surface-variant text-center px-4 mb-4">
+                    Drop CAD (.dwg), Vector (.svg), or PDF site plans here.
+                </p>
+<div class="flex gap-2">
+<span class="px-3 py-1 bg-surface-container-low rounded-lg border border-outline-variant font-label-md text-label-md text-on-surface-variant">DWG</span>
+<span class="px-3 py-1 bg-surface-container-low rounded-lg border border-outline-variant font-label-md text-label-md text-on-surface-variant">SVG</span>
+<span class="px-3 py-1 bg-surface-container-low rounded-lg border border-outline-variant font-label-md text-label-md text-on-surface-variant">PDF</span>
+</div>
+</div>
+</section>
+<!-- Divider with Text -->
+<div class="flex items-center gap-4 my-1">
+<div class="h-[1px] flex-1 bg-outline-variant/30"></div>
+<span class="font-label-md text-label-md text-outline font-bold">OR</span>
+<div class="h-[1px] flex-1 bg-outline-variant/30"></div>
+</div>
+<!-- Manual Coordinate Entry Sheet -->
+<section class="bg-surface-container-lowest border border-surface-container-highest rounded-[24px] p-6">
+<div class="flex items-center gap-3 mb-6">
+<div class="w-10 h-10 bg-secondary-container rounded-full flex items-center justify-center">
+<span class="material-symbols-outlined text-on-secondary-container">pin_drop</span>
+</div>
+<div>
+<h3 class="font-title-lg text-title-lg text-on-surface">Manual Intake</h3>
+<p class="font-label-sm text-label-sm text-on-surface-variant">Enter UTM coordinates manually</p>
+</div>
+</div>
+<form class="space-y-4">
+<div class="grid grid-cols-2 gap-4">
+<div class="flex flex-col gap-1.5">
+<label class="font-label-md text-label-md text-on-surface px-1">Easting (X)</label>
+<input class="w-full h-12 px-4 rounded-xl border-outline-variant bg-surface-container-low focus:border-primary focus:ring-1 focus:ring-primary transition-all font-body-md text-body-md" placeholder="542,000.00" type="text">
+</div>
+<div class="flex flex-col gap-1.5">
+<label class="font-label-md text-label-md text-on-surface px-1">Northing (Y)</label>
+<input class="w-full h-12 px-4 rounded-xl border-outline-variant bg-surface-container-low focus:border-primary focus:ring-1 focus:ring-primary transition-all font-body-md text-body-md" placeholder="6,450,000.00" type="text">
+</div>
+</div>
+<div class="flex flex-col gap-1.5">
+<label class="font-label-md text-label-md text-on-surface px-1">UTM Zone</label>
+<div class="relative">
+<select class="w-full h-12 px-4 appearance-none rounded-xl border-outline-variant bg-surface-container-low focus:border-primary focus:ring-1 focus:ring-primary transition-all font-body-md text-body-md">
+<option>32U - Northern Hemisphere</option>
+<option>31N - Northern Hemisphere</option>
+<option>33S - Southern Hemisphere</option>
+</select>
+<span class="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 text-on-surface-variant pointer-events-none">expand_more</span>
+</div>
+</div>
+<button class="w-full h-14 bg-primary text-on-primary rounded-full font-title-lg text-title-lg flex items-center justify-center gap-2 mt-4 shadow-sm active:scale-[0.98] transition-transform" type="button">
+<span>Process Boundary</span>
+<span class="material-symbols-outlined">chevron_right</span>
+</button>
+</form>
+</section>
+<!-- Intelligence Card -->
+<section class="bg-inverse-surface text-inverse-on-surface rounded-[24px] p-6 mb-8 relative overflow-hidden">
+<div class="relative z-10">
+<div class="flex items-center gap-2 mb-4">
+<span class="material-symbols-outlined text-secondary-fixed">auto_awesome</span>
+<span class="font-label-md text-label-md uppercase tracking-wider text-secondary-fixed">LandIQ AI</span>
+</div>
+<h4 class="font-title-lg text-title-lg mb-2">Automated Extraction</h4>
+<p class="font-body-md text-body-md text-outline-variant mb-4">
+                    Our AI parses deed descriptions and legal text directly into coordinate systems. Just snap a photo.
+                </p>
+<button class="px-6 h-10 bg-white/10 border border-white/20 text-white rounded-full font-label-md text-label-md flex items-center gap-2 backdrop-blur-sm active:bg-white/20">
+<span class="material-symbols-outlined text-[18px]">photo_camera</span>
+                    Scan Document
+                </button>
+</div>
+</section>
+</main>
+<!-- Bottom Navigation -->
+<nav class="fixed bottom-0 w-full z-50 h-bottom-nav-height bg-surface border-t border-outline-variant/30 flex justify-around items-center px-gutter pb-safe">
+<div class="flex flex-col items-center justify-center text-on-surface-variant cursor-pointer group">
+<span class="material-symbols-outlined group-active:scale-90 transition-transform">map</span>
+<span class="font-label-md text-label-md">Map</span>
+</div>
+<div class="flex flex-col items-center justify-center bg-secondary-container text-on-secondary-container rounded-3xl px-5 py-1.5 cursor-pointer">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">analytics</span>
+<span class="font-label-md text-label-md font-bold">Analyse</span>
+</div>
+<div class="flex flex-col items-center justify-center text-on-surface-variant cursor-pointer group">
+<span class="material-symbols-outlined group-active:scale-90 transition-transform">description</span>
+<span class="font-label-md text-label-md">Report</span>
+</div>
+<div class="flex flex-col items-center justify-center text-on-surface-variant cursor-pointer group">
+<span class="material-symbols-outlined group-active:scale-90 transition-transform">history</span>
+<span class="font-label-md text-label-md">History</span>
+</div>
+</nav>
+<!-- Success Modal Interaction -->
+<div class="fixed inset-0 z-[60] pointer-events-none opacity-0 transition-opacity duration-300" id="success-sheet">
+<div class="absolute inset-0 bg-black/40 backdrop-blur-sm"></div>
+<div class="absolute bottom-0 w-full glass-sheet rounded-t-[32px] p-6 pb-12 pointer-events-auto transform translate-y-full transition-transform duration-500 ease-out border-t border-white/20">
+<div class="drag-handle"></div>
+<div class="flex flex-col items-center text-center mt-4">
+<div class="w-16 h-16 bg-secondary-container text-on-secondary-container rounded-full flex items-center justify-center mb-6">
+<span class="material-symbols-outlined text-[40px]">check_circle</span>
+</div>
+<h2 class="font-display-lg text-display-lg text-primary mb-2">Upload Complete</h2>
+<p class="font-body-lg text-body-lg text-on-surface-variant mb-8 px-4">
+                    Your site boundary for <strong>"Parcel 405-A"</strong> has been successfully parsed and is ready for analysis.
+                </p>
+<div class="flex flex-col gap-3 w-full">
+<button class="w-full h-14 bg-primary text-on-primary rounded-full font-title-lg text-title-lg shadow-lg">View on Map</button>
+<button class="w-full h-14 bg-surface-container text-on-surface rounded-full font-title-lg text-title-lg" onclick="closeModal()">Back to Intake</button>
+</div>
+</div>
+</div>
+</div>
+<script>
+        function openModal() {
+            const sheet = document.getElementById('success-sheet');
+            sheet.classList.remove('pointer-events-none', 'opacity-0');
+            const inner = sheet.querySelector('.glass-sheet');
+            inner.classList.remove('translate-y-full');
+        }
+
+        function closeModal() {
+            const sheet = document.getElementById('success-sheet');
+            sheet.classList.add('opacity-0');
+            const inner = sheet.querySelector('.glass-sheet');
+            inner.classList.add('translate-y-full');
+            setTimeout(() => {
+                sheet.classList.add('pointer-events-none');
+            }, 300);
+        }
+
+        document.querySelector('form button').addEventListener('click', (e) => {
+            e.preventDefault();
+            openModal();
+        });
+
+        const dropzone = document.querySelector('.dropzone-animate');
+        dropzone.addEventListener('click', () => {
+             openModal();
+        });
+    </script>
+</body></html>

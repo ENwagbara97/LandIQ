@@ -1,0 +1,248 @@
+<!DOCTYPE html><html class="light" lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport">
+<title>LandIntel | History</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com" rel="preconnect">
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "surface-tint": "#005ac1",
+                    "primary-container": "#2771df",
+                    "outline-variant": "#c2c6d5",
+                    "surface": "#faf9fd",
+                    "on-tertiary": "#ffffff",
+                    "on-surface": "#1a1b1e",
+                    "on-surface-variant": "#424753",
+                    "surface-container-lowest": "#ffffff",
+                    "inverse-on-surface": "#f1f0f4",
+                    "error-container": "#ffdad6",
+                    "on-error-container": "#93000a",
+                    "surface-variant": "#e3e2e6",
+                    "secondary-fixed": "#7df6e6",
+                    "on-primary-fixed": "#001a41",
+                    "on-secondary-container": "#006f65",
+                    "on-primary-fixed-variant": "#004494",
+                    "background": "#faf9fd",
+                    "error": "#ba1a1a",
+                    "surface-dim": "#dbd9dd",
+                    "surface-bright": "#faf9fd",
+                    "surface-container": "#efedf1",
+                    "secondary-fixed-dim": "#5edaca",
+                    "on-secondary-fixed": "#00201c",
+                    "inverse-surface": "#2f3033",
+                    "on-secondary": "#ffffff",
+                    "surface-container-high": "#e9e7eb",
+                    "outline": "#727785",
+                    "on-primary-container": "#fefcff",
+                    "on-secondary-fixed-variant": "#005049",
+                    "on-error": "#ffffff",
+                    "primary": "#0058bd",
+                    "on-tertiary-container": "#fefcff",
+                    "surface-container-highest": "#e3e2e6",
+                    "primary-fixed": "#d8e2ff",
+                    "secondary-container": "#7af4e3",
+                    "on-primary": "#ffffff",
+                    "on-tertiary-fixed-variant": "#004493",
+                    "tertiary-fixed-dim": "#adc7ff",
+                    "tertiary-container": "#1471e6",
+                    "on-background": "#1a1b1e",
+                    "on-tertiary-fixed": "#001a41",
+                    "inverse-primary": "#adc6ff",
+                    "tertiary": "#0058bb",
+                    "secondary": "#006a61",
+                    "primary-fixed-dim": "#adc6ff",
+                    "surface-container-low": "#f4f3f7",
+                    "tertiary-fixed": "#d8e2ff"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "bottom-nav-height": "80px",
+                    "element-gap-sm": "8px",
+                    "container-margin": "16px",
+                    "sheet-top-padding": "24px",
+                    "element-gap-md": "16px",
+                    "gutter": "12px"
+            },
+            "fontFamily": {
+                    "display-lg": ["DM Sans"],
+                    "label-sm": ["DM Sans"],
+                    "body-md": ["DM Sans"],
+                    "label-md": ["DM Sans"],
+                    "body-lg": ["DM Sans"],
+                    "title-lg": ["DM Sans"],
+                    "headline-md": ["DM Sans"]
+            },
+            "fontSize": {
+                    "display-lg": ["28px", {"lineHeight": "36px", "letterSpacing": "-0.5px", "fontWeight": "500"}],
+                    "label-sm": ["11px", {"lineHeight": "16px", "fontWeight": "500"}],
+                    "body-md": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                    "label-md": ["12px", {"lineHeight": "16px", "letterSpacing": "0.5px", "fontWeight": "500"}],
+                    "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                    "title-lg": ["18px", {"lineHeight": "24px", "fontWeight": "500"}],
+                    "headline-md": ["22px", {"lineHeight": "28px", "fontWeight": "500"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        body { font-family: 'DM Sans', sans-serif; }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .sheet-shadow {
+            box-shadow: 0 -4px 24px -2px rgba(0, 0, 0, 0.05);
+        }
+        .map-gradient {
+            background: linear-gradient(to bottom, rgba(250, 249, 253, 0) 0%, rgba(250, 249, 253, 1) 100%);
+        }
+        ::-webkit-scrollbar { display: none; }
+    </style>
+</head>
+<body class="bg-surface text-on-surface min-h-screen flex flex-col overflow-hidden">
+<!-- TopAppBar -->
+<header class="fixed top-0 w-full z-40 bg-surface/80 backdrop-blur-md shadow-sm flex justify-between items-center px-container-margin h-16 w-full">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-full overflow-hidden border border-outline-variant">
+<img alt="User Profile" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDhyYwb-JlU2YS1fL_iGLowVJathliXAQOQRsZvv1JK-UfAL-dk6Ss3KenGeNSKyXsH4nym_BWJk9BigPck0CUAcRKbrwtrAe0l3dQYlYfi6svToMYFsU7ZvmNqD79AtXdXtSh8V8nxNZDAqQZ4aroDPaUMTCSuU_I8llHFSi2yolQHD09T-9wf_ykEfFZiHPx9v0mp6zRwyTWoebaZ1ehaeankg5BKT632zHYbNPn_HfAzaoVAeSwPrlM43SiTJg11UKT2Uqu9KGm_">
+</div>
+<h1 class="font-display-lg text-display-lg font-bold text-primary">LandIQ</h1>
+</div>
+<button class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-surface-variant/50 transition-all duration-200">
+<span class="material-symbols-outlined text-primary">notifications</span>
+</button>
+</header>
+<!-- Main Content Canvas -->
+<main class="relative flex-grow pt-16">
+<!-- Map Background -->
+<div class="absolute inset-0 z-0 h-64 overflow-hidden">
+<div class="w-full h-full bg-surface-container-high relative">
+<img class="w-full h-full object-cover opacity-60 grayscale-[0.2]" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB-C_-wDnhzF925G0QkerV9kFJNHmob3HZ21RX7pXsYRSc6CdhjVvtD1w7phSecKgLjtfpxq2qlIooyQkDBrTtYJ04QMJBc5ELT06jEd4ONm4iRBMfa-kIvsq00ZRhVdiE2OrpbI61tyxNo-uFym2vdAYfqbypAPi_mRCgQes2TIbakBsdLcTN-1El8j7z_BWGoZeI4LUV9dCekdiRpIpgpnzZiGHw2eick9SYUEkKMR8m-5DlJ9Y3wov4_gAu9rZ31UCeaBioZFqXS">
+<div class="absolute inset-0 map-gradient"></div>
+</div>
+</div>
+<!-- History Content Sheet -->
+<section class="relative z-10 mt-32 bg-surface-container-lowest rounded-t-[32px] min-h-[calc(100vh-8rem)] sheet-shadow pb-bottom-nav-height px-container-margin overflow-y-auto">
+<!-- Drag Handle -->
+<div class="flex justify-center pt-4 pb-6">
+<div class="w-10 h-1.5 bg-outline-variant rounded-full"></div>
+</div>
+<!-- Header Actions -->
+<div class="flex justify-between items-center mb-6">
+<div>
+<h2 class="font-headline-md text-headline-md text-on-surface">Recent Parcels</h2>
+<p class="font-body-md text-body-md text-on-surface-variant">Last 30 days of analysis</p>
+</div>
+</div>
+<!-- History List -->
+<div class="space-y-4">
+<!-- List Item 1 -->
+<div class="group flex items-center gap-4 p-4 rounded-2xl bg-surface-container-low hover:bg-surface-container transition-all active:scale-[0.98]">
+<div class="w-12 h-12 rounded-xl bg-surface-container-highest flex items-center justify-center text-primary">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">location_on</span>
+</div>
+<div class="flex-grow">
+<div class="flex justify-between items-start">
+<h3 class="font-title-lg text-title-lg text-on-surface">Eti-Osa LGA</h3>
+<div class="w-2.5 h-2.5 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.4)]" title="Approved"></div>
+</div>
+<div class="flex items-center gap-3 mt-1 text-on-surface-variant">
+<span class="font-label-md text-label-md flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">query_stats</span> 94/100
+                            </span>
+<span class="font-label-md text-label-md flex items-center gap-1 border-l border-outline-variant pl-3">
+<span class="material-symbols-outlined text-[14px]">square_foot</span> 1.2k sqm
+                            </span>
+<span class="font-label-md text-label-md flex items-center gap-1 border-l border-outline-variant pl-3">
+<span class="material-symbols-outlined text-[14px]">calendar_today</span> Oct 12
+                            </span>
+</div>
+</div>
+<span class="material-symbols-outlined text-outline-variant group-hover:text-primary transition-colors">chevron_right</span>
+</div>
+<!-- List Item 2 -->
+<div class="group flex items-center gap-4 p-4 rounded-2xl bg-surface-container-low hover:bg-surface-container transition-all active:scale-[0.98]">
+<div class="w-12 h-12 rounded-xl bg-surface-container-highest flex items-center justify-center text-primary">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">location_on</span>
+</div>
+<div class="flex-grow">
+<div class="flex justify-between items-start">
+<h3 class="font-title-lg text-title-lg text-on-surface">Ikeja District</h3>
+<div class="w-2.5 h-2.5 rounded-full bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.4)]" title="Pending Review"></div>
+</div>
+<div class="flex items-center gap-3 mt-1 text-on-surface-variant">
+<span class="font-label-md text-label-md flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">query_stats</span> 78/100
+                            </span>
+<span class="font-label-md text-label-md flex items-center gap-1 border-l border-outline-variant pl-3">
+<span class="material-symbols-outlined text-[14px]">square_foot</span> 850 sqm
+                            </span>
+<span class="font-label-md text-label-md flex items-center gap-1 border-l border-outline-variant pl-3">
+<span class="material-symbols-outlined text-[14px]">calendar_today</span> Oct 10
+                            </span>
+</div>
+</div>
+<span class="material-symbols-outlined text-outline-variant group-hover:text-primary transition-colors">chevron_right</span>
+</div>
+</div>
+<!-- Gemini-Style Intelligence Insight -->
+<div class="mt-8 p-6 bg-inverse-surface rounded-[24px] text-white overflow-hidden relative group">
+<div class="absolute top-0 right-0 p-4 opacity-20 transform translate-x-2 -translate-y-2">
+<span class="material-symbols-outlined text-[120px]">psychology</span>
+</div>
+<div class="relative z-10">
+<div class="flex items-center gap-2 mb-3">
+<span class="material-symbols-outlined text-secondary-fixed text-[20px]">auto_awesome</span>
+<span class="font-label-md text-label-md uppercase tracking-wider text-secondary-fixed">LandIQ Insights</span>
+</div>
+<h4 class="font-title-lg text-title-lg mb-2">Portfolio Trend</h4>
+<p class="font-body-md text-body-md text-outline-variant leading-relaxed">
+                        Your last 4 analyses show a 15% increase in average land score. High-value parcels are currently peaking in Eti-Osa.
+                    </p>
+</div>
+</div>
+</section>
+</main>
+<!-- FAB (Floating Action Button) -->
+<button class="fixed bottom-24 right-6 w-14 h-14 bg-primary text-on-primary rounded-2xl shadow-xl flex items-center justify-center z-50 active:scale-90 transition-transform">
+<span class="material-symbols-outlined text-[28px]">add</span>
+</button>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 w-full z-50 h-bottom-nav-height bg-surface border-t border-outline-variant flex justify-around items-center w-full px-gutter pb-safe">
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:bg-surface-container-high transition-transform scale-95 active:scale-90" href="#">
+<span class="material-symbols-outlined">map</span>
+<span class="font-label-md text-label-md">Map</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:bg-surface-container-high transition-transform scale-95 active:scale-90" href="#">
+<span class="material-symbols-outlined">analytics</span>
+<span class="font-label-md text-label-md">Analyse</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:bg-surface-container-high transition-transform scale-95 active:scale-90" href="#">
+<span class="material-symbols-outlined">description</span>
+<span class="font-label-md text-label-md">Report</span>
+</a>
+<!-- ACTIVE TAB -->
+<a class="flex flex-col items-center justify-center bg-secondary-container text-on-secondary-container rounded-full px-5 py-1 transition-transform scale-95 active:scale-90" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">history</span>
+<span class="font-label-md text-label-md">History</span>
+</a>
+</nav>
+<script>
+        document.querySelectorAll('.active\\:scale-\\[0\\.98\\]').forEach(item => {
+            item.addEventListener('touchstart', () => item.classList.add('bg-surface-container'));
+            item.addEventListener('touchend', () => item.classList.remove('bg-surface-container'));
+        });
+    </script>
+</body></html>

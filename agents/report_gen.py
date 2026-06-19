@@ -123,7 +123,7 @@ def scrub_output(text: str) -> str:
 
 
 # =============================================================================
-# SECTION 2 — OLLAMA CLIENT (streaming, timeout, fallback)
+# SECTION 2 — LLM CALL ROUTER (Gemini auto-detected from .env; Ollama fallback)
 # =============================================================================
 
 def _llm_call(
@@ -141,9 +141,18 @@ def _llm_call(
     Routes to Cloud APIs (Gemini/OpenAI/Anthropic) if provided, else falls back to Ollama.
     """
     import requests
+    import os
+    from dotenv import load_dotenv
+
+    load_dotenv()
 
     start = time.monotonic()
     
+    # Auto-detect Gemini key from environment if not explicitly provided
+    if not llm_provider and os.getenv("GEMINI_API_KEY"):
+        llm_provider = "gemini"
+        llm_api_key = os.getenv("GEMINI_API_KEY")
+
     # ── CLOUD ROUTING ──
     if llm_provider and llm_api_key:
         provider = llm_provider.lower().strip()
@@ -275,6 +284,7 @@ Rules:
 - Never state or imply that titles or documents have been verified
 - Never invent data — only translate what is given to you
 - Keep each consequence to one sentence
+- NEVER use hyphens (-) in your output text. Write phrases as full words instead.
 - Output JSON only — no prose, no markdown"""
 
 def _build_metric_translation_prompt(
@@ -400,9 +410,10 @@ Rules:
 - Write exactly 3 sentences for the executive summary.
 - Be highly confident and factual based on the data provided. NEVER undermine the report or claim data is limited or insufficient.
 - NEVER mention title verification, land registry, or ownership status. Those are explicitly out of scope for this spatial report.
-- Remember causality: The Traffic Light rating is the RESULT of the metrics (e.g. flood risk causes an AMBER rating). Do not say the rating causes the risk.
+- Remember causality: The Traffic Light rating is the RESULT of the metrics (e.g. flood risk causes a RED rating). Do not say the rating causes the risk.
 - Do not add your own legal disclaimers (the system automatically appends them).
-- Do not use markdown, bullet points, or headers in your output."""
+- Do not use markdown, bullet points, or headers in your output.
+- NEVER use hyphens (-) anywhere in your output. Write all compound phrases and ranges as full words with spaces."""
 
 
 def _build_executive_summary_prompt(
@@ -425,18 +436,18 @@ def _build_executive_summary_prompt(
         f"Advisory flags:\n{flags_text}\n\n"
         f"Output format:\n"
         f"EXECUTIVE_SUMMARY: [3 sentences]\n"
-        f"AI_RECOMMENDATION: [2 sentences — end with the mandatory disclaimer]"
+        f"RECOMMENDATION: [2 sentences — end with the mandatory disclaimer]"
     )
 
 
 def _parse_executive_summary_response(raw: str) -> tuple[str, str]:
-    """Extract EXECUTIVE_SUMMARY and AI_RECOMMENDATION from Ollama response."""
+    """Extract EXECUTIVE_SUMMARY and RECOMMENDATION from Ollama response."""
     exec_summary = ""
     ai_rec = ""
     for line in raw.splitlines():
         if line.upper().startswith("EXECUTIVE_SUMMARY:"):
             exec_summary = line.split(":", 1)[1].strip()
-        elif line.upper().startswith("AI_RECOMMENDATION:"):
+        elif line.upper().startswith("RECOMMENDATION:") or line.upper().startswith("AI_RECOMMENDATION:"):
             ai_rec = line.split(":", 1)[1].strip()
 
     # Fallback: use raw as exec summary if parse fails

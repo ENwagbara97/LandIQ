@@ -96,6 +96,13 @@ class TestVisionResultToText:
 
 # ─── _ocr_via_gemini() ────────────────────────────────────────────────────────
 
+# Env patch applied to all Gemini tests so the proxy route is taken
+_PROXY_ENV = {
+    "MODEL_PROXY_URL": "https://mp-staging.kaggle.net/models",
+    "MODEL_PROXY_API_KEY": "kaggle:fakekey",
+    "GEMINI_API_KEY": "AQ.fakekey",
+}
+
 class TestOcrViaGemini:
     def _make_mock_response(self, payload: dict):
         mock_resp = MagicMock()
@@ -106,14 +113,16 @@ class TestOcrViaGemini:
         return mock_resp
 
     def test_successful_extraction(self):
-        with patch("requests.post", return_value=self._make_mock_response(SAMPLE_TYPE_A_JSON)):
-            result = _ocr_via_gemini(FAKE_PNG, "fake-api-key")
+        with patch.dict("os.environ", _PROXY_ENV):
+            with patch("requests.post", return_value=self._make_mock_response(SAMPLE_TYPE_A_JSON)):
+                result = _ocr_via_gemini(FAKE_PNG, "fake-api-key")
         assert "387223.007mE" in result
 
     def test_no_coordinates_raises_runtime_error(self):
-        with patch("requests.post", return_value=self._make_mock_response(NO_COORDS_JSON)):
-            with pytest.raises(RuntimeError, match="Gemini Vision"):
-                _ocr_via_gemini(FAKE_PNG, "fake-api-key")
+        with patch.dict("os.environ", _PROXY_ENV):
+            with patch("requests.post", return_value=self._make_mock_response(NO_COORDS_JSON)):
+                with pytest.raises(RuntimeError, match="Gemini Vision"):
+                    _ocr_via_gemini(FAKE_PNG, "fake-api-key")
 
     def test_strips_markdown_fences(self):
         """Model sometimes wraps JSON in ```json ... ``` — should be stripped."""
@@ -122,8 +131,9 @@ class TestOcrViaGemini:
         mock_resp.json.return_value = {
             "candidates": [{"content": {"parts": [{"text": f"```json\n{json.dumps(SAMPLE_TYPE_B_JSON)}\n```"}]}}]
         }
-        with patch("requests.post", return_value=mock_resp):
-            result = _ocr_via_gemini(FAKE_PNG, "fake-api-key")
+        with patch.dict("os.environ", _PROXY_ENV):
+            with patch("requests.post", return_value=mock_resp):
+                result = _ocr_via_gemini(FAKE_PNG, "fake-api-key")
         assert "93° 02'" in result
 
 
@@ -214,39 +224,27 @@ class TestOcrFileRouting:
         url_called = mock_post.call_args[0][0]
         assert "anthropic" in url_called
 
-    def test_falls_back_to_tesseract_when_no_provider(self):
-        """With no provider set, ocr_file should NOT call requests.post at all."""
+    def test_falls_back_to_gemini_inline_when_no_provider(self):
+        """With no provider set, ocr_file should NOT call requests.post at all, but fall back to inline Gemini."""
         with patch("requests.post") as mock_post:
-            # It will fail on Tesseract (not installed in CI), but requests should not be called
-            try:
-                ocr_file(FAKE_PNG, "survey.png")
-            except Exception:
-                pass
+            with patch("os.getenv", return_value=None):
+                with pytest.raises(RuntimeError, match="Image parsing requires a Gemini API key"):
+                    ocr_file(FAKE_PNG, "survey.png")
         assert not mock_post.called
 
-    def test_falls_back_to_tesseract_on_cloud_failure(self):
-        """If the Cloud API raises, we fall back gracefully.
-        The cloud error should NOT propagate — only Tesseract / PIL errors are acceptable."""
+    def test_fails_gracefully_on_cloud_failure(self):
+        """If the Cloud API raises, we fall back gracefully to the inline Gemini block or fail with RuntimeError."""
         with patch("requests.post", side_effect=Exception("Network error")):
-            try:
-                ocr_file(FAKE_PNG, "survey.png", vision_provider="gemini", vision_api_key="key")
-            except Exception as e:
-                # Acceptable fallback errors: Tesseract missing, PIL can't read fake bytes, etc.
-                err = str(e).lower()
-                assert any(kw in err for kw in [
-                    "tesseract", "pytesseract", "cannot identify", "image file",
-                    "pdf", "unidentified"
-                ]), f"Unexpected error leaked from cloud fallback: {e}"
-            # If no exception: Tesseract succeeded (also fine)
+            with patch("os.getenv", return_value=None):
+                with pytest.raises(RuntimeError, match="Image parsing requires a Gemini API key"):
+                    ocr_file(FAKE_PNG, "survey.png", vision_provider="gemini", vision_api_key="key")
 
-
-    def test_unknown_provider_falls_back(self):
-        """An unrecognised provider string should fall through to Tesseract, not crash."""
+    def test_unknown_provider_fails_gracefully(self):
+        """An unrecognised provider string should fall through to inline Gemini fallback, not crash."""
         with patch("requests.post") as mock_post:
-            try:
-                ocr_file(FAKE_PNG, "survey.png", vision_provider="banana", vision_api_key="key")
-            except Exception:
-                pass
+            with patch("os.getenv", return_value=None):
+                with pytest.raises(RuntimeError, match="Image parsing requires a Gemini API key"):
+                    ocr_file(FAKE_PNG, "survey.png", vision_provider="banana", vision_api_key="key")
         assert not mock_post.called
 
 

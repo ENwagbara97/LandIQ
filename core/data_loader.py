@@ -229,7 +229,7 @@ def load_rivers_geodataframe(state: str | None = None):
         shp_path = HYDRO_DIR / "HydroRIVERS_v10_af.shp"
         if shp_path.exists():
             return gpd.read_file(str(shp_path))
-        logger.warning("[data_loader] HydroRIVERS file not found. Run setup.py first.")
+        logger.warning("[data_loader] HydroRIVERS file not found. Regional river network data is currently unavailable.")
         return None
     except Exception as exc:
         logger.warning(f"[data_loader] HydroRIVERS load failed: {exc}")
@@ -299,7 +299,7 @@ def load_osm_roads(state: str | None = None):
         path = OSM_DIR / "gis_osm_roads_free_1.shp"
         if path.exists():
             return gpd.read_file(str(path))
-        logger.warning("[data_loader] OSM roads file not found. Run setup.py first.")
+        logger.warning("[data_loader] OSM roads file not found. Regional road network data is currently unavailable.")
         return None
     except Exception as exc:
         logger.warning(f"[data_loader] OSM roads load failed: {exc}")
