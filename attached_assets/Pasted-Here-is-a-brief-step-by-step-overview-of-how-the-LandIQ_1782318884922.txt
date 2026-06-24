@@ -1,0 +1,26 @@
+Here is a brief, step-by-step overview of how the LandIQ system functions under the hood:
+
+**1. Data Intake (The Inputs)**
+The system accepts land data through multiple channels:
+*   **Manual Entry:** Typing in surveyor coordinates (Eastings/Northings or Latitude/Longitude).
+*   **Document Uploads:** Uploading PDF surveys, CAD files, or images. LandIQ uses AI (Vision and Document Parsing agents) to read these files and extract the boundary coordinates automatically.
+*   **Map Drawing:** Users can manually draw a polygon directly on the map interface.
+
+**2. The Processing Pipeline (The Agents)**
+Once coordinates are gathered, LandIQ routes the data through specialized Python "agents" to perform automated checks:
+*   **`coord_extract.py` & `tabular_parser.py`:** Cleans up messy data, fixes swapped Eastings/Northings, and standardizes the land polygon.
+*   **`gis_analysis.py`:** Calculates the exact land area, generates the terrain/elevation profile, and plots the exact perimeter on the map.
+*   **`risk_assess.py`:** Cross-references the land boundaries against geographical hazard layers (like known flood plains or protected government zones).
+
+**3. Title & Registry Verification**
+The system checks the extracted location and boundaries against a local cadastral registry (handled by scripts in `db/` and `core/adapters.py`). This verifies if the land title is valid, if there are known disputes, or if the land is illegally encroaching on government property. 
+
+**4. Scoring & Reporting (The Output)**
+Finally, LandIQ aggregates all this data and calculates a **Viability Index** (e.g., 82%). 
+It packages the results into the **Buyer's Decision Card** on the UI, grading specific metrics like:
+*   Flood Risk
+*   Terrain & Slope
+*   Road Access
+*   Encroachment & Title Status
+
+It then issues a final "Traffic Light" recommendation (Green for Proceed, Amber for Caution, Red for Reject) and allows the user to export a formal PDF report. Everything is designed to run securely and locally on your machine.
