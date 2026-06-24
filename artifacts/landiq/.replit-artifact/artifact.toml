@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/"
+title = "LandIQ — Spatial Workbench"
+version = "1.0.0"
+id = "artifacts/landiq"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 24399
+
+[services.development]
+run = "pnpm --filter @workspace/landiq run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/landiq", "run", "build" ]
+publicDir = "artifacts/landiq/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "24399"
+BASE_PATH = "/"
