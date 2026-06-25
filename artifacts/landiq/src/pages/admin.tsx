@@ -23,7 +23,18 @@ const reportVolume = [
 ];
 const stateData = [
   { state: "Lagos", value: 38 }, { state: "FCT", value: 19 }, { state: "Rivers", value: 16 },
-  { state: "Ogun", value: 11 }, { state: "Akwa Ibom", value: 8 }, { state: "Enugu", value: 5 }, { state: "Others", value: 3 },
+  { state: "Ogun", value: 11 }, { state: "Akwa Ibom", value: 8 }, { state: "Enugu", value: 5 },
+  { state: "Delta", value: 4 }, { state: "Kano", value: 4 }, { state: "Imo", value: 3 },
+  { state: "Anambra", value: 3 }, { state: "Kaduna", value: 2 }, { state: "Edo", value: 2 },
+  { state: "Osun", value: 2 }, { state: "Ondo", value: 2 }, { state: "Plateau", value: 1 },
+  { state: "Benue", value: 1 }, { state: "Cross River", value: 1 }, { state: "Kwara", value: 1 },
+  { state: "Katsina", value: 1 }, { state: "Niger", value: 1 }, { state: "Oyo", value: 1 },
+  { state: "Bauchi", value: 1 }, { state: "Abia", value: 1 }, { state: "Ebonyi", value: 1 },
+  { state: "Ekiti", value: 1 }, { state: "Gombe", value: 1 }, { state: "Jigawa", value: 1 },
+  { state: "Kebbi", value: 1 }, { state: "Kogi", value: 1 }, { state: "Nasarawa", value: 1 },
+  { state: "Sokoto", value: 1 }, { state: "Taraba", value: 1 }, { state: "Yobe", value: 1 },
+  { state: "Zamfara", value: 1 }, { state: "Adamawa", value: 1 }, { state: "Bayelsa", value: 1 },
+  { state: "Borno", value: 1 },
 ];
 const llmDist = [
   { name: "GPT-4o", value: 52, color: "#0058BD" },
@@ -184,15 +195,7 @@ function DashboardView() {
           </div>
           <ReportsTable rows={recentReports.slice(0, 5)} />
         </div>
-        <div className="bg-card border border-border rounded-2xl p-5">
-          <p className="text-sm font-bold mb-4">Reports by State</p>
-          {stateData.map(s => (
-            <div key={s.state} className="mb-2.5">
-              <div className="flex justify-between text-xs mb-1"><span className="text-muted-foreground">{s.state}</span><span className="font-semibold">{s.value}%</span></div>
-              <div className="h-1.5 bg-muted rounded-full"><div className="h-full bg-[#0058BD] rounded-full" style={{ width: `${s.value}%`, opacity: 0.6 + s.value / 100 * 0.4 }} /></div>
-            </div>
-          ))}
-        </div>
+        <StateBreakdownCard />
       </div>
     </div>
   );
