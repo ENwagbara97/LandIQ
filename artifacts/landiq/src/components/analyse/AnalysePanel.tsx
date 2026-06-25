@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
-import { Play, UploadCloud, CheckCircle2, ChevronRight, Loader2 } from "lucide-react";
+import { Play, UploadCloud, CheckCircle2, Loader2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,17 +14,18 @@ export function AnalysePanel() {
   const { setAnalysisState } = useAppContext();
   const [isExtracting, setIsExtracting] = useState(false);
   const [loadingStep, setLoadingStep] = useState(0);
+  const [uploadedFile, setUploadedFile] = useState<string | null>(null);
+  const [coordMode, setCoordMode] = useState<'DEC' | 'DMS' | 'UTM'>('UTM');
 
   const steps = [
     "Normalizing coordinates...",
     "Running GIS analysis...",
-    "Checking cadastral registry..."
+    "Checking cadastral registry...",
   ];
 
   const handleExtract = () => {
     setIsExtracting(true);
     setAnalysisState('extracting');
-    
     let step = 0;
     const interval = setInterval(() => {
       step++;
@@ -35,28 +36,70 @@ export function AnalysePanel() {
           setIsExtracting(false);
           setAnalysisState('gate');
           setLocation('/gate');
-        }, 500);
+        }, 600);
       }
-    }, 800);
+    }, 900);
   };
 
   return (
-    <div className="p-6 flex flex-col h-full">
-      <div className="mb-6">
-        <h2 className="text-2xl font-bold tracking-tight mb-1">New Analysis</h2>
-        <p className="text-sm text-muted-foreground">Input parameters to verify land boundaries</p>
+    <div className="p-5 flex flex-col h-full overflow-y-auto">
+      <div className="mb-5">
+        <h2 className="text-xl font-bold tracking-tight text-foreground">New Analysis</h2>
+        <p className="text-xs text-muted-foreground mt-0.5">Input parameters to verify land boundaries</p>
       </div>
 
-      <div className="space-y-6 flex-1">
-        <div className="space-y-2">
-          <Label htmlFor="area">Stated Area (HA)</Label>
-          <Input id="area" placeholder="e.g. 1.20" type="number" className="bg-background" />
+      <div className="space-y-5 flex-1">
+
+        {/* ① Upload Survey Document — PRIMARY */}
+        <div className="space-y-1.5">
+          <Label className="text-xs font-semibold text-foreground">Survey Document</Label>
+          {uploadedFile ? (
+            <div className="flex items-center gap-3 bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-xl p-3">
+              <CheckCircle2 className="w-4 h-4 text-green-600 flex-shrink-0" />
+              <span className="text-xs font-medium text-green-800 dark:text-green-400 flex-1 truncate">{uploadedFile}</span>
+              <button onClick={() => setUploadedFile(null)} className="text-green-600 hover:text-green-800">
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          ) : (
+            <label className="border-2 border-dashed border-border rounded-xl p-5 flex flex-col items-center justify-center text-center bg-background/50 hover:bg-muted/40 transition-colors cursor-pointer group block">
+              <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
+                <UploadCloud className="w-4 h-4 text-primary" />
+              </div>
+              <p className="font-medium text-sm text-foreground mb-0.5">Upload Survey Document</p>
+              <p className="text-xs text-muted-foreground">Drag & drop or tap to browse</p>
+              <p className="text-[10px] text-muted-foreground/60 mt-1">PDF, TXT, Image, XML or .zip</p>
+              <input
+                type="file"
+                className="hidden"
+                accept=".pdf,.txt,.xml,.zip,.jpg,.jpeg,.png"
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (f) setUploadedFile(f.name);
+                }}
+              />
+            </label>
+          )}
         </div>
 
-        <div className="space-y-2">
-          <Label>View As (Target Persona)</Label>
+        {/* Divider */}
+        <div className="relative flex items-center">
+          <div className="flex-grow border-t border-border" />
+          <span className="flex-shrink-0 mx-3 text-muted-foreground text-[10px] font-semibold uppercase tracking-wider">or enter manually</span>
+          <div className="flex-grow border-t border-border" />
+        </div>
+
+        {/* Stated Area */}
+        <div className="space-y-1.5">
+          <Label htmlFor="area" className="text-xs font-semibold text-foreground">Stated Area (HA)</Label>
+          <Input id="area" placeholder="e.g. 1.20" type="number" className="bg-background h-10 text-sm" />
+        </div>
+
+        {/* Target Persona */}
+        <div className="space-y-1.5">
+          <Label className="text-xs font-semibold text-foreground">View As (Target Persona)</Label>
           <Select defaultValue="buyer">
-            <SelectTrigger className="bg-background">
+            <SelectTrigger className="bg-background h-10 text-sm">
               <SelectValue placeholder="Select persona" />
             </SelectTrigger>
             <SelectContent>
@@ -68,63 +111,65 @@ export function AnalysePanel() {
           </Select>
         </div>
 
-        <div className="space-y-2">
-          <div className="flex justify-between items-center">
-            <Label>Geospatial Coordinates</Label>
+        {/* ② Geospatial Coordinates — SECONDARY (the moat) */}
+        <div className="space-y-1.5">
+          <div className="flex items-center justify-between">
+            <Label className="text-xs font-semibold text-foreground">Geospatial Coordinates</Label>
             <div className="flex gap-1">
-              <Badge variant="secondary" className="text-[10px] cursor-pointer hover:bg-muted font-mono">DEC</Badge>
-              <Badge variant="outline" className="text-[10px] cursor-pointer hover:bg-muted font-mono">DMS</Badge>
-              <Badge variant="outline" className="text-[10px] cursor-pointer hover:bg-muted font-mono">UTM</Badge>
+              {(['DEC', 'DMS', 'UTM'] as const).map(mode => (
+                <button
+                  key={mode}
+                  onClick={() => setCoordMode(mode)}
+                  className={`text-[10px] font-mono font-semibold px-2 py-0.5 rounded-md transition-colors ${
+                    coordMode === mode
+                      ? 'bg-primary text-white'
+                      : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                  }`}
+                >
+                  {mode}
+                </button>
+              ))}
             </div>
           </div>
-          <Textarea 
-            placeholder="Paste polygon vertices or boundary points... e.g. 386804.297 550821.575 / 382852.590 550268.123 ..."
-            className="font-mono text-xs min-h-[120px] bg-background resize-none"
+          <Textarea
+            placeholder={
+              coordMode === 'UTM'
+                ? "Paste UTM vertices... e.g. 386804.297 550821.575 / 382852.590 550268.123 ..."
+                : coordMode === 'DMS'
+                ? "e.g. 6°31'27.8\"N 3°22'45.1\"E / ..."
+                : "e.g. 6.5244, 3.3792 / 6.5255, 3.3800 / ..."
+            }
+            className="font-mono text-xs min-h-[110px] bg-background resize-none leading-relaxed"
           />
-        </div>
-
-        <div className="relative flex items-center py-2">
-          <div className="flex-grow border-t border-border"></div>
-          <span className="flex-shrink-0 mx-4 text-muted-foreground text-xs font-medium uppercase">OR</span>
-          <div className="flex-grow border-t border-border"></div>
-        </div>
-
-        <div className="border-2 border-dashed border-border rounded-xl p-6 flex flex-col items-center justify-center text-center bg-background/50 hover:bg-muted/50 transition-colors cursor-pointer group">
-          <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
-            <UploadCloud className="w-5 h-5 text-primary" />
-          </div>
-          <h4 className="font-medium text-sm mb-1">Upload Survey Document</h4>
-          <p className="text-xs text-muted-foreground mb-2">Drag and drop or click to browse</p>
-          <p className="text-[10px] text-muted-foreground/70">Supports TXT, PDF, image, XML or .zip</p>
+          <p className="text-[10px] text-muted-foreground">Separate each point with a space or slash</p>
         </div>
       </div>
 
-      <div className="mt-8 space-y-4">
-        <div className="bg-muted/50 rounded-lg p-3 flex items-center justify-between border border-border/50">
+      {/* Footer */}
+      <div className="mt-5 space-y-3">
+        <div className="bg-muted/40 rounded-xl p-3 flex items-center justify-between border border-border/60">
           <div className="flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse flex-shrink-0" />
             <span className="text-xs font-medium text-foreground">Cadastral Sub-system Active</span>
           </div>
-          <Badge className="bg-primary/10 text-primary hover:bg-primary/20 text-[10px] border-none">OCR_TABLE</Badge>
+          <Badge className="bg-primary/10 text-primary hover:bg-primary/10 text-[9px] border-none font-mono tracking-wide">OCR_TABLE</Badge>
         </div>
 
-        <Button 
-          className="w-full rounded-full h-12 text-base font-bold shadow-lg hover:shadow-xl transition-all" 
+        <Button
+          className="w-full rounded-full h-11 text-sm font-bold shadow-md hover:shadow-lg transition-all relative overflow-hidden"
           onClick={handleExtract}
           disabled={isExtracting}
         >
           {isExtracting ? (
-            <div className="flex items-center gap-2 flex-col absolute inset-0 justify-center bg-primary rounded-full">
-               <div className="flex items-center gap-2">
-                 <Loader2 className="w-4 h-4 animate-spin" />
-                 <span>{steps[Math.min(loadingStep, steps.length - 1)]}</span>
-               </div>
-            </div>
+            <span className="flex items-center gap-2">
+              <Loader2 className="w-4 h-4 animate-spin" />
+              {steps[Math.min(loadingStep, steps.length - 1)]}
+            </span>
           ) : (
-            <>
-              <Play className="w-4 h-4 mr-2 fill-current" />
+            <span className="flex items-center gap-2">
+              <Play className="w-3.5 h-3.5 fill-current" />
               Extract & Verify Boundary
-            </>
+            </span>
           )}
         </Button>
       </div>

@@ -4,14 +4,19 @@ import { Header } from "./Header";
 
 export function AppLayout({ children }: { children: ReactNode }) {
   return (
-    <div className="min-h-[100dvh] bg-background flex flex-col lg:flex-row overflow-hidden">
+    <div className="bg-background overflow-hidden" style={{ height: '100dvh' }}>
       <Header />
-      
-      <main className="flex-1 flex flex-col relative w-full lg:pt-16 h-[100dvh] lg:h-screen">
+
+      {/* Desktop: push content below fixed header */}
+      <main className="hidden lg:flex lg:pt-14 h-full w-full flex-row overflow-hidden">
         {children}
       </main>
 
-      <BottomNav />
+      {/* Mobile: full-bleed, header floats on top, bottom nav at bottom */}
+      <main className="lg:hidden relative w-full overflow-hidden" style={{ height: '100dvh' }}>
+        {children}
+        <BottomNav />
+      </main>
     </div>
   );
 }
