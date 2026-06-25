@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useLocation } from "wouter";
 import { Check, X, ChevronDown, ChevronUp, RefreshCw, Table2 } from "lucide-react";
 import { useAppContext } from "@/context/AppContext";
+import { useToast } from "@/hooks/use-toast";
 
 const ledgerData = [
   { id: "S1", easting: "378829.130", northing: "500331.230", source: "Stated" },
@@ -35,28 +36,42 @@ function MetaRow({ label, value }: { label: string; value: string }) {
 export function GatePanel() {
   const [, setLocation] = useLocation();
   const { setAnalysisState } = useAppContext();
+  const { toast } = useToast();
   const [ledgerOpen, setLedgerOpen] = useState(false);
   const [recomputing, setRecomputing] = useState(false);
 
   const handleConfirm = () => {
-    setAnalysisState('complete');
-    setLocation('/report');
+    toast({
+      title: "Analysis confirmed",
+      description: "Generating your spatial report…",
+    });
+    setAnalysisState("complete");
+    setLocation("/report");
   };
 
   const handleReject = () => {
+    toast({
+      title: "Analysis rejected",
+      description: "Please re-upload or adjust your coordinates and try again.",
+      variant: "destructive",
+    });
     setAnalysisState(null);
-    setLocation('/analyse');
+    setLocation("/analyse");
   };
 
   const handleRecompute = () => {
     setRecomputing(true);
-    setTimeout(() => setRecomputing(false), 1800);
+    toast({ title: "Recomputing polygon boundaries…" });
+    setTimeout(() => {
+      setRecomputing(false);
+      toast({ title: "Recompute complete", description: "Polygon updated successfully." });
+    }, 1800);
   };
 
   return (
     <div
       className="flex flex-col h-full overflow-y-auto text-white"
-      style={{ background: 'linear-gradient(180deg, #0D1523 0%, #0F1A2B 100%)' }}
+      style={{ background: "linear-gradient(180deg, #0D1523 0%, #0F1A2B 100%)" }}
     >
       {/* Header */}
       <div className="px-5 pt-6 pb-5 flex-shrink-0">
@@ -152,18 +167,18 @@ export function GatePanel() {
           </div>
         )}
 
-        {/* Recompute Button */}
+        {/* Recompute */}
         <button
           onClick={handleRecompute}
           disabled={recomputing}
           className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl border border-[#0058BD]/40 bg-[#0058BD]/10 text-[#5B9BF5] text-sm font-semibold hover:bg-[#0058BD]/20 transition-all disabled:opacity-60"
         >
-          <RefreshCw className={`w-4 h-4 ${recomputing ? 'animate-spin' : ''}`} />
-          {recomputing ? "Recomputing..." : "Recompute Polygon"}
+          <RefreshCw className={`w-4 h-4 ${recomputing ? "animate-spin" : ""}`} />
+          {recomputing ? "Recomputing…" : "Recompute Polygon"}
         </button>
       </div>
 
-      {/* Action Buttons — sticky bottom */}
+      {/* Sticky bottom actions */}
       <div className="flex-shrink-0 px-4 pt-3 pb-6 border-t border-[#1E2D3D] bg-[#0D1523] flex gap-3">
         <button
           onClick={handleReject}

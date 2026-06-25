@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Download, FolderPlus, Info, TrendingUp, Droplets, Leaf, Mountain, MapPin } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 import { Area, AreaChart, ResponsiveContainer, XAxis, YAxis, Tooltip } from "recharts";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -25,6 +26,7 @@ const metrics = [
 
 export function ReportPanel() {
   const { reportData } = useAppContext();
+  const { toast } = useToast();
   const [reportType, setReportType] = useState<"simple" | "expert">("simple");
 
   return (
@@ -167,10 +169,12 @@ export function ReportPanel() {
 
         {/* Action buttons */}
         <div className="flex gap-3">
-          <Button variant="outline" className="flex-1 rounded-full h-11 text-sm" size="sm">
+          <Button variant="outline" className="flex-1 rounded-full h-11 text-sm" size="sm"
+            onClick={() => toast({ title: "Saved to Assets", description: "Your report has been saved to your asset library." })}>
             <FolderPlus className="w-3.5 h-3.5 mr-1.5" /> Save to Assets
           </Button>
-          <Button className="flex-1 rounded-full h-11 bg-primary hover:bg-primary/90 text-white shadow-md text-sm" size="sm">
+          <Button className="flex-1 rounded-full h-11 bg-primary hover:bg-primary/90 text-white shadow-md text-sm" size="sm"
+            onClick={() => toast({ title: "Export started", description: `Generating ${reportType === "simple" ? "3-page summary" : "full technical"} PDF…` })}>
             <Download className="w-3.5 h-3.5 mr-1.5" /> Export PDF
           </Button>
         </div>

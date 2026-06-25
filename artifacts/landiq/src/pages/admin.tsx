@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link } from "wouter";
 import {
   LayoutDashboard, FileText, Users, Bot, Map, Upload,
-  BarChart2, Activity, Shield, LogOut, ChevronRight,
+  BarChart2, Activity, Shield, LogOut, ChevronRight, ChevronLeft,
   TrendingUp, TrendingDown, AlertCircle, CheckCircle2,
   Clock, Zap, Globe, RefreshCw, Menu, X, ExternalLink, Bell,
   Search, Filter, Download, Eye, MoreHorizontal, UserCheck,
@@ -96,6 +96,53 @@ const navItems: { id: Section; icon: React.ElementType; label: string }[] = [
 ];
 
 /* ── Sub-components ── */
+function StateBreakdownCard({ title = "Reports by State" }: { title?: string }) {
+  const [page, setPage] = useState(0);
+  const PAGE_SIZE = 7;
+  const totalPages = Math.ceil(stateData.length / PAGE_SIZE);
+  const visible = stateData.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
+  return (
+    <div className="bg-card border border-border rounded-2xl p-5">
+      <div className="flex items-center justify-between mb-4">
+        <p className="text-sm font-bold">{title}</p>
+        <span className="text-[10px] text-muted-foreground">
+          {page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, stateData.length)} of {stateData.length}
+        </span>
+      </div>
+      {visible.map(s => (
+        <div key={s.state} className="mb-2.5">
+          <div className="flex justify-between text-xs mb-1">
+            <span className="text-muted-foreground">{s.state}</span>
+            <span className="font-semibold">{s.value}%</span>
+          </div>
+          <div className="h-1.5 bg-muted rounded-full">
+            <div className="h-full bg-[#0058BD] rounded-full transition-all duration-300"
+              style={{ width: `${s.value}%`, opacity: 0.55 + Math.min(s.value / 40, 0.45) }} />
+          </div>
+        </div>
+      ))}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between mt-3 pt-3 border-t border-border">
+          <button onClick={() => setPage(p => Math.max(0, p - 1))} disabled={page === 0}
+            className="flex items-center gap-1 text-xs px-2.5 py-1 rounded-full hover:bg-muted transition-colors disabled:opacity-30 text-muted-foreground">
+            <ChevronLeft className="w-3 h-3" /> Prev
+          </button>
+          <div className="flex gap-1">
+            {Array.from({ length: totalPages }).map((_, i) => (
+              <button key={i} onClick={() => setPage(i)}
+                className={`w-1.5 h-1.5 rounded-full transition-colors ${i === page ? "bg-[#0058BD]" : "bg-muted-foreground/25 hover:bg-muted-foreground/50"}`} />
+            ))}
+          </div>
+          <button onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))} disabled={page === totalPages - 1}
+            className="flex items-center gap-1 text-xs px-2.5 py-1 rounded-full hover:bg-muted transition-colors disabled:opacity-30 text-muted-foreground">
+            Next <ChevronRight className="w-3 h-3" />
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function KpiCard({ label, value, sub, trend }: { label: string; value: string; sub?: string; trend?: "up" | "down" }) {
   return (
     <div className="bg-card border border-border rounded-2xl p-4 hover:shadow-sm transition-shadow">
@@ -255,6 +302,15 @@ function ReportsView() {
 }
 
 function UsersView() {
+  const [search, setSearch] = useState("");
+  const [planFilter, setPlanFilter] = useState("all");
+  const filtered = users.filter(u => {
+    const matchSearch = search === "" ||
+      u.name.toLowerCase().includes(search.toLowerCase()) ||
+      u.email.toLowerCase().includes(search.toLowerCase());
+    const matchPlan = planFilter === "all" || u.plan === planFilter;
+    return matchSearch && matchPlan;
+  });
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -266,10 +322,28 @@ function UsersView() {
         <KpiCard label="Pro/Enterprise" value="2,840" sub="22.8% of users" />
         <KpiCard label="Churned (30d)" value="143" sub="-12% vs last month" trend="up" />
       </div>
+      <div className="flex gap-2">
+        {["all", "Free", "Pro", "Enterprise"].map(p => (
+          <button key={p} onClick={() => setPlanFilter(p)}
+            className={`px-3 py-1.5 text-xs rounded-full capitalize transition-colors ${planFilter === p ? "bg-primary text-white" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}>
+            {p}
+          </button>
+        ))}
+      </div>
       <div className="bg-card border border-border rounded-2xl overflow-hidden">
         <div className="px-5 py-3.5 border-b border-border flex items-center gap-3">
-          <Search className="w-4 h-4 text-muted-foreground" />
-          <input placeholder="Search users..." className="flex-1 text-sm bg-transparent outline-none placeholder-muted-foreground" />
+          <Search className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+          <input
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Search by name or email..."
+            className="flex-1 text-sm bg-transparent outline-none placeholder:text-muted-foreground"
+          />
+          {search && (
+            <button onClick={() => setSearch("")} className="text-muted-foreground hover:text-foreground">
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
         </div>
         <div className="overflow-x-auto">
           <table className="w-full">
@@ -279,7 +353,9 @@ function UsersView() {
               ))}
             </tr></thead>
             <tbody>
-              {users.map((u, i) => (
+              {filtered.length === 0 ? (
+                <tr><td colSpan={6} className="px-4 py-8 text-center text-sm text-muted-foreground">No users match your search</td></tr>
+              ) : filtered.map((u, i) => (
                 <tr key={i} className="border-b border-border/40 hover:bg-muted/30 transition-colors">
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2.5">
@@ -454,15 +530,7 @@ function AnalyticsView() {
             </BarChart>
           </ResponsiveContainer>
         </div>
-        <div className="bg-card border border-border rounded-2xl p-5">
-          <p className="text-sm font-bold mb-4">Nigeria — Reports by State</p>
-          {stateData.map(s => (
-            <div key={s.state} className="mb-2.5">
-              <div className="flex justify-between text-xs mb-1"><span className="text-muted-foreground">{s.state}</span><span className="font-semibold">{s.value}%</span></div>
-              <div className="h-1.5 bg-muted rounded-full"><div className="h-full bg-[#0058BD] rounded-full" style={{ width: `${s.value}%`, opacity: 0.6 + s.value / 100 * 0.4 }} /></div>
-            </div>
-          ))}
-        </div>
+        <StateBreakdownCard title="Nigeria — Reports by State" />
       </div>
       <div className="grid xl:grid-cols-3 gap-3">
         <KpiCard label="Conversion Rate" value="14.2%" sub="Free → Paid" trend="up" />
@@ -556,11 +624,11 @@ export function AdminPage() {
     <div className="flex h-screen bg-background overflow-hidden">
       {/* Sidebar */}
       <aside className={`flex-shrink-0 h-full bg-[#0F1117] dark:bg-[#080A0E] flex flex-col transition-all duration-300 ${sidebarOpen ? "w-[220px]" : "w-[56px]"}`}>
-        <div className="flex items-center h-14 px-4 border-b border-white/8 gap-3 flex-shrink-0">
-          <div className="w-7 h-7 bg-[#0058BD] rounded-md flex items-center justify-center text-white font-bold text-xs flex-shrink-0">L</div>
+        <div className={`h-14 border-b border-white/8 flex-shrink-0 flex items-center gap-3 ${sidebarOpen ? "px-4" : "justify-center"}`}>
+          {sidebarOpen && <div className="w-7 h-7 bg-[#0058BD] rounded-md flex items-center justify-center text-white font-bold text-xs flex-shrink-0">L</div>}
           {sidebarOpen && <div className="flex-1 min-w-0"><p className="text-white font-bold text-sm leading-none">LandIQ</p><p className="text-white/30 text-[9px] tracking-wider uppercase mt-0.5">Admin Panel</p></div>}
-          <button onClick={() => setSidebarOpen(v => !v)} className="w-6 h-6 flex items-center justify-center text-white/40 hover:text-white/80 transition-colors flex-shrink-0 ml-auto">
-            {sidebarOpen ? <X className="w-3.5 h-3.5" /> : <Menu className="w-3.5 h-3.5" />}
+          <button onClick={() => setSidebarOpen(v => !v)} className="w-8 h-8 flex items-center justify-center text-white/50 hover:text-white hover:bg-white/8 rounded-lg transition-colors flex-shrink-0">
+            {sidebarOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
           </button>
         </div>
         <nav className="flex-1 overflow-y-auto py-4 px-2 space-y-0.5">
