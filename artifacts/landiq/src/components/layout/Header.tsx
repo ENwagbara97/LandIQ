@@ -37,33 +37,32 @@ export function Header() {
         {/* Desktop Header */}
         <div className="hidden lg:flex h-14 bg-white dark:bg-[#1A1D24] border-b border-border items-center justify-between px-5 pointer-events-auto shadow-sm">
           <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2">
-              <div className="w-7 h-7 bg-primary rounded-md flex items-center justify-center text-white font-bold text-xs">L</div>
-              <span className="font-bold text-lg tracking-tight text-foreground">LandIQ</span>
-            </div>
-            <div className="px-1.5 py-0.5 bg-muted rounded text-[9px] font-bold text-muted-foreground tracking-wider uppercase">LITE</div>
+            <div className="w-7 h-7 bg-primary rounded-md flex items-center justify-center text-white font-bold text-xs">L</div>
+            <span className="font-bold text-lg tracking-tight text-foreground">LandIQ</span>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1">
             <Button variant="ghost" size="sm" className="rounded-full gap-1.5 text-muted-foreground hover:text-foreground text-xs h-8" asChild>
               <Link href="/history"><HistoryIcon className="w-3.5 h-3.5" />History</Link>
             </Button>
-            <Button variant="ghost" size="icon" className="rounded-full h-8 w-8 text-muted-foreground hover:text-foreground" onClick={() => setDrawerOpen(true)}>
-              <Settings className="w-4 h-4" />
+            <Button
+              variant="ghost"
+              size="sm"
+              className="rounded-full gap-1.5 text-muted-foreground hover:text-foreground text-xs h-8 px-3"
+              onClick={() => setDrawerOpen(true)}
+            >
+              <Settings className="w-3.5 h-3.5" />Settings
             </Button>
-            <Button size="sm" className="rounded-full gap-1.5 bg-primary hover:bg-primary/90 text-white h-8 text-xs px-3" asChild>
+            <Button size="sm" className="rounded-full gap-1.5 bg-primary hover:bg-primary/90 text-white h-8 text-xs px-3 ml-1" asChild>
               <Link href="/analyse"><Plus className="w-3.5 h-3.5" />New Analysis</Link>
             </Button>
           </div>
         </div>
       </header>
 
-      {/* Hamburger Drawer Overlay */}
+      {/* Drawer Overlay */}
       {drawerOpen && (
         <div className="fixed inset-0 z-[200] flex">
-          <div
-            className="absolute inset-0 bg-black/40 backdrop-blur-[2px]"
-            onClick={() => setDrawerOpen(false)}
-          />
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px]" onClick={() => setDrawerOpen(false)} />
           <div className="relative w-[280px] h-full bg-white dark:bg-[#1A1D24] shadow-2xl flex flex-col z-10 animate-in slide-in-from-left duration-300">
             {/* Drawer Header */}
             <div className="p-4 border-b border-border flex items-center justify-between">
@@ -71,19 +70,13 @@ export function Header() {
                 <div className="w-7 h-7 bg-primary rounded-md flex items-center justify-center text-white font-bold text-xs">L</div>
                 <span className="font-bold tracking-tight text-foreground">LandIQ</span>
               </div>
-              <button
-                onClick={() => setDrawerOpen(false)}
-                className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-muted text-muted-foreground"
-              >
+              <button onClick={() => setDrawerOpen(false)} className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-muted text-muted-foreground">
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            {/* Profile Section */}
-            <div
-              className="p-4 border-b border-border cursor-pointer hover:bg-muted/50 transition-colors"
-              onClick={() => { setLocation('/profile'); setDrawerOpen(false); }}
-            >
+            {/* Profile */}
+            <div className="p-4 border-b border-border cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => { setLocation('/profile'); setDrawerOpen(false); }}>
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
                   <User className="w-5 h-5 text-primary" />
@@ -96,12 +89,10 @@ export function Header() {
               </div>
             </div>
 
-            {/* Settings Section */}
             <div className="flex-1 overflow-y-auto">
               <div className="p-4">
                 <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-3">Settings</p>
                 <div className="space-y-1">
-                  {/* Dark Mode Toggle */}
                   <div className="flex items-center justify-between py-2.5 px-3 rounded-xl hover:bg-muted/50 transition-colors">
                     <div className="flex items-center gap-3">
                       {theme === 'dark' ? <Moon className="w-4 h-4 text-muted-foreground" /> : <Sun className="w-4 h-4 text-muted-foreground" />}
@@ -109,19 +100,17 @@ export function Header() {
                     </div>
                     <button
                       onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-                      className={`relative w-10 h-5.5 rounded-full transition-colors duration-200 ${theme === 'dark' ? 'bg-primary' : 'bg-muted-foreground/30'}`}
+                      className={`relative rounded-full transition-colors duration-200 ${theme === 'dark' ? 'bg-primary' : 'bg-muted-foreground/30'}`}
                       style={{ height: '22px', width: '40px' }}
                     >
                       <span className={`absolute top-0.5 left-0.5 w-[18px] h-[18px] rounded-full bg-white shadow-sm transition-transform duration-200 ${theme === 'dark' ? 'translate-x-[18px]' : 'translate-x-0'}`} />
                     </button>
                   </div>
-
                   <DrawerItem icon={<Shield className="w-4 h-4" />} label="Privacy Policy" onClick={() => setDrawerOpen(false)} />
                   <DrawerItem icon={<FileText className="w-4 h-4" />} label="Terms of Service" onClick={() => setDrawerOpen(false)} />
                   <DrawerItem icon={<HelpCircle className="w-4 h-4" />} label="Help & Support" onClick={() => setDrawerOpen(false)} />
                 </div>
               </div>
-
               <div className="px-4">
                 <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-3">Account</p>
                 <div className="space-y-1">
@@ -131,13 +120,11 @@ export function Header() {
               </div>
             </div>
 
-            {/* Sign Out */}
             <div className="p-4 border-t border-border">
               <button className="w-full flex items-center gap-3 py-2.5 px-3 rounded-xl hover:bg-red-50 dark:hover:bg-red-950/30 text-red-500 transition-colors text-sm font-medium">
-                <LogOut className="w-4 h-4" />
-                Sign Out
+                <LogOut className="w-4 h-4" />Sign Out
               </button>
-              <p className="text-[10px] text-muted-foreground text-center mt-3">LandIQ v1.0 · Lite Runtime</p>
+              <p className="text-[10px] text-muted-foreground text-center mt-3">© 2026 LandIQ. All rights reserved.</p>
             </div>
           </div>
         </div>
@@ -148,10 +135,7 @@ export function Header() {
 
 function DrawerItem({ icon, label, onClick }: { icon: React.ReactNode; label: string; onClick: () => void }) {
   return (
-    <button
-      onClick={onClick}
-      className="w-full flex items-center justify-between py-2.5 px-3 rounded-xl hover:bg-muted/50 transition-colors group"
-    >
+    <button onClick={onClick} className="w-full flex items-center justify-between py-2.5 px-3 rounded-xl hover:bg-muted/50 transition-colors group">
       <div className="flex items-center gap-3">
         <span className="text-muted-foreground">{icon}</span>
         <span className="text-sm text-foreground">{label}</span>
