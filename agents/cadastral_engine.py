@@ -152,10 +152,10 @@ def _cleanse_number(raw: str) -> Optional[float]:
 _STATION_LABEL_RE = re.compile(
     r"""
     (?P<id>
-        (?:SC|SG|SK|BP|TP|BM|NR|S)[/\-\s]*[A-Z0-9]+(?:[/\-\s][A-Z0-9]+)*  # SC/AK/K 49700 style
-        | [A-Z]{1,4}\d{4,7}                                                  # condensed: BP12345
-        | (?:STATION|BEACON|PILLAR|CORNER)\s*\d+                             # STATION 1, BEACON 3
-        | [A-Z]\d+                                                            # A1, B2 etc.
+        (?:SC|SG|SK|BP|TP|BM|NR|S)[/\-\s]*(?!\b\d{6,}\b)(?!\b\d+\.\d+\b)[A-Z0-9]+(?:[/\-\s]*(?!\b\d{6,}\b)(?!\b\d+\.\d+\b)[A-Z0-9]+)*  # SC/AK/K 49700 style
+        | [A-Z]{1,4}\d{4,7}                                                                                                          # condensed: BP12345
+        | (?:STATION|BEACON|PILLAR|CORNER)\s*\d+                                                                                     # STATION 1, BEACON 3
+        | [A-Z]\d+                                                                                                                    # A1, B2 etc.
     )
     """,
     re.VERBOSE | re.IGNORECASE,
@@ -235,8 +235,16 @@ def _scan_ocr_text_for_stations(raw_text: str) -> list[_Station]:
         if a < 100_000 or b < 100_000:
             continue
 
-        # Attempt station label detection — look in original line before clean
-        id_match = _STATION_LABEL_RE.search(line)
+        # Attempt station label detection — look in original line before clean.
+        # If strict tab (\t) or double-space divider is detected, isolate the leading token
+        # as the search area to prevent scanning into coordinate columns.
+        label_search_area = line
+        if "\t" in line:
+            label_search_area = line.split("\t", 1)[0].strip()
+        elif "  " in line:
+            label_search_area = line.split("  ", 1)[0].strip()
+
+        id_match = _STATION_LABEL_RE.search(label_search_area)
         if id_match:
             sid = re.sub(r"\s+", " ", id_match.group("id").strip())
         else:
@@ -746,9 +754,10 @@ def pre_plot_sanity_check(
     Hard blocks on failure.
     Returns (passed, message).
     """
-    # Check 4: Self-intersection
-    if has_self_intersection:
-        return False, "Self-intersecting polygon detected."
+    # Check 4: Self-intersection (Disabled as per surveyor instructions to allow visual warning and manual editing instead of hard block)
+    # if has_self_intersection:
+    #     return False, "Self-intersecting polygon detected."
+
 
     # If no stated area is provided, we can't perform ratio/bbox comparisons
     if stated_area_sqm and stated_area_sqm > 0:
@@ -829,65 +838,34 @@ def _reorder_stations(
 
 def _enforce_simple_polygon_sequence(stations: list[_Station]) -> tuple[list[_Station], bool]:
     """
-    If the polygon self-intersects, try reversing the sequence or trying all rotations.
-    Returns (fixed_stations, has_self_intersection).
+    Preserve the user's exact input sequence. Check for self-intersection on WGS84
+    coordinates, but do not attempt to 'heal' or reorder the vertices.
+    Returns (stations, has_self_intersection).
     """
     if len(stations) < 3:
         return stations, False
 
-    # Extract coordinates
+    # Extract coordinates in WGS84 (lng, lat)
     pts = []
     for s in stations:
-        e = s.calculated_easting if s.calculated_easting is not None else s.stated_easting
-        n = s.calculated_northing if s.calculated_northing is not None else s.stated_northing
-        if e is not None and n is not None:
-            pts.append((e, n))
+        if s.wgs84_lng is not None and s.wgs84_lat is not None:
+            pts.append((s.wgs84_lng, s.wgs84_lat))
 
     if len(pts) < 3:
         return stations, False
 
-    # Check if last point duplicates first
-    has_closing_dup = False
-    if len(pts) >= 4 and abs(pts[0][0] - pts[-1][0]) < 0.01 and abs(pts[0][1] - pts[-1][1]) < 0.01:
+    # Check if last point duplicates first (exclude from check to avoid false ring-intersection)
+    if len(pts) >= 4 and abs(pts[0][0] - pts[-1][0]) < 1e-6 and abs(pts[0][1] - pts[-1][1]) < 1e-6:
         pts = pts[:-1]
-        has_closing_dup = True
 
     try:
         from shapely.geometry import LinearRing
         ring = LinearRing(pts)
-        if ring.is_simple:
-            return stations, False
-
-        # Self-intersection detected! Try permutations
-        rev_pts = pts[::-1]
-        if LinearRing(rev_pts).is_simple:
-            fixed_stations = _reorder_stations(stations, rev_pts, has_closing_dup)
-            return fixed_stations, False
-
-        n = len(pts)
-        for start_idx in range(1, n):
-            rot_pts = pts[start_idx:] + pts[:start_idx]
-            if LinearRing(rot_pts).is_simple:
-                fixed_stations = _reorder_stations(stations, rot_pts, has_closing_dup)
-                return fixed_stations, False
-
-            rot_rev_pts = rev_pts[start_idx:] + rev_pts[:start_idx]
-            if LinearRing(rot_rev_pts).is_simple:
-                fixed_stations = _reorder_stations(stations, rot_rev_pts, has_closing_dup)
-                return fixed_stations, False
-
-        # Fallback: Radial/polar angle sort around centroid
-        cx = sum(p[0] for p in pts) / len(pts)
-        cy = sum(p[1] for p in pts) / len(pts)
-        radial_pts = sorted(pts, key=lambda p: math.atan2(p[1] - cy, p[0] - cx))
-        if LinearRing(radial_pts).is_simple:
-            fixed_stations = _reorder_stations(stations, radial_pts, has_closing_dup)
-            return fixed_stations, False
-
-        return stations, True
+        return stations, not ring.is_simple
     except Exception as exc:
         logger.warning(f"[cadastral] LinearRing check failed: {exc}")
         return stations, False
+
 
 
 # =============================================================================
@@ -1149,6 +1127,8 @@ def run(
     # ── Build station ledger ───────────────────────────────────────────────────
     ledger = []
     for s in active_stations:
+        if s.station_id.endswith(" (close)"):
+            continue
         e = s.calculated_easting if s.calculated_easting is not None else (s.stated_easting or 0.0)
         n = s.calculated_northing if s.calculated_northing is not None else (s.stated_northing or 0.0)
         ledger.append(
@@ -1207,7 +1187,7 @@ def run(
         area_discrepancy_pct=(area_variance_m2 / (stated_area_ha * 10000) * 100) if stated_area_ha and stated_area_ha > 0 else None,
         is_closed=is_closed,
         is_valid=is_valid,
-        has_self_intersection=False,
+        has_self_intersection=has_self_intersection,
         vertex_count=(len(active_stations) - 1) if is_closed else len(active_stations),
         closure_error_m=misclosure_m,
         crs_input=datum_label or "MINNA",

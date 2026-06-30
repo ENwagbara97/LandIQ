@@ -217,7 +217,7 @@ def test_pre_plot_sanity_check():
     assert not passed
     assert "nigeria" in msg.lower()
 
-    # 6. Self-intersection fail
+    # 6. Self-intersection pass (no longer a hard block per surveyor instructions)
     passed, msg = pre_plot_sanity_check(
         computed_area_sqm=424.0,
         stated_area_sqm=424.0,
@@ -225,39 +225,33 @@ def test_pre_plot_sanity_check():
         wgs84_coords=[(6.5, 3.5), (6.5, 3.6), (6.6, 3.6), (6.6, 3.5), (6.5, 3.5)],
         has_self_intersection=True
     )
-    assert not passed
-    assert "self-intersecting" in msg.lower()
+    assert passed
+    assert "Sanity checks passed" in msg
 
 
-def test_linear_ring_self_intersection_fix():
+def test_linear_ring_self_intersection_check():
     from agents.cadastral_engine import _enforce_simple_polygon_sequence, _Station
     # Create a bowtie polygon sequence of stations:
     # (0, 0), (2, 2), (2, 0), (0, 2)
     # The edges (0,0)-(2,2) and (2,0)-(0,2) cross at (1,1).
-    # Reordering the unique coordinates to (0,0), (2,0), (2,2), (0,2) will form a simple square.
     
     stations = [
-        _Station(station_id="S1", calculated_easting=0.0, calculated_northing=0.0),
-        _Station(station_id="S2", calculated_easting=2.0, calculated_northing=2.0),
-        _Station(station_id="S3", calculated_easting=2.0, calculated_northing=0.0),
-        _Station(station_id="S4", calculated_easting=0.0, calculated_northing=2.0),
-        _Station(station_id="S1 (close)", calculated_easting=0.0, calculated_northing=0.0),
+        _Station(station_id="S1", wgs84_lng=0.0, wgs84_lat=0.0),
+        _Station(station_id="S2", wgs84_lng=2.0, wgs84_lat=2.0),
+        _Station(station_id="S3", wgs84_lng=2.0, wgs84_lat=0.0),
+        _Station(station_id="S4", wgs84_lng=0.0, wgs84_lat=2.0),
+        _Station(station_id="S1 (close)", wgs84_lng=0.0, wgs84_lat=0.0),
     ]
     
-    fixed_stations, has_self_intersection = _enforce_simple_polygon_sequence(stations)
-    assert not has_self_intersection
-    assert len(fixed_stations) == 5
+    unfixed_stations, has_self_intersection = _enforce_simple_polygon_sequence(stations)
+    assert has_self_intersection
+    assert len(unfixed_stations) == 5
     
-    # Extract fixed coordinates sequence
-    fixed_coords = []
-    for s in fixed_stations:
-        fixed_coords.append((s.calculated_easting, s.calculated_northing))
-        
-    # The fixed unique sequence should be a simple square
-    unique_fixed_coords = fixed_coords[:-1]
-    from shapely.geometry import LinearRing
-    ring = LinearRing(unique_fixed_coords)
-    assert ring.is_simple
+    # Assert sequence order is exactly unchanged
+    assert unfixed_stations[0].station_id == "S1"
+    assert unfixed_stations[1].station_id == "S2"
+    assert unfixed_stations[2].station_id == "S3"
+    assert unfixed_stations[3].station_id == "S4"
 
 
 def test_surveyor_intelligence_beacons():

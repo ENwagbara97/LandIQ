@@ -21,3 +21,5 @@ reports/
 scratch/
 .pytest_cache/
 .gemini/
+data/snapshots/
+tests/eval_logs/

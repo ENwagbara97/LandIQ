@@ -14,13 +14,6 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
   <!-- Leaflet JS -->
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
-  <script>
-    // Theme toggle initialization (prevents dark flash on light page load)
-    const storedTheme = localStorage.getItem('landiq-theme');
-    if (storedTheme !== 'dark') {
-      document.documentElement.classList.add('theme-light');
-    }
-  </script>
   <style>
     :root {
       --bg-color: #080c14;
@@ -38,73 +31,7 @@
       --warning-bg: rgba(245, 158, 11, 0.12);
       --danger: #ef4444;
       --danger-bg: rgba(239, 68, 68, 0.12);
-      
-      /* Additional theme custom properties */
-      --header-bg: rgba(10, 16, 30, 0.8);
-      --split-panel-bg: rgba(10, 16, 30, 0.4);
-      --input-bg: rgba(255, 255, 255, 0.03);
-      --input-border: rgba(255, 255, 255, 0.1);
-      --file-input-bg: rgba(255, 255, 255, 0.02);
-      --file-input-border: rgba(255, 255, 255, 0.15);
-      --history-item-bg: rgba(255, 255, 255, 0.01);
-      --history-item-border: rgba(255, 255, 255, 0.04);
-      --history-item-hover: rgba(255, 255, 255, 0.03);
-      --history-item-hover-border: rgba(255, 255, 255, 0.08);
-      --feature-card-bg: rgba(255, 255, 255, 0.02);
-      --feature-card-border: rgba(255, 255, 255, 0.05);
-      --feature-card-hover: rgba(255, 255, 255, 0.04);
-      --feature-card-hover-border: rgba(255, 255, 255, 0.1);
-      --btn-secondary-bg: rgba(255, 255, 255, 0.04);
-      --btn-secondary-hover: rgba(255, 255, 255, 0.08);
-      --modal-bg: rgba(5, 8, 15, 0.85);
-
-      /* Dummy variables for parity checks */
-      --bg-main: #0d111a;
-      --bg-sidebar: rgba(13, 20, 35, 0.7);
     }
-
-    html.theme-light {
-      --bg-color: #f8fafc;
-      --panel-bg: #ffffff;
-      --panel-border: rgba(0, 0, 0, 0.08);
-      --text-primary: #1e293b;
-      --text-secondary: #475569;
-      --text-muted: #64748b;
-      --primary: #3b82f6;
-      --primary-hover: #2563eb;
-      --primary-glow: rgba(59, 130, 246, 0.2);
-      --success: #10b981;
-      --success-bg: rgba(16, 185, 129, 0.10);
-      --warning: #f59e0b;
-      --warning-bg: rgba(245, 158, 11, 0.10);
-      --danger: #ef4444;
-      --danger-bg: rgba(239, 68, 68, 0.10);
-      
-      --header-bg: #ffffff;
-      --split-panel-bg: #f8fafc;
-      --input-bg: #f8fafc;
-      --input-border: #cbd5e1;
-      --file-input-bg: #f8fafc;
-      --file-input-border: #cbd5e1;
-      --history-item-bg: #ffffff;
-      --history-item-border: #e2e8f0;
-      --history-item-hover: #f1f5f9;
-      --history-item-hover-border: #cbd5e1;
-      --feature-card-bg: #ffffff;
-      --feature-card-border: #e2e8f0;
-      --feature-card-hover: #f1f5f9;
-      --feature-card-hover-border: #cbd5e1;
-      --btn-secondary-bg: #e2e8f0;
-      --btn-secondary-hover: #cbd5e1;
-      --modal-bg: rgba(241, 245, 249, 0.85);
-
-      /* To satisfy the test suite checks */
-      --bg-main: #f8fafc;
-      --bg-sidebar: #ffffff;
-    }
-
-    /* dropzone compatibility class to satisfy test suite checks */
-    .dropzone {}
     * {
       box-sizing: border-box;
       margin: 0;
@@ -125,7 +52,7 @@
       justify-content: space-between;
       align-items: center;
       padding: 0 24px;
-      background: var(--header-bg);
+      background: rgba(10, 16, 30, 0.8);
       border-bottom: 1px solid var(--panel-border);
       backdrop-filter: blur(12px);
       z-index: 100;
@@ -164,7 +91,7 @@
       gap: 12px;
     }
     .btn {
-      background: var(--btn-secondary-bg);
+      background: rgba(255, 255, 255, 0.04);
       color: var(--text-primary);
       border: 1px solid var(--panel-border);
       padding: 10px 16px;
@@ -178,8 +105,8 @@
       transition: all 0.2s;
     }
     .btn:hover {
-      background: var(--btn-secondary-hover);
-      border-color: var(--panel-border);
+      background: rgba(255, 255, 255, 0.08);
+      border-color: rgba(255, 255, 255, 0.15);
     }
     .btn-primary {
       background: var(--primary);
@@ -242,8 +169,8 @@
     }
     .form-control {
       width: 100%;
-      background: var(--input-bg);
-      border: 1px solid var(--input-border);
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.1);
       border-radius: 8px;
       color: var(--text-primary);
       padding: 10px 12px;
@@ -274,8 +201,8 @@
     }
     .file-input-btn {
       width: 100%;
-      background: var(--file-input-bg);
-      border: 1px dashed var(--file-input-border);
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px dashed rgba(255, 255, 255, 0.15);
       border-radius: 8px;
       padding: 14px;
       text-align: center;
@@ -328,8 +255,8 @@
     }
     .history-item {
       padding: 10px;
-      background: var(--history-item-bg);
-      border: 1px solid var(--history-item-border);
+      background: rgba(255, 255, 255, 0.01);
+      border: 1px solid rgba(255, 255, 255, 0.04);
       border-radius: 8px;
       cursor: pointer;
       transition: all 0.2s;
@@ -338,12 +265,12 @@
       gap: 4px;
     }
     .history-item:hover {
-      background: var(--history-item-hover);
-      border-color: var(--history-item-hover-border);
+      background: rgba(255, 255, 255, 0.03);
+      border-color: rgba(255, 255, 255, 0.08);
     }
     .history-item.selected {
       border-color: var(--primary);
-      background: var(--primary-glow);
+      background: rgba(59, 130, 246, 0.05);
     }
     .history-header {
       display: flex;
@@ -455,16 +382,16 @@
       justify-content: center;
     }
     .feature-card {
-      background: var(--feature-card-bg);
-      border: 1px solid var(--feature-card-border);
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid rgba(255, 255, 255, 0.05);
       border-radius: 12px;
       padding: 18px 12px;
       text-align: center;
       transition: all 0.2s;
     }
     .feature-card:hover {
-      background: var(--feature-card-hover);
-      border-color: var(--feature-card-hover-border);
+      background: rgba(255, 255, 255, 0.04);
+      border-color: rgba(255, 255, 255, 0.1);
     }
     .feature-step {
       font-family: 'Outfit', sans-serif;
@@ -497,7 +424,7 @@
     .split-panel {
       padding: 20px;
       overflow-y: auto;
-      background: var(--split-panel-bg);
+      background: rgba(10, 16, 30, 0.4);
       border-right: 1px solid var(--panel-border);
       display: flex;
       flex-direction: column;
@@ -736,7 +663,7 @@
     .modal-overlay {
       position: fixed;
       inset: 0;
-      background: var(--modal-bg);
+      background: rgba(5, 8, 15, 0.85);
       backdrop-filter: blur(8px);
       z-index: 1000;
       display: none;
@@ -982,210 +909,22 @@
     }
     .btn-secondary-modal:hover { background: #f1f5f9; }
   </style>
-  <!-- Modern skin and responsiveness overlay -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/theme-modern.css">
-  <link rel="stylesheet" href="/static/mobile-responsive.css">
-  <script src="https://unpkg.com/lucide@latest"></script>
-  <style>
-    /* Toggle visibility of icons based on screen size */
-    @media (max-width: 767px) {
-      .desktop-only-icon { display: none !important; }
-      .mobile-only-icon { display: inline-block !important; }
-    }
-    @media (min-width: 768px) {
-      .desktop-only-icon { display: inline-block !important; }
-      .mobile-only-icon { display: none !important; }
-    }
-  </style>
 </head>
 <body>
 
   <!-- Top Navigation Header -->
   <header>
-    <div class="logo-container" style="display: flex; align-items: center; gap: 10px;">
-      <button class="btn" id="btn-hamburger" style="background: transparent; border: none; padding: 4px; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; color: var(--text-primary); font-size: 20px;">
-        <i class="fa-solid fa-bars"></i>
-      </button>
+    <div class="logo-container">
       <i class="fa-solid fa-layer-group logo-icon"></i>
       <span class="logo-text">LandIQ</span>
       <span class="logo-badge">Lite Runtime</span>
     </div>
-    
-    <button class="mobile-header-avatar" id="mobile-profile-avatar" style="display: none;">
-      <i class="fa-solid fa-user"></i>
-    </button>
     <div class="header-nav">
-      <button class="btn" id="btn-theme-toggle" onclick="toggleTheme()" title="Switch Light/Dark Theme">
-        <i class="fa-solid fa-sun" id="theme-icon"></i>
-      </button>
       <button class="btn" id="btn-settings"><i class="fa-solid fa-gear"></i> Settings</button>
       <button class="btn" id="btn-new-analysis"><i class="fa-solid fa-plus"></i> New Analysis</button>
       <button class="btn" id="btn-show-history"><i class="fa-solid fa-clock-rotate-left"></i> History & Audit</button>
     </div>
   </header>
-
-  <!-- Hamburger Navigation Drawer Overlay -->
-  <div class="hamburger-drawer-overlay" id="hamburger-drawer">
-    <div class="hamburger-drawer-content">
-      <div class="drawer-header">
-        <div style="display: flex; align-items: center; gap: 12px;">
-          <div class="avatar-circle">
-            <i data-lucide="user"></i>
-          </div>
-          <div>
-            <div class="drawer-user-name">Anonymous Buyer</div>
-            <div class="drawer-user-email">buyer@landiq.ng</div>
-          </div>
-        </div>
-        <button class="drawer-close-btn" id="btn-close-drawer">
-          <i data-lucide="x"></i>
-        </button>
-      </div>
-      
-      <div class="drawer-menu-links">
-        <button class="drawer-menu-item" id="drawer-item-history">
-          <div class="item-icon-label">
-            <i data-lucide="clock"></i>
-            <span>History & Audits</span>
-          </div>
-          <i class="chevron-arrow" data-lucide="chevron-right"></i>
-        </button>
-        <button class="drawer-menu-item" id="drawer-item-settings">
-          <div class="item-icon-label">
-            <i data-lucide="settings"></i>
-            <span>Settings</span>
-          </div>
-          <i class="chevron-arrow" data-lucide="chevron-right"></i>
-        </button>
-        <button class="drawer-menu-item" id="drawer-item-help">
-          <div class="item-icon-label">
-            <i data-lucide="help-circle"></i>
-            <span>Help Center</span>
-          </div>
-          <i class="chevron-arrow" data-lucide="chevron-right"></i>
-        </button>
-        <button class="drawer-menu-item" id="drawer-item-feedback">
-          <div class="item-icon-label">
-            <i data-lucide="message-square"></i>
-            <span>Send Feedback</span>
-          </div>
-          <i class="chevron-arrow" data-lucide="chevron-right"></i>
-        </button>
-        <button class="drawer-menu-item" id="drawer-btn-policy">
-          <div class="item-icon-label">
-            <i data-lucide="shield"></i>
-            <span>Privacy & Terms</span>
-          </div>
-          <i class="chevron-arrow" data-lucide="chevron-right"></i>
-        </button>
-      </div>
-      
-      <div class="drawer-footer">
-        <div>LandIQ Lite v2.0</div>
-        <div style="margin-top: 4px;">
-          <a href="#" id="drawer-link-policy">Privacy</a> · 
-          <a href="#" id="drawer-link-terms">Terms</a>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Custom Settings Modal Overlay -->
-  <div class="custom-modal-overlay" id="custom-settings-modal">
-    <div class="custom-modal-card">
-      <div class="custom-modal-header">
-        <h3>Settings</h3>
-        <button class="custom-modal-close" id="btn-close-settings">
-          <i data-lucide="x"></i>
-        </button>
-      </div>
-      <div class="custom-modal-body">
-        <!-- Theme Selection Section -->
-        <div class="settings-section">
-          <div class="settings-section-title">Appearance</div>
-          <div class="settings-row">
-            <span>Application Theme</span>
-            <div class="segmented-control" id="settings-theme-toggle">
-              <button class="segment-btn" data-theme="light">Light</button>
-              <button class="segment-btn" data-theme="dark">Dark</button>
-            </div>
-          </div>
-        </div>
-        
-        <!-- API Keys Section -->
-        <div class="settings-section">
-          <div class="settings-section-title">API Configuration</div>
-          <div class="settings-row" style="flex-direction: column; align-items: stretch; gap: 8px;">
-            <label style="font-size: 12px; font-weight: 600; color: var(--text-secondary);">Vision Provider</label>
-            <select id="mobile-setting-vision-provider" style="width: 100%; padding: 8px; border-radius: 6px; background: var(--bg-input); border: 1px solid var(--border-default); color: var(--text-primary);">
-              <option value="google">Google Gemini</option>
-              <option value="openai">OpenAI GPT-4V</option>
-            </select>
-          </div>
-          <div class="settings-row" style="flex-direction: column; align-items: stretch; gap: 8px;">
-            <label style="font-size: 12px; font-weight: 600; color: var(--text-secondary);">Vision API Key</label>
-            <input type="password" id="mobile-setting-vision-key" placeholder="Enter Vision API Key" style="width: 100%; padding: 8px; border-radius: 6px; background: var(--bg-input); border: 1px solid var(--border-default); color: var(--text-primary);">
-          </div>
-          <div class="settings-row" style="flex-direction: column; align-items: stretch; gap: 8px;">
-            <label style="font-size: 12px; font-weight: 600; color: var(--text-secondary);">LLM Provider</label>
-            <select id="mobile-setting-llm-provider" style="width: 100%; padding: 8px; border-radius: 6px; background: var(--bg-input); border: 1px solid var(--border-default); color: var(--text-primary);">
-              <option value="google">Google Gemini</option>
-              <option value="openai">OpenAI GPT-4</option>
-            </select>
-          </div>
-          <div class="settings-row" style="flex-direction: column; align-items: stretch; gap: 8px;">
-            <label style="font-size: 12px; font-weight: 600; color: var(--text-secondary);">LLM API Key</label>
-            <input type="password" id="mobile-setting-llm-key" placeholder="Enter LLM API Key" style="width: 100%; padding: 8px; border-radius: 6px; background: var(--bg-input); border: 1px solid var(--border-default); color: var(--text-primary);">
-          </div>
-          <div style="margin-top: 12px;">
-            <button class="btn btn-primary" id="btn-save-mobile-settings" style="width: 100%; justify-content: center;">Save API Keys</button>
-          </div>
-        </div>
-        
-        <!-- General Section -->
-        <div class="settings-section">
-          <div class="settings-section-title">Support & Info</div>
-          <button class="settings-row-btn" id="btn-help-row">
-            <span>Help Center</span>
-            <i data-lucide="chevron-right"></i>
-          </button>
-          <button class="settings-row-btn" id="btn-feedback-row">
-            <span>Send Feedback</span>
-            <i data-lucide="chevron-right"></i>
-          </button>
-          <button class="settings-row-btn" id="btn-policy-row">
-            <span>Privacy Policy</span>
-            <i data-lucide="chevron-right"></i>
-          </button>
-          <button class="settings-row-btn" id="btn-terms-row">
-            <span>Terms of Service</span>
-            <i data-lucide="chevron-right"></i>
-          </button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Custom Policy Modal Overlay -->
-  <div class="custom-modal-overlay" id="custom-policy-modal">
-    <div class="custom-modal-card">
-      <div class="custom-modal-header">
-        <h3 id="policy-modal-title">Policy</h3>
-        <button class="custom-modal-close" id="btn-close-policy">
-          <i data-lucide="x"></i>
-        </button>
-      </div>
-      <div class="custom-modal-body" id="policy-modal-body">
-        <!-- Content populated dynamically by mobile-nav.js -->
-      </div>
-    </div>
-  </div>
-
-  <!-- Toast Snackbar Container -->
-  <div id="snackbar-container" style="position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); z-index: 10500; pointer-events: none; width: 90%; max-width: 360px; display: flex; flex-direction: column; gap: 8px;"></div>
 
   <!-- Main Grid Workspace -->
   <div class="main-layout">
@@ -1195,7 +934,6 @@
       
       <!-- Run Land Audit Card -->
       <div class="card">
-        <div class="bottom-sheet-drag-handle" id="mobile-drag-handle" style="display: none;"></div>
         <div class="card-title">
           <span><i class="fa-solid fa-satellite-dish" style="color:var(--primary);"></i> Run Land Audit</span>
         </div>
@@ -1261,10 +999,6 @@ OR
         <div class="history-container" id="history-items-container" style="flex: 1;">
           <div class="empty-state">No audits completed yet.</div>
         </div>
-        <!-- Mobile FAB to trigger new analysis -->
-        <button class="mobile-fab" id="mobile-history-fab" style="display: none;">
-          <i data-lucide="plus"></i>
-        </button>
       </div>
 
     </div>
@@ -1273,35 +1007,25 @@ OR
     <div class="content-workspace">
       
       <!-- Welcome / Intro Screen -->
-      <div class="view-section active" id="view-welcome" style="position: relative; padding: 0; display: flex; flex-direction: column; height: 100%; border-radius: 14px; overflow: hidden;">
-        <div id="welcome-map" class="leaflet-map" style="width: 100%; height: 100%; position: absolute; top: 0; left: 0; z-index: 10;"></div>
-        
-        <!-- Welcome Floating Card Overlay -->
-        <div class="welcome-card-overlay" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 20; max-width: 480px; width: 90%; background: var(--panel-bg); border: 1px solid var(--panel-border); border-radius: 16px; padding: 24px; backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5); text-align: center; pointer-events: auto;">
-          <i class="fa-solid fa-shield-halved welcome-icon" style="font-size: 48px; margin-bottom: 16px; display: inline-flex;"></i>
-          <h1 class="welcome-title" style="font-size: 24px; margin-bottom: 8px;">Carfax for Land in Nigeria</h1>
-          <p class="welcome-subtitle" style="font-size: 13px; line-height: 1.5; margin-bottom: 20px; color: var(--text-secondary);">
-            Upload land survey details to instantly compute elevation, slope, NDWI water signals, road proximity, urban expansion scores, and check against mock government gazette zones.
-          </p>
-          <div class="features-grid" style="grid-template-columns: repeat(3, 1fr); gap: 10px;">
-            <div class="feature-card" style="padding: 10px 6px;">
-              <div class="feature-step blue" style="font-size: 10px;">Step 0</div>
-              <div class="feature-desc" style="font-size: 10px;">Confirm Boundary Gate</div>
-            </div>
-            <div class="feature-card" style="padding: 10px 6px;">
-              <div class="feature-step green" style="font-size: 10px;">100%</div>
-              <div class="feature-desc" style="font-size: 10px;">Offline Raster Fallback</div>
-            </div>
-            <div class="feature-card" style="padding: 10px 6px;">
-              <div class="feature-step orange" style="font-size: 10px;">Layer 4</div>
-              <div class="feature-desc" style="font-size: 10px;">Tailored Due Diligence</div>
-            </div>
+      <div class="view-section active" id="view-welcome">
+        <i class="fa-solid fa-shield-halved welcome-icon"></i>
+        <h1 class="welcome-title">Carfax for Land in Nigeria</h1>
+        <p class="welcome-subtitle">
+          Upload land survey details to instantly compute elevation, slope, NDWI water signals, road proximity, urban expansion scores, and check against mock government gazette zones.
+        </p>
+        <div class="features-grid">
+          <div class="feature-card">
+            <div class="feature-step blue">Step 0</div>
+            <div class="feature-desc">Confirm Boundary Gate</div>
           </div>
-        </div>
-
-        <div class="map-controls" style="position: absolute; bottom: 24px; left: 24px; z-index: 30; display: flex; flex-direction: column; gap: 8px;">
-          <button class="map-control-btn" id="btn-welcome-sat" title="Google Satellite Layer" style="width: 40px; height: 40px; border-radius: 50%; background: var(--panel-bg); border: 1px solid var(--panel-border); color: var(--text-primary); display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 14px; transition: all 0.2s;"><i class="fa-solid fa-satellite"></i></button>
-          <button class="map-control-btn" id="btn-welcome-osm" title="OSM Street Layer" style="width: 40px; height: 40px; border-radius: 50%; background: var(--panel-bg); border: 1px solid var(--panel-border); color: var(--text-primary); display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 14px; transition: all 0.2s;"><i class="fa-solid fa-map"></i></button>
+          <div class="feature-card">
+            <div class="feature-step green">100%</div>
+            <div class="feature-desc">Offline Raster Fallback</div>
+          </div>
+          <div class="feature-card">
+            <div class="feature-step orange">Layer 4</div>
+            <div class="feature-desc">Tailored Due Diligence</div>
+          </div>
         </div>
       </div>
 
@@ -1421,18 +1145,15 @@ OR
         <div class="split-view">
           <div class="split-panel">
             
-            <div class="report-header-container" style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 10px; margin-bottom: 16px;">
-              <div class="report-header-left">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 10px; margin-bottom: 16px;">
+              <div>
                 <span id="report-meta-tag" style="font-size: 9px; font-weight:700; color:var(--text-muted); text-transform:uppercase;">Report</span>
                 <h2 id="report-title" style="font-family:'Outfit'; font-size: 18px; font-weight:800; margin-top:2px;">Ikorodu LGA</h2>
-                <div style="display: flex; align-items: center; gap: 4px; margin-top:2px;">
-                  <i class="fa-solid fa-location-dot mobile-only-icon" style="color: var(--text-muted); font-size: 10px; display: none;"></i>
-                  <p id="report-lga-state" style="font-size:11px; color:var(--text-secondary); margin:0;">Lagos State</p>
-                </div>
+                <p id="report-lga-state" style="font-size:11px; color:var(--text-secondary); margin-top:2px;">Lagos State</p>
               </div>
-              <div class="report-header-right" style="display: flex; flex-direction: column; align-items: flex-end; gap: 8px;">
+              <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 8px;">
                 <span id="report-traffic-light" class="traffic-badge green">Green</span>
-                <div class="desktop-mode-toggle" style="display: flex; align-items: center; gap: 6px; background: rgba(255,255,255,0.05); padding: 4px 8px; border-radius: 20px;">
+                <div style="display: flex; align-items: center; gap: 6px; background: rgba(255,255,255,0.05); padding: 4px 8px; border-radius: 20px;">
                   <span style="font-size: 10px; font-weight: 600;" id="label-mode-simple">Simple</span>
                   <label class="switch" style="position: relative; display: inline-block; width: 34px; height: 18px;">
                     <input type="checkbox" id="report-mode-toggle" checked>
@@ -1451,48 +1172,30 @@ OR
               .expert-only { transition: max-height 0.3s ease, opacity 0.3s ease; }
             </style>
 
-            <h4 class="form-label desktop-only-item" style="margin-bottom:8px; font-size: 10px;">Buyer's Decision Card</h4>
+            <h4 class="form-label" style="margin-bottom:8px; font-size: 10px;">Buyer's Decision Card</h4>
             <div id="decision-card-grid" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 16px;">
               <div class="metric-card" id="dc-flood">
-                <div class="metric-header">
-                  <div class="icon-wrapper-tonal teal-tonal"><i class="fa-solid fa-water desktop-only-icon"></i><i class="mobile-only-icon" data-lucide="droplet" style="display: none;"></i></div>
-                  <span class="metric-title-text">Flood Risk</span>
-                </div>
+                <div class="metric-header"><i class="fa-solid fa-water"></i> Flood Risk</div>
                 <div class="metric-value" id="val-flood" style="font-size:12px;">--</div>
               </div>
               <div class="metric-card" id="dc-terrain">
-                <div class="metric-header">
-                  <div class="icon-wrapper-tonal blue-tonal"><i class="fa-solid fa-mountain desktop-only-icon"></i><i class="mobile-only-icon" data-lucide="mountain" style="display: none;"></i></div>
-                  <span class="metric-title-text">Terrain</span>
-                </div>
+                <div class="metric-header"><i class="fa-solid fa-mountain"></i> Terrain</div>
                 <div class="metric-value" id="val-terrain" style="font-size:12px;">--</div>
               </div>
               <div class="metric-card" id="dc-road">
-                <div class="metric-header">
-                  <div class="icon-wrapper-tonal amber-tonal"><i class="fa-solid fa-road desktop-only-icon"></i><i class="mobile-only-icon" data-lucide="route" style="display: none;"></i></div>
-                  <span class="metric-title-text">Road Access</span>
-                </div>
+                <div class="metric-header"><i class="fa-solid fa-road"></i> Road Access</div>
                 <div class="metric-value" id="val-road" style="font-size:12px;">--</div>
               </div>
               <div class="metric-card" id="dc-encroachment">
-                <div class="metric-header">
-                  <div class="icon-wrapper-tonal green-tonal"><i class="fa-solid fa-eye desktop-only-icon"></i><i class="mobile-only-icon" data-lucide="eye" style="display: none;"></i></div>
-                  <span class="metric-title-text">Encroachment</span>
-                </div>
+                <div class="metric-header"><i class="fa-solid fa-eye"></i> Encroachment</div>
                 <div class="metric-value" id="val-encroachment" style="font-size:12px;">--</div>
               </div>
               <div class="metric-card" id="dc-title" style="display: none;">
-                <div class="metric-header">
-                  <div class="icon-wrapper-tonal blue-tonal"><i class="fa-solid fa-file-contract desktop-only-icon"></i><i class="mobile-only-icon" data-lucide="file-text" style="display: none;"></i></div>
-                  <span class="metric-title-text">Title Status</span>
-                </div>
+                <div class="metric-header"><i class="fa-solid fa-file-contract"></i> Title Status</div>
                 <div class="metric-value" id="val-title" style="font-size:12px;">--</div>
               </div>
               <div class="metric-card" id="dc-development">
-                <div class="metric-header">
-                  <div class="icon-wrapper-tonal teal-tonal"><i class="fa-solid fa-building desktop-only-icon"></i><i class="mobile-only-icon" data-lucide="building" style="display: none;"></i></div>
-                  <span class="metric-title-text">Development</span>
-                </div>
+                <div class="metric-header"><i class="fa-solid fa-building"></i> Development</div>
                 <div class="metric-value" id="val-development" style="font-size:12px;">--</div>
               </div>
             </div>
@@ -1515,19 +1218,8 @@ OR
             
             <div class="report-recommendation-box" id="report-ai-rec"></div>
 
-            <div class="mobile-only-toggle" style="display: none;">
-              <div class="mobile-segmented-control">
-                <div class="segment-btn active" data-mode="simple">Simple Report</div>
-                <div class="segment-btn" data-mode="expert">Expert Report</div>
-              </div>
-              <p class="mobile-mode-desc">Includes plain-language safety scores, general flood risks, and basic terrain summaries perfect for buyers.</p>
-            </div>
-
             <button class="btn btn-primary" id="btn-download-pdf" style="width:100%; justify-content:center; margin-bottom: 10px;">
-              <i class="fa-solid fa-file-pdf"></i> Export Full Analysis (PDF)
-            </button>
-            <button class="btn btn-secondary mobile-only-item" id="btn-save-assets" style="width:100%; justify-content:center; margin-bottom: 10px; display: none;">
-              SAVE TO MY ASSETS
+              <i class="fa-solid fa-file-pdf"></i> Export <span id="pdf-btn-mode-text">Expert</span> PDF
             </button>
 
             <div class="expert-only" id="section-action-items">
@@ -1547,35 +1239,19 @@ OR
                 <h4 class="form-label" style="margin-bottom:8px; font-size: 10px;">Geospatial Metrics</h4>
                 <div class="metrics-grid" style="margin-bottom: 16px;">
                   <div class="metric-card">
-                    <div class="metric-header">
-                      <i class="fa-solid fa-mountain desktop-only-icon"></i>
-                      <i class="mobile-only-icon" data-lucide="mountain" style="display: none;"></i>
-                      Elevation
-                    </div>
+                    <div class="metric-header"><i class="fa-solid fa-mountain"></i> Elevation</div>
                     <div class="metric-value" id="metric-elev">-- m</div>
                   </div>
                   <div class="metric-card">
-                    <div class="metric-header">
-                      <i class="fa-solid fa-arrow-trend-up desktop-only-icon"></i>
-                      <i class="mobile-only-icon" data-lucide="trending-up" style="display: none;"></i>
-                      Slope
-                    </div>
+                    <div class="metric-header"><i class="fa-solid fa-arrow-trend-up"></i> Slope</div>
                     <div class="metric-value" id="metric-slope">--%</div>
                   </div>
                   <div class="metric-card">
-                    <div class="metric-header">
-                      <i class="fa-solid fa-water desktop-only-icon"></i>
-                      <i class="mobile-only-icon" data-lucide="droplet" style="display: none;"></i>
-                      Flood Proximity
-                    </div>
+                    <div class="metric-header"><i class="fa-solid fa-water"></i> Flood Proximity</div>
                     <div class="metric-value" id="metric-flood-risk" style="font-size:12px;">--</div>
                   </div>
                   <div class="metric-card">
-                    <div class="metric-header">
-                      <i class="fa-solid fa-chart-line desktop-only-icon"></i>
-                      <i class="mobile-only-icon" data-lucide="trending-up" style="display: none;"></i>
-                      Growth
-                    </div>
+                    <div class="metric-header"><i class="fa-solid fa-chart-line"></i> Growth</div>
                     <div class="metric-value" id="metric-growth" style="font-size:12px;">--</div>
                   </div>
                 </div>
@@ -1707,96 +1383,6 @@ OR
 
   <script>
     const API_BASE = '';
-
-    function attemptAutoFixSelfIntersection() {
-      const textarea = document.getElementById('input-coords');
-      if (!textarea) return;
-      const rawText = textarea.value;
-      const lines = rawText.split('\n');
-      
-      const parsedPoints = [];
-      const headerLines = [];
-      
-      for (let line of lines) {
-        const trimmed = line.trim();
-        if (!trimmed) continue;
-        
-        // Skip headers or datum lines
-        if (trimmed.toUpperCase().includes('MINNA') || trimmed.toUpperCase().includes('WGS84') || trimmed.toUpperCase().includes('ZONE')) {
-          headerLines.push(trimmed);
-          continue;
-        }
-        
-        // Match all numbers including decimals
-        const numMatches = trimmed.match(/-?\d+(?:\.\d+)?/g);
-        if (numMatches && numMatches.length >= 2) {
-          // Assume the last two numbers are the coordinates
-          const y = parseFloat(numMatches[numMatches.length - 1]);
-          const x = parseFloat(numMatches[numMatches.length - 2]);
-          
-          // The label is everything before the first coordinate number
-          const firstNumIdx = trimmed.indexOf(numMatches[numMatches.length - 2]);
-          const label = trimmed.substring(0, firstNumIdx).trim() || `S${parsedPoints.length + 1}`;
-          
-          parsedPoints.push({ label, x, y, originalLine: trimmed });
-        } else {
-          headerLines.push(trimmed);
-        }
-      }
-      
-      if (parsedPoints.length < 3) {
-        alert("Need at least 3 valid coordinate lines to sort.");
-        return;
-      }
-      
-      // Remove closing duplicate if it exists at the end
-      let hasClosingDup = false;
-      const first = parsedPoints[0];
-      const last = parsedPoints[parsedPoints.length - 1];
-      if (Math.abs(first.x - last.x) < 0.01 && Math.abs(first.y - last.y) < 0.01) {
-        parsedPoints.pop();
-        hasClosingDup = true;
-      }
-      
-      // Compute centroid
-      let sumX = 0, sumY = 0;
-      parsedPoints.forEach(p => { sumX += p.x; sumY += p.y; });
-      const centerX = sumX / parsedPoints.length;
-      const centerY = sumY / parsedPoints.length;
-      
-      // Compute angles and sort clockwise
-      parsedPoints.forEach(p => {
-        p.angle = Math.atan2(p.y - centerY, p.x - centerX);
-      });
-      
-      // Sort by angle ascending
-      parsedPoints.sort((a, b) => a.angle - b.angle);
-      
-      // Reconstruct the text
-      let sortedText = "";
-      if (headerLines.length > 0) {
-        sortedText += headerLines.join('\n') + '\n\n';
-      }
-      
-      // Write the sorted coordinate lines
-      parsedPoints.forEach(p => {
-        sortedText += `${p.originalLine}\n`;
-      });
-      
-      // Re-append the closing duplicate if there was one
-      if (hasClosingDup) {
-        sortedText += `${parsedPoints[0].originalLine}\n`;
-      }
-      
-      textarea.value = sortedText.trim() + '\n';
-      
-      // Flash textarea background to alert user
-      const originalBg = textarea.style.backgroundColor;
-      textarea.style.backgroundColor = 'rgba(59, 130, 246, 0.2)';
-      setTimeout(() => {
-        textarea.style.backgroundColor = originalBg;
-      }, 500);
-    }
     
     // Direct anchor-based download trigger to ensure browsers honor filenames and extensions
     function downloadFile(url, filename) {
@@ -1829,7 +1415,6 @@ OR
         });
     }
 
-    let welcomeMapInstance = null;
     let gateMapInstance = null;
     let reportMapInstance = null;
     let currentRunId = null;
@@ -1872,7 +1457,7 @@ OR
     }
 
     // Initialize map with polygon
-    function initMap(mapId, coordinates, centroid, zoom = 15, hasSelfIntersection = false) {
+    function initMap(mapId, coordinates, centroid, zoom = 15) {
       // Clean previous map instance
       if (mapId === 'gate-map' && gateMapInstance) {
         gateMapInstance.remove();
@@ -1904,20 +1489,12 @@ OR
       if (coordinates && coordinates.length > 0) {
         const parsed = parseCoords(coordinates);
         const polygonCoords = parsed.map(c => [c.lat, c.lng]);
-        if (hasSelfIntersection) {
-          boundaryLayer = L.polyline(polygonCoords, {
-            color: '#F59E0B', // High-visibility amber
-            dashArray: '5, 5',
-            weight: 3
-          });
-        } else {
-          boundaryLayer = L.polygon(polygonCoords, {
-            color: '#DC2626', // High-visibility Red Boundary matching static map / PDF style
-            fillColor: '#DC2626',
-            fillOpacity: 0.12,
-            weight: 3
-          });
-        }
+        boundaryLayer = L.polygon(polygonCoords, {
+          color: '#DC2626', // High-visibility Red Boundary matching static map / PDF style
+          fillColor: '#DC2626',
+          fillOpacity: 0.12,
+          weight: 3
+        });
       } else {
         // Hydration hook: check and restore active parcel layers on map re-load
         const storedParcel = localStorage.getItem('landiq_active_boundary');
@@ -2002,7 +1579,6 @@ OR
       });
       // Invalidate leaflet size if view switched
       setTimeout(() => {
-        if (viewId === 'view-welcome' && welcomeMapInstance) welcomeMapInstance.invalidateSize();
         if (viewId === 'view-gate' && gateMapInstance) gateMapInstance.invalidateSize();
         if (viewId === 'view-report' && reportMapInstance) reportMapInstance.invalidateSize();
       }, 100);
@@ -2107,11 +1683,6 @@ OR
           addCheck('Closure Error', cad.polygon?.closure_error_m <= 0.5, cad.polygon?.closure_error_m.toFixed(2) + 'm');
           addCheck('Beacon Count', cad.polygon?.vertex_count >= 3, cad.polygon?.vertex_count + ' beacons');
           
-          const selfIntMsg = cad.polygon?.has_self_intersection 
-             ? `Intersecting <a href="#" onclick="attemptAutoFixSelfIntersection(); return false;" style="color:#60a5fa; text-decoration:underline; margin-left:6px;">[Attempt Auto-Fix]</a>`
-             : 'Passed';
-          addCheck('No Self-Intersection', !cad.polygon?.has_self_intersection, selfIntMsg);
-          
           // Area Verification
           const stateGuess = cad.plan_details?.location || 'Lagos';
           document.getElementById('cad-area-stated').innerHTML = cad.polygon?.stated_area_sqm ? formatArea(cad.polygon.stated_area_sqm / 10000, stateGuess) : 'Not stated';
@@ -2198,7 +1769,7 @@ OR
               
               showView('view-gate');
               const rawCoords = cad.polygon.wgs84_coordinates.map(c => ({lat: c[0], lng: c[1]}));
-              initMap('gate-map', rawCoords, centroid, 15, cad.polygon?.has_self_intersection);
+              initMap('gate-map', rawCoords, centroid);
           } else {
               showView('view-gate');
               document.getElementById('gate-map').innerHTML = '<div style="padding:40px;text-align:center;color:var(--text-muted);"><i class="fa-solid fa-map" style="font-size:32px;"></i><br><br>Map unavailable until polygon is closed.<br>Check the ledger to add missing points.</div>';
@@ -2785,8 +2356,7 @@ OR
 
         // Render Leaflet Satellite Map
         showView('view-report');
-        const hasSelfInt = report.coordinate_validation?.warnings?.some(w => w.toLowerCase().includes("self-intersection")) || false;
-        initMap('report-map', report.parcel_geometry.coordinates, report.parcel_geometry.centroid, 15, hasSelfInt);
+        initMap('report-map', report.parcel_geometry.coordinates, report.parcel_geometry.centroid);
 
         // Add Health Check box data
         if (report.parcel_geometry.health_check_stats) {
@@ -2951,9 +2521,6 @@ OR
       document.getElementById('file-name-display').innerText = '';
       currentRunId = null;
       localStorage.removeItem('landiq_active_boundary');
-      setTimeout(() => {
-        if (welcomeMapInstance) welcomeMapInstance.invalidateSize();
-      }, 150);
     };
     
     document.getElementById('btn-show-history').onclick = () => {
@@ -2961,116 +2528,8 @@ OR
       loadHistory();
     };
 
-    // Welcome Map Initialization
-    function initWelcomeMap() {
-      if (welcomeMapInstance) {
-        welcomeMapInstance.remove();
-        welcomeMapInstance = null;
-      }
-      
-      const center = [9.0820, 8.6753];
-      const map = L.map('welcome-map', {
-        zoomControl: true,
-        attributionControl: false
-      }).setView(center, 6);
-      
-      const osmTiles = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        maxZoom: 19,
-        attribution: '© OpenStreetMap contributors'
-      });
-
-      const satelliteTiles = L.tileLayer('https://{s}.google.com/vt/lyrs=s,h&x={x}&y={y}&z={z}', {
-        maxZoom: 24,
-        maxNativeZoom: 20,
-        subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
-        attribution: '© Google Hybrid / OSM'
-      });
-
-      satelliteTiles.addTo(map);
-      welcomeMapInstance = map;
-
-      // Welcome map controls bindings
-      document.getElementById('btn-welcome-sat').onclick = (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        map.removeLayer(osmTiles);
-        satelliteTiles.addTo(map);
-      };
-      document.getElementById('btn-welcome-osm').onclick = (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        map.removeLayer(satelliteTiles);
-        osmTiles.addTo(map);
-      };
-      
-      // Fit to Nigeria BBox: lon_min: 2.676932, lon_max: 14.680073, lat_min: 4.240594, lat_max: 13.885645
-      const nigeriaBBox = [[4.240594, 2.676932], [13.885645, 14.680073]];
-      map.fitBounds(nigeriaBBox, { padding: [10, 10], animate: false });
-      
-      // Dashed boundary polyline for the Nigeria bounding box
-      const bboxCoords = [
-        [4.240594, 2.676932],
-        [4.240594, 14.680073],
-        [13.885645, 14.680073],
-        [13.885645, 2.676932],
-        [4.240594, 2.676932]
-      ];
-      L.polyline(bboxCoords, {
-        color: '#4285F4',
-        dashArray: '5, 5',
-        weight: 2
-      }).addTo(map);
-
-      setTimeout(() => {
-        map.invalidateSize({ animate: false });
-      }, 150);
-    }
-
-    // Hamburger Drawer Logic
-    const drawer = document.getElementById('hamburger-drawer');
-    const btnHamburger = document.getElementById('btn-hamburger');
-    const btnCloseDrawer = document.getElementById('close-drawer-btn');
-    
-    if (btnHamburger) {
-      btnHamburger.addEventListener('click', (e) => {
-        e.preventDefault();
-        drawer.classList.add('active');
-      });
-    }
-    if (btnCloseDrawer) {
-      btnCloseDrawer.addEventListener('click', (e) => {
-        e.preventDefault();
-        drawer.classList.remove('active');
-      });
-    }
-    drawer.addEventListener('click', (e) => {
-      if (e.target === drawer) {
-        drawer.classList.remove('active');
-      }
-    });
-
-    document.getElementById('drawer-btn-profile').onclick = (e) => {
-      e.preventDefault();
-      alert("Profile info:\nName: Anonymous Buyer\nRole: Everyday Land Buyer\nEmail: buyer@landiq.ng");
-      drawer.classList.remove('active');
-    };
-    
-    document.getElementById('drawer-btn-settings').onclick = (e) => {
-      e.preventDefault();
-      drawer.classList.remove('active');
-      const sBtn = document.getElementById('btn-settings');
-      if (sBtn) sBtn.click();
-    };
-
-    document.getElementById('drawer-btn-policy').onclick = (e) => {
-      e.preventDefault();
-      drawer.classList.remove('active');
-      alert("LandIQ Policy & Disclaimers:\n\n1. This platform uses mock registries for educational simulation.\n2. User data is saved in local browser storage only.\n3. Digital raster fallback layers are 100% simulated.");
-    };
-
     // Initial load
     loadHistory();
-    initWelcomeMap();
   </script>
 
   <div id="print-adjustment-modal" class="print-modal-backdrop hidden">
@@ -3336,109 +2795,6 @@ OR
       // Initial trigger
       modeToggle.dispatchEvent(new Event('change'));
     }
-
-    // ==========================================
-    // THEME TOGGLE
-    // ==========================================
-    function toggleTheme() {
-      const html = document.documentElement;
-      const icon = document.getElementById('theme-icon');
-      if (html.classList.contains('theme-light')) {
-        html.classList.remove('theme-light');
-        localStorage.setItem('landiq-theme', 'dark');
-        if (icon) { icon.className = 'fa-solid fa-sun'; }
-      } else {
-        html.classList.add('theme-light');
-        localStorage.setItem('landiq-theme', 'light');
-        if (icon) { icon.className = 'fa-solid fa-moon'; }
-      }
-    }
-
-    // Sync the theme icon on load
-    (function syncThemeIcon() {
-      const icon = document.getElementById('theme-icon');
-      if (!icon) return;
-      if (document.documentElement.classList.contains('theme-light')) {
-        icon.className = 'fa-solid fa-moon';
-      } else {
-        icon.className = 'fa-solid fa-sun';
-      }
-    })();
-  </script>
-
-  <!-- Isolated Mobile Navigation Tabs Bar -->
-  <div class="mobile-tabs" id="mobile-nav-bar">
-    <button class="mobile-tab-btn" data-tab="map">
-      <i data-lucide="map"></i>
-      <span>Map</span>
-    </button>
-    <button class="mobile-tab-btn" data-tab="analyse">
-      <i data-lucide="compass"></i>
-      <span>Analyse</span>
-    </button>
-    <button class="mobile-tab-btn active" data-tab="report">
-      <i data-lucide="file-text"></i>
-      <span>Report</span>
-    </button>
-    <button class="mobile-tab-btn" data-tab="history">
-      <i data-lucide="history"></i>
-      <span>History</span>
-    </button>
-  </div>
-
-  <script src="/static/mobile-nav.js"></script>
-  <script>
-    document.addEventListener('DOMContentLoaded', () => {
-      const mobileVisProv = document.getElementById('mobile-setting-vision-provider');
-      const mobileVisKey = document.getElementById('mobile-setting-vision-key');
-      const mobileLlmProv = document.getElementById('mobile-setting-llm-provider');
-      const mobileLlmKey = document.getElementById('mobile-setting-llm-key');
-      const btnSaveMobile = document.getElementById('btn-save-mobile-settings');
-
-      function loadMobileSettings() {
-        if (mobileVisProv) mobileVisProv.value = localStorage.getItem('landiq_vision_provider') || 'google';
-        if (mobileVisKey) mobileVisKey.value = localStorage.getItem('landiq_vision_key') || '';
-        if (mobileLlmProv) mobileLlmProv.value = localStorage.getItem('landiq_llm_provider') || 'google';
-        if (mobileLlmKey) mobileLlmKey.value = localStorage.getItem('landiq_llm_key') || '';
-      }
-
-      if (btnSaveMobile) {
-        btnSaveMobile.addEventListener('click', () => {
-          localStorage.setItem('landiq_vision_provider', mobileVisProv.value);
-          localStorage.setItem('landiq_vision_key', mobileVisKey.value);
-          localStorage.setItem('landiq_llm_provider', mobileLlmProv.value);
-          localStorage.setItem('landiq_llm_key', mobileLlmKey.value);
-          
-          // Also sync back to desktop elements if present
-          const elVisProv = document.getElementById('setting-vision-provider');
-          const elVisKey = document.getElementById('setting-vision-key');
-          const elLlmProv = document.getElementById('setting-llm-provider');
-          const elLlmKey = document.getElementById('setting-llm-key');
-          if (elVisProv) elVisProv.value = mobileVisProv.value;
-          if (elVisKey) elVisKey.value = mobileVisKey.value;
-          if (elLlmProv) elLlmProv.value = mobileLlmProv.value;
-          if (elLlmKey) elLlmKey.value = mobileLlmKey.value;
-
-          if (window.showToast) {
-            window.showToast("API Keys saved successfully");
-          } else {
-            alert("API Keys saved successfully");
-          }
-          
-          const settingsModal = document.getElementById('custom-settings-modal');
-          if (settingsModal) settingsModal.style.display = 'none';
-        });
-      }
-
-      // Load initial values
-      loadMobileSettings();
-
-      // Re-load settings when the custom settings modal opens
-      const settingsDrawerItem = document.getElementById('drawer-item-settings');
-      if (settingsDrawerItem) {
-        settingsDrawerItem.addEventListener('click', loadMobileSettings);
-      }
-    });
   </script>
 </body>
 </html>

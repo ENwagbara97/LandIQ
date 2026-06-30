@@ -237,10 +237,53 @@ def detect_crs(
     # Northing: 400,000–1,600,000 for Nigeria latitude range
     # Easting: 100,000–900,000 for UTM Zones 31–33
     if (400_000 <= a <= 1_600_000 and 100_000 <= b <= 900_000):
-        # 1. COMPREHENSIVE NATIONWIDE STATE-TO-ZONE MAPPER
-        zone_31_indicators = ["/LA/", "/OG/", "/OY/", "/OS/", "/EK/", "/ON/", "/ED/"]
-        zone_33_indicators = ["/BO/", "/AD/", "/TA/", "/YO/", "/GO/"]
-        zone_32_indicators = ["/AK/", "/CR/", "/AB/", "/IM/", "/RI/", "/AN/", "/KA/", "/KD/"]
+        # 1. COMPREHENSIVE NATIONWIDE STATE-TO-ZONE MAPPER (All 36 States + FCT)
+        # Zone 31N (West): longitudes 0°E to 6°E
+        zone_31_indicators = [
+            "/LA/",          # Lagos
+            "/OG/",          # Ogun
+            "/OY/",          # Oyo
+            "/OS/",          # Osun
+            "/EK/",          # Ekiti
+            "/ON/", "/OD/",  # Ondo
+            "/ED/",          # Edo
+            "/KB/", "/KE/",  # Kebbi
+            "/KW/",          # Kwara
+            "/NG/", "/NI/",  # Niger
+            "/SO/", "/SK/",  # Sokoto
+        ]
+        # Zone 33N (East): longitudes 12°E to 18°E
+        zone_33_indicators = [
+            "/BO/", "/BR/",  # Borno
+            "/AD/",          # Adamawa
+            "/TA/",          # Taraba
+            "/YO/", "/YB/",  # Yobe
+            "/GO/", "/GM/",  # Gombe
+        ]
+        # Zone 32N (Central): longitudes 6°E to 12°E
+        zone_32_indicators = [
+            "/AK/",          # Akwa Ibom
+            "/CR/",          # Cross River
+            "/AB/",          # Abia
+            "/IM/",          # Imo
+            "/RI/", "/RV/",  # Rivers
+            "/AN/",          # Anambra
+            "/KA/", "/KT/",  # Katsina
+            "/KD/",          # Kaduna
+            "/BA/", "/BH/",  # Bauchi
+            "/BY/", "/BS/",  # Bayelsa
+            "/BN/", "/BE/",  # Benue
+            "/DT/", "/DL/",  # Delta
+            "/EB/",          # Ebonyi
+            "/EN/",          # Enugu
+            "/FCT/",         # FCT (Abuja)
+            "/JG/", "/JI/",  # Jigawa
+            "/KN/",          # Kano
+            "/KG/", "/KO/",  # Kogi
+            "/NS/", "/NW/",  # Nasarawa
+            "/PL/",          # Plateau
+            "/ZF/", "/ZA/",  # Zamfara
+        ]
 
         if any(marker in combined_text.upper() for marker in zone_33_indicators):
             return CRSName.UTM_33N, 85.0, "State Prefix Detection"

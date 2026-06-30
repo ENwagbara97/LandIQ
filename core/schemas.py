@@ -52,6 +52,7 @@ class GrowthPotential(str, Enum):
 
 class TrafficLight(str, Enum):
     GREEN = "GREEN"
+    AMBER = "AMBER"
     RED   = "RED"
 
 
