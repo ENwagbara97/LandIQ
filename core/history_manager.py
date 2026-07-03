@@ -46,6 +46,39 @@ def _conn() -> sqlite3.Connection:
 def _iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
+def clear_history():
+    """Wipes the reports, sessions, and data sources tables."""
+    with _conn() as c:
+        c.execute("DELETE FROM report_data_sources")
+        c.execute("DELETE FROM reports")
+        c.execute("DELETE FROM sessions")
+        c.commit()
+
+def get_admin_stats() -> dict:
+    """Returns total reports, total users, and recent reports list."""
+    with _conn() as c:
+        reports = c.execute("SELECT COUNT(*) FROM reports").fetchone()[0]
+        failed = c.execute("SELECT COUNT(*) FROM sessions WHERE status = 'failed'").fetchone()[0]
+        users = c.execute("SELECT COUNT(DISTINCT user_id) FROM sessions").fetchone()[0]
+        
+        recent_rows = c.execute(
+            """
+            SELECT report_id as id, parcel_lga || ', ' || parcel_state as parcel, 
+                   user_id as user, overall_risk_score as score, 'completed' as status, generated_at as time 
+            FROM reports 
+            ORDER BY generated_at DESC LIMIT 10
+            """
+        ).fetchall()
+        
+        recent = [dict(r) for r in recent_rows]
+
+        return {
+            "total_reports": reports,
+            "failed_reports": failed,
+            "total_users": users,
+            "recent_reports": recent
+        }
+
 
 # =============================================================================
 # SAVE REPORT

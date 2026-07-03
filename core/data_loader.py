@@ -159,15 +159,56 @@ def get_srtm_tile_path(lat: float, lng: float) -> Path:
 
 
 def load_elevation(lat: float, lng: float) -> float | None:
-    """Load elevation in metres at a WGS84 point from the SRTM DEM."""
+    """Load elevation in metres at a WGS84 point from the SRTM DEM or API fallback."""
     tile = get_srtm_tile_path(lat, lng)
-    return sample_raster_at_point(tile, lat, lng)
+    val = sample_raster_at_point(tile, lat, lng)
+    if val is not None:
+        return val
+    # API Fallback
+    elev, _ = _fallback_open_elevation_and_slope(lat, lng)
+    return elev
 
 
 def load_slope(lat: float, lng: float) -> float | None:
-    """Compute slope (%) at a WGS84 point from the SRTM DEM."""
+    """Compute slope (%) at a WGS84 point from the SRTM DEM or API fallback."""
     tile = get_srtm_tile_path(lat, lng)
-    return compute_slope_from_dem(tile, lat, lng)
+    val = compute_slope_from_dem(tile, lat, lng)
+    if val is not None:
+        return val
+    # API Fallback
+    _, slope = _fallback_open_elevation_and_slope(lat, lng)
+    return slope
+
+def _fallback_open_elevation_and_slope(lat: float, lng: float) -> tuple[float | None, float | None]:
+    """Fetch elevation and compute slope via Open-Elevation API."""
+    import requests
+    import math
+    deg_step = 90.0 / 111320.0
+    locations = [
+        f"{lat},{lng}",
+        f"{lat+deg_step},{lng}",
+        f"{lat-deg_step},{lng}",
+        f"{lat},{lng+deg_step}",
+        f"{lat},{lng-deg_step}",
+    ]
+    try:
+        url = f"https://api.open-elevation.com/api/v1/lookup?locations={'|'.join(locations)}"
+        resp = requests.get(url, timeout=5)
+        if resp.status_code == 200:
+            res = resp.json().get("results", [])
+            if not res:
+                return None, None
+            center_elev = res[0]["elevation"]
+            elevs = [r["elevation"] for r in res]
+            
+            # Simple slope estimate (max rise over 90m run)
+            max_rise = max(abs(e - center_elev) for e in elevs[1:])
+            slope_pct = round((max_rise / 90.0) * 100, 2)
+            
+            return center_elev, slope_pct
+    except Exception as e:
+        logger.warning(f"[data_loader] Open-Elevation API fallback failed: {e}")
+    return None, None
 
 
 # =============================================================================
@@ -190,9 +231,13 @@ def load_ndwi(lat: float, lng: float) -> tuple[float | None, bool]:
     """
     zone = _find_sentinel_zone(lat, lng)
     if zone is None:
-        return None, True
+        ndwi, _ = _fallback_gee_ndvi_ndwi(lat, lng)
+        return ndwi, True
     path = ROOT_DIR / zone["ndwi_path"]
     val = sample_raster_at_point(path, lat, lng)
+    if val is None:
+        ndwi, _ = _fallback_gee_ndvi_ndwi(lat, lng)
+        return ndwi, False
     return val, False
 
 
@@ -200,9 +245,13 @@ def load_ndvi(lat: float, lng: float) -> tuple[float | None, bool]:
     """Load NDVI at a point from the nearest pre-clipped Sentinel GeoTIFF."""
     zone = _find_sentinel_zone(lat, lng)
     if zone is None:
-        return None, True
+        _, ndvi = _fallback_gee_ndvi_ndwi(lat, lng)
+        return ndvi, True
     path = ROOT_DIR / zone["ndvi_path"]
     val = sample_raster_at_point(path, lat, lng)
+    if val is None:
+        _, ndvi = _fallback_gee_ndvi_ndwi(lat, lng)
+        return ndvi, False
     return val, False
 
 
@@ -249,7 +298,9 @@ def nearest_river_distance_and_order(
 
         gdf = load_rivers_geodataframe(state)
         if gdf is None or gdf.empty:
-            return None, None
+            # API Fallback
+            dist, _ = _fallback_overpass_nearest_feature(lat, lng, 'waterway')
+            return dist, None
 
         point = gpd.GeoDataFrame(
             {"geometry": [Point(lng, lat)]}, crs="EPSG:4326"
@@ -348,7 +399,9 @@ def nearest_road_distance(
 
         gdf = load_osm_roads(state)
         if gdf is None or gdf.empty:
-            return None
+            # API Fallback
+            dist, _ = _fallback_overpass_nearest_feature(lat, lng, 'highway')
+            return dist
 
         point = gpd.GeoDataFrame({"geometry": [Point(lng, lat)]}, crs="EPSG:4326")
         utm_epsg = _utm_epsg_for_lng(lng)
@@ -372,7 +425,8 @@ def building_density_in_buffer(
 
         gdf = load_osm_buildings(state)
         if gdf is None or gdf.empty:
-            return None
+            # API Fallback
+            return _fallback_overpass_building_density(lat, lng, buffer_m)
 
         utm_epsg = _utm_epsg_for_lng(lng)
         point_proj = Point(lng, lat)
@@ -401,7 +455,7 @@ def land_use_conflicts_at_point(
 
         gdf = load_osm_landuse(state)
         if gdf is None or gdf.empty:
-            return []
+            return _fallback_overpass_landuse(lat, lng, radius_m)
 
         utm_epsg = _utm_epsg_for_lng(lng)
         point_gdf = gpd.GeoDataFrame({"geometry": [Point(lng, lat)]}, crs="EPSG:4326")
@@ -461,3 +515,174 @@ def data_availability_report() -> dict:
         key: {"count": len(files), "files": [f.name for f in files]}
         for key, files in checks.items()
     }
+
+# =============================================================================
+# OVERPASS API FALLBACKS
+# =============================================================================
+
+def _haversine_m(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
+    import math
+    R = 6371000.0
+    phi1, phi2 = math.radians(lat1), math.radians(lat2)
+    dphi = math.radians(lat2 - lat1)
+    dlam = math.radians(lng2 - lng1)
+    a = math.sin(dphi / 2) ** 2 + math.cos(phi1) * math.cos(phi2) * math.sin(dlam / 2) ** 2
+    return R * 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+
+def _fallback_overpass_nearest_feature(lat: float, lng: float, tag_key: str, search_radius_m: int = 5000) -> tuple[float | None, dict | None]:
+    """Queries Overpass API for nearest feature matching tag_key."""
+    import requests
+    query = f'''
+    [out:json];
+    way(around:{search_radius_m},{lat},{lng})["{tag_key}"];
+    out center;
+    '''
+    try:
+        resp = requests.post("http://overpass-api.de/api/interpreter", data={"data": query}, timeout=10)
+        if resp.status_code == 200:
+            data = resp.json()
+            min_dist = float('inf')
+            best_element = None
+            for element in data.get("elements", []):
+                if "center" in element:
+                    d = _haversine_m(lat, lng, element["center"]["lat"], element["center"]["lon"])
+                    if d < min_dist:
+                        min_dist = d
+                        best_element = element
+            if best_element:
+                return round(min_dist, 1), best_element
+    except Exception as e:
+        logger.warning(f"[data_loader] Overpass API fallback failed for {tag_key}: {e}")
+    return None, None
+
+def _fallback_overpass_building_density(lat: float, lng: float, radius_m: float) -> int | None:
+    """Queries Overpass API for count of buildings in radius."""
+    import requests
+    query = f'''
+    [out:json];
+    way(around:{radius_m},{lat},{lng})["building"];
+    out count;
+    '''
+    try:
+        resp = requests.post("http://overpass-api.de/api/interpreter", data={"data": query}, timeout=10)
+        if resp.status_code == 200:
+            data = resp.json()
+            if "elements" in data and len(data["elements"]) > 0:
+                tags = data["elements"][0].get("tags", {})
+                return int(tags.get("ways", 0)) + int(tags.get("relations", 0))
+    except Exception as e:
+        logger.warning(f"[data_loader] Overpass API fallback failed for buildings: {e}")
+    return None
+
+def _fallback_overpass_landuse(lat: float, lng: float, radius_m: float) -> list[str]:
+    """Queries Overpass API for overlapping landuse tags."""
+    import requests
+    query = f'''
+    [out:json];
+    way(around:{radius_m},{lat},{lng})["landuse"];
+    out tags;
+    '''
+    try:
+        resp = requests.post("http://overpass-api.de/api/interpreter", data={"data": query}, timeout=10)
+        if resp.status_code == 200:
+            tags_found = set()
+            for el in resp.json().get("elements", []):
+                t = el.get("tags", {}).get("landuse")
+                if t:
+                    tags_found.add(t)
+            return list(tags_found)
+    except Exception as e:
+        logger.warning(f"[data_loader] Overpass API fallback failed for landuse: {e}")
+    return []
+
+# =============================================================================
+# GOOGLE EARTH ENGINE (GEE) API FALLBACKS
+# =============================================================================
+
+def _fallback_gee_ndvi_ndwi(lat: float, lng: float) -> tuple[float | None, float | None]:
+    """
+    Fetches NDVI and NDWI from Google Earth Engine's Sentinel-2 collection.
+    Requires earthengine-api to be installed and authenticated on the server.
+    Returns (ndwi, ndvi).
+    """
+    try:
+        import ee
+        # Initialize without prompting. Server must be pre-authenticated.
+        if not ee.data._credentials:
+            ee.Initialize()
+        
+        point = ee.Geometry.Point([lng, lat])
+        
+        # Get the least cloudy Sentinel-2 image in the last 6 months
+        collection = (ee.ImageCollection("COPERNICUS/S2_SR_HARMONIZED")
+                      .filterBounds(point)
+                      .filterDate(ee.Date(ee.Date.now()).advance(-6, 'month'), ee.Date.now())
+                      .sort("CLOUDY_PIXEL_PERCENTAGE")
+                      .first())
+        
+        if not collection:
+            return None, None
+            
+        # Calculate NDVI: (NIR - Red) / (NIR + Red) -> (B8 - B4) / (B8 + B4)
+        ndvi = collection.normalizedDifference(['B8', 'B4'])
+        # Calculate NDWI: (Green - NIR) / (Green + NIR) -> (B3 - B8) / (B3 + B8)
+        ndwi = collection.normalizedDifference(['B3', 'B8'])
+        
+        # Sample the point
+        ndvi_val = ndvi.reduceRegion(reducer=ee.Reducer.mean(), geometry=point, scale=10).get('nd').getInfo()
+        ndwi_val = ndwi.reduceRegion(reducer=ee.Reducer.mean(), geometry=point, scale=10).get('nd').getInfo()
+        
+        return (
+            round(float(ndwi_val), 2) if ndwi_val is not None else None,
+            round(float(ndvi_val), 2) if ndvi_val is not None else None
+        )
+        
+    except ImportError:
+        logger.warning("[data_loader] earthengine-api package not installed. Skipping GEE fallback.")
+    except Exception as e:
+        logger.warning(f"[data_loader] GEE fallback failed (ensure server is authenticated): {e}")
+    return None, None
+
+# =============================================================================
+# ISRIC SOILGRIDS REST API
+# =============================================================================
+
+def fetch_isric_soil_properties(lat: float, lng: float) -> dict | None:
+    """
+    Queries the public ISRIC SoilGrids REST API for soil properties at 0-5cm depth.
+    Returns a dict with clay, sand, and bulk_density (bdod) values.
+    """
+    import requests
+    url = f"https://rest.isric.org/soilgrids/v2.0/properties/query"
+    params = {
+        "lon": lng,
+        "lat": lat,
+        "property": ["clay", "sand", "bdod"],
+        "depth": "0-5cm",
+        "value": "mean"
+    }
+    try:
+        resp = requests.get(url, params=params, timeout=10)
+        if resp.status_code == 200:
+            data = resp.json()
+            layers = data.get("properties", {}).get("layers", [])
+            result = {}
+            for layer in layers:
+                name = layer.get("name")
+                depths = layer.get("depths", [])
+                if depths:
+                    # Convert to actual values (ISRIC stores them scaled)
+                    val = depths[0].get("values", {}).get("mean")
+                    if val is not None:
+                        if name == "clay":
+                            result["clay_pct"] = val / 10.0  # scaled by 10
+                        elif name == "sand":
+                            result["sand_pct"] = val / 10.0  # scaled by 10
+                        elif name == "bdod":
+                            result["bulk_density"] = val / 100.0  # scaled by 100 (cg/cm3 -> g/cm3)
+            
+            if result:
+                return result
+    except Exception as e:
+        logger.warning(f"[data_loader] ISRIC SoilGrids API failed: {e}")
+    return None

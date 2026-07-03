@@ -575,7 +575,7 @@ def run(
     coord_output: CoordExtractOutput,
     gis_output: GISAnalysisOutput,
     feed_schema: NormalisedFeedSchema,
-    persona_mode: str = "EVERYDAY_BUYER",
+    persona_mode: str = "LAND_BUYER",
 ) -> RiskAssessOutput | MCPErrorResponse:
     """
     Main entrypoint for the RiskAssess agent.

@@ -161,6 +161,7 @@ def _execute_pipeline_task(
 async def upload_coordinates(
     file: Optional[UploadFile] = File(None),
     raw_text: Optional[str] = Form(None),
+    cogo_payload: Optional[str] = Form(None),
     stated_area_ha: Optional[float] = Form(None),
     coordinate_hint: Optional[str] = Form(None),
     datum_label: Optional[str] = Form(None),
@@ -174,7 +175,7 @@ async def upload_coordinates(
     Initializes a session and runs Coordinate Extraction.
     """
     try:
-        logger.info(f"[server] /api/upload received file={file.filename if file else None} raw_text={raw_text[:30] if raw_text else None}")
+        logger.info(f"[server] /api/upload received file={file.filename if file else None} raw_text={raw_text[:30] if raw_text else None} cogo_payload={cogo_payload[:100] if cogo_payload else None}")
 
         file_bytes = None
         filename = None
@@ -255,6 +256,7 @@ async def upload_coordinates(
                 stated_area_ha=stated_area_ha,
                 property_owner="Unknown",
                 location_context="Not specified",
+                cogo_payload=cogo_payload,
             )
 
             # Stop retrying if result is not an error or is a non-sanity error
@@ -303,7 +305,8 @@ async def upload_coordinates(
                     stated_area_ha=(cad_result.polygon.stated_area_sqm / 10000.0) if cad_result.polygon.stated_area_sqm else None,
                     area_discrepancy_pct=cad_result.polygon.area_discrepancy_pct,
                     discovery_method=cad_result.extraction_meta.extraction_method,
-                    warnings=[]
+                    warnings=[],
+                    beacons=cad_result.beacons
                 )
 
                 try: pm = PersonaMode(persona_mode)

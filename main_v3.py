@@ -168,13 +168,14 @@ async def upload_coordinates(
     user_id: str = Form("anonymous"),
     vision_provider: Optional[str] = Form(None),
     vision_api_key: Optional[str] = Form(None),
+    cogo_payload: Optional[str] = Form(None),
 ):
     """
     Accept coordinates text, manual fields, or an uploaded survey plan.
     Initializes a session and runs Coordinate Extraction.
     """
     try:
-        logger.info(f"[server] /api/upload received file={file.filename if file else None} raw_text={raw_text[:30] if raw_text else None}")
+        logger.info(f"[server] /api/upload received file={file.filename if file else None} raw_text={raw_text[:30] if raw_text else None} cogo_payload={cogo_payload[:100] if cogo_payload else None}")
 
         file_bytes = None
         filename = None
@@ -255,6 +256,7 @@ async def upload_coordinates(
                 stated_area_ha=stated_area_ha,
                 property_owner="Unknown",
                 location_context="Not specified",
+                cogo_payload=cogo_payload,
             )
 
             # Stop retrying if result is not an error or is a non-sanity error
@@ -308,7 +310,8 @@ async def upload_coordinates(
                 stated_area_ha=(cad_result.polygon.stated_area_sqm / 10000.0) if cad_result.polygon.stated_area_sqm else None,
                 area_discrepancy_pct=cad_result.polygon.area_discrepancy_pct,
                 discovery_method=cad_result.extraction_meta.extraction_method,
-                warnings=[]
+                warnings=[],
+                beacons=cad_result.beacons
             )
 
             try: pm = PersonaMode(persona_mode)
@@ -739,6 +742,17 @@ async def get_report_history(
     )
     return history
 
+@app.delete("/api/history")
+async def clear_report_history():
+    """Clear all history (Admin only)."""
+    history_manager.clear_history()
+    return {"status": "ok"}
+
+@app.get("/api/admin/stats")
+async def get_admin_stats():
+    """Return live dashboard metrics."""
+    return history_manager.get_admin_stats()
+
 
 @app.get("/api/compare/{id_a}/{id_b}")
 async def compare_reports(id_a: str, id_b: str):
@@ -805,6 +819,20 @@ async def payment_webhook(payload: dict):
 
     return {"status": "ignored"}
 
+
+@app.get("/api/config/personas")
+async def get_personas():
+    """Return the available personas supported by the backend engine."""
+    return [
+        {"id": "EVERYDAY_BUYER", "label": "Land buyer", "desc": ""},
+        {"id": "SURVEYOR", "label": "Surveyor", "desc": ""},
+        {"id": "REALTOR", "label": "Realtor", "desc": ""},
+        {"id": "ARCHITECT", "label": "Architect", "desc": ""},
+        {"id": "DEVELOPER", "label": "Developer", "desc": ""},
+        {"id": "LEGAL_PRACTITIONER", "label": "Legal practitioner", "desc": ""},
+        {"id": "ESTATE_VALUER", "label": "Estate valuer", "desc": ""},
+        {"id": "OTHERS", "label": "Others", "desc": ""}
+    ]
 
 # =============================================================================
 # STATIC DASHBOARD ROUTING

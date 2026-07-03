@@ -1634,6 +1634,28 @@ def run(
 
     state, lga = reverse_geocode(centroid.lat, centroid.lng)
 
+    # Project WGS84 back to UTM to populate beacons list
+    from core.schemas import CadastralStationEntry
+    beacons_list = []
+    try:
+        from pyproj import Transformer
+        proj_epsg = f"EPSG:{metric_analysis_epsg}"
+        transformer = Transformer.from_crs("EPSG:4326", proj_epsg, always_xy=True)
+        for i, pt in enumerate(coord_pairs):
+            lat, lng = pt[0], pt[1]
+            easting, northing = transformer.transform(lng, lat)
+            beacons_list.append(CadastralStationEntry(
+                station_id=f"S{i+1}",
+                easting_utm=easting,
+                northing_utm=northing,
+                latitude_wgs84=lat,
+                longitude_wgs84=lng,
+                source="pasted_text" if not filename else "file_upload"
+            ))
+    except Exception as e:
+        import logging
+        logging.getLogger("landiq.coord_extract").warning(f"Could not project coordinates to UTM for beacons ledger: {e}")
+
     return CoordExtractOutput(
         run_id=run_id,
         coordinates=coord_pairs,
@@ -1654,4 +1676,5 @@ def run(
         warnings=warnings,
         crs_dialog_triggers=dialog_triggers,
         discovery_method=discovery_method,
+        beacons=beacons_list,
     )

@@ -533,13 +533,67 @@ def _run_track_a(stations: list[_Station]) -> tuple[list[_Station], str]:
 # § 7 · TRACK B — COGO TRAVERSE ENGINE
 # =============================================================================
 
+def parse_cogo_bearing(bearing_str: str) -> float:
+    """
+    Parses a bearing string and returns a normalised whole-circle azimuth (0-360).
+    Supports both:
+      - Azimuth: '045°30'00"' or '45 30 00' or '45.5'
+      - Quadrant: 'N45°30'00"E', 'S30°15'W', 'N 45 30 E'
+    """
+    b_str = bearing_str.strip().upper()
+    
+    # Check for Quadrant format using regex
+    import re
+    quadrant_match = re.match(r"^([NS])[\-\s]*(\d{1,3})[°\-\s]*(\d{0,2})['\-\s]*(\d{0,2})[\"\-\s]*([EW])$", b_str)
+    
+    if quadrant_match:
+        ns = quadrant_match.group(1)
+        deg = float(quadrant_match.group(2))
+        min_val = float(quadrant_match.group(3)) if quadrant_match.group(3) else 0.0
+        sec_val = float(quadrant_match.group(4)) if quadrant_match.group(4) else 0.0
+        
+        bearing_angle = deg + (min_val / 60.0) + (sec_val / 3600.0)
+        ew = quadrant_match.group(5)
+        
+        if ns == 'N' and ew == 'E':
+            azimuth = bearing_angle
+        elif ns == 'S' and ew == 'E':
+            azimuth = 180.0 - bearing_angle
+        elif ns == 'S' and ew == 'W':
+            azimuth = 180.0 + bearing_angle
+        elif ns == 'N' and ew == 'W':
+            azimuth = 360.0 - bearing_angle
+        else:
+            raise ValueError(f"Invalid quadrant bearing format: {bearing_str}")
+            
+    else:
+        # Assume Azimuth format (whole-circle)
+        # It could be '45.5' or '45 30 00' or '45°30'00"'
+        parts = re.split(r"[°'\"\-\s]+", b_str)
+        parts = [p for p in parts if p]
+        
+        if not parts:
+            raise ValueError(f"Empty or invalid bearing string: {bearing_str}")
+            
+        try:
+            deg = float(parts[0])
+            min_val = float(parts[1]) if len(parts) > 1 else 0.0
+            sec_val = float(parts[2]) if len(parts) > 2 else 0.0
+            azimuth = deg + (min_val / 60.0) + (sec_val / 3600.0)
+        except ValueError:
+            raise ValueError(f"Could not parse numeric azimuth from: {bearing_str}")
+            
+    # Normalise 0-360
+    azimuth = azimuth % 360.0
+    return azimuth
+
 def _run_track_b(
     anchor: tuple[float, float],
     vectors: list[_BearingDistance],
-) -> tuple[list[_Station], float]:
+) -> tuple[list[_Station], float, str, str]:
     """
     Execute a forward cadastral traverse from anchor + bearing-distance sequence.
-    Returns (stations, linear_misclosure_m).
+    Returns (stations, linear_misclosure_m, classification, warning_msg).
 
     Forward traverse formulas (plane surveying, bearing measured clockwise from North):
         E_next = E_curr + distance * sin(bearing_radians)
@@ -582,8 +636,31 @@ def _run_track_b(
     misclosure_n = N_curr - N_0
     misclosure = math.sqrt(misclosure_e ** 2 + misclosure_n ** 2)
 
-    # Apply Bowditch Adjustment if closure error <= 2.0m
-    if misclosure > 0.0 and misclosure <= 2.0:
+    classification = "POOR"
+    warning_msg = ""
+    apply_bowditch = False
+
+    if misclosure <= 0.10:
+        classification = "EXCELLENT"
+        apply_bowditch = True
+    elif misclosure <= 0.50:
+        classification = "GOOD"
+        apply_bowditch = True
+    elif misclosure <= 2.00:
+        classification = "ACCEPTABLE"
+        apply_bowditch = True
+        warning_msg = f"Closure error of {misclosure:.2f}m detected — within acceptable survey tolerance but worth a field check."
+    else:
+        classification = "POOR"
+        apply_bowditch = False
+        warning_msg = (
+            f"Closure error of {misclosure:.2f}m exceeds normal survey tolerance. "
+            "This usually means one bearing or distance was entered incorrectly. "
+            "Please review your traverse table before continuing."
+        )
+
+    # Apply Bowditch Adjustment
+    if apply_bowditch and misclosure > 0.0:
         total_length = sum(v.distance_m for v in vectors)
         if total_length > 0:
             cum_dist = 0.0
@@ -595,7 +672,7 @@ def _run_track_b(
                     stations[i].calculated_easting = round(stations[i].calculated_easting + corr_e, 3)
                     stations[i].calculated_northing = round(stations[i].calculated_northing + corr_n, 3)
 
-    return stations, round(misclosure, 4)
+    return stations, round(misclosure, 4), classification, warning_msg
 
 
 # =============================================================================
@@ -880,6 +957,7 @@ def run(
     stated_area_ha: Optional[float] = None,
     property_owner: Optional[str] = None,
     location_context: Optional[str] = None,
+    cogo_payload: Optional[str] = None,
 ) -> CadastralResult | MCPErrorResponse:
     """
     Main entrypoint for the Cadastral Computation Engine.
@@ -897,6 +975,125 @@ def run(
       CadastralResult on success.
       MCPErrorResponse on any input or computation failure.
     """
+    # ── Vector 0: Structured COGO payload from UI (highest priority) ──────────
+    if cogo_payload:
+        import json as _json
+        try:
+            cpd = _json.loads(cogo_payload)
+            sp = cpd["starting_point"]
+            cogo_anchor = (float(sp["easting"]), float(sp["northing"]))
+            cogo_vecs_structured = []
+            for vec in cpd.get("cogo_vectors", []):
+                bearing_dd = parse_cogo_bearing(str(vec["bearing"]))
+                dist = float(vec["distance"])
+                if bearing_dd is not None and dist > 0:
+                    cogo_vecs_structured.append(_BearingDistance(
+                        from_station=vec.get("station_id", ""),
+                        to_station="",
+                        label=vec.get("station_id", ""),
+                        bearing_decimal_deg=bearing_dd,
+                        distance_m=dist,
+                    ))
+            if len(cogo_vecs_structured) >= 3:
+                active_stations, misclosure_m, classification, closure_warning = _run_track_b(cogo_anchor, cogo_vecs_structured)
+                # Determine UTM zone from CRS string
+                crs_str = sp.get("crs", "EPSG:32632")
+                datum_label = "UTM"
+                try:
+                    utm_zone = int(crs_str.replace("EPSG:326", ""))
+                except Exception:
+                    utm_zone = 32
+                _reproject_stations(active_stations, datum_label, utm_zone, raw_text="", location_context=location_context or "")
+                active_stations, has_self_intersection = _enforce_simple_polygon_sequence(active_stations)
+
+                area_m2 = _shoelace_area_m2(active_stations)
+                area_ha = round(area_m2 / 10_000, 6)
+                area_status, delta_ha, simple_msg = _flag_area_accuracy(stated_area_ha, area_ha)
+                area_variance_m2 = round(delta_ha * 10_000, 4)
+                if closure_warning:
+                    simple_msg += " | Notes: " + closure_warning
+
+                ledger = []
+                for s in active_stations:
+                    if s.station_id.endswith(" (close)"):
+                        continue
+                    e = s.calculated_easting if s.calculated_easting is not None else (s.stated_easting or 0.0)
+                    n = s.calculated_northing if s.calculated_northing is not None else (s.stated_northing or 0.0)
+                    ledger.append(CadastralStationEntry(
+                        station_id=s.station_id,
+                        easting_utm=e,
+                        northing_utm=n,
+                        latitude_wgs84=s.wgs84_lat or 0.0,
+                        longitude_wgs84=s.wgs84_lng or 0.0,
+                        source="computed",
+                        ocr_confidence=100,
+                        ui_clipboard_copy_string=f"{e:.3f}, {n:.3f}"
+                    ))
+
+                extraction_meta = ExtractionMeta(
+                    source_file="cogo_ui_entry",
+                    extraction_method="COGO_UI_TRAVERSE",
+                    plan_type="TYPE_B",
+                    datum_detected=datum_label,
+                    datum_epsg=int(f"326{utm_zone}"),
+                    ocr_engine="none",
+                )
+                plan_details = PlanDetails(
+                    owner_name=property_owner or "Unknown",
+                    stated_area_sqm=stated_area_ha * 10000 if stated_area_ha else None,
+                    location=location_context,
+                    datum=datum_label,
+                )
+                start_beacon = cogo_vecs_structured[0].from_station if cogo_vecs_structured[0].from_station else "TP0"
+                traverse_data = TraverseData(
+                    starting_beacon=start_beacon,
+                    starting_easting=cogo_anchor[0],
+                    starting_northing=cogo_anchor[1],
+                    closure_error_m=misclosure_m,
+                    adjustment_method="bowditch" if misclosure_m <= 2.0 else "none"
+                )
+                is_closed_poly = len(active_stations) >= 3
+                closure_status = "UNCLOSED" if misclosure_m > 2.0 else "CLOSED"
+                is_closed = is_closed_poly and closure_status == "CLOSED"
+                polygon_data = PolygonData(
+                    wgs84_coordinates=[[s.wgs84_lat or 0.0, s.wgs84_lng or 0.0] for s in active_stations],
+                    utm_coordinates=[[s.calculated_easting or 0.0, s.calculated_northing or 0.0] for s in active_stations],
+                    computed_area_sqm=area_m2,
+                    computed_area_ha=area_ha,
+                    stated_area_sqm=stated_area_ha * 10000 if stated_area_ha else None,
+                    area_discrepancy_pct=(area_variance_m2 / (stated_area_ha * 10000) * 100) if stated_area_ha and stated_area_ha > 0 else None,
+                    is_closed=is_closed,
+                    is_valid=is_closed,
+                    has_self_intersection=has_self_intersection,
+                    vertex_count=len(ledger),
+                    closure_error_m=misclosure_m,
+                    crs_input=datum_label,
+                    closure_status=closure_status,
+                    closure_error_meters=misclosure_m,
+                )
+                return CadastralResult(
+                    extraction_meta=extraction_meta,
+                    plan_details=plan_details,
+                    traverse_data=traverse_data,
+                    beacons=ledger,
+                    polygon=polygon_data,
+                    extraction_confidence=ExtractionConfidence()
+                )
+            else:
+                return MCPErrorResponse(
+                    error_code="COGO_INSUFFICIENT_VECTORS",
+                    instruction="At least 3 valid bearing-distance vectors are required.",
+                    stage=PipelineStage.COORD_EXTRACT,
+                )
+        except Exception as exc:
+            logger.error(f"[cadastral] cogo_payload parse error: {exc}")
+            return MCPErrorResponse(
+                error_code="COGO_PAYLOAD_ERROR",
+                instruction=f"Could not process COGO traverse data: {exc}",
+                stage=PipelineStage.COORD_EXTRACT,
+                detail=str(exc),
+            )
+
     # ── Collect all station data from available inputs ─────────────────────────
     tabular_stations_raw: list = []   # from tabular_parser
     parse_warnings: list[str] = []
@@ -1013,9 +1210,11 @@ def run(
             anchor = (250000.0, 1000000.0)
             closure_warning += " No Tie-Point found. Polygon placed at arbitrary coordinates. "
             
-        active_stations, misclosure_m = _run_track_b(anchor, cogo_vectors)
+        active_stations, misclosure_m, classification, cogo_warn = _run_track_b(anchor, cogo_vectors)
+        if cogo_warn:
+            closure_warning += " " + cogo_warn
         comp_track = ComputationTrack.COGO_TRAVERSE
-        logger.info(f"[cadastral] Track B: {len(active_stations)} computed stations, misclosure={misclosure_m}m")
+        logger.info(f"[cadastral] Track B: {len(active_stations)} computed stations, misclosure={misclosure_m}m, class={classification}")
 
     if len(active_stations) < 3:
         # Partial extraction: do not throw error. Return partial data so UI can show the degraded mode.

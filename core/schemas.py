@@ -61,7 +61,10 @@ class PersonaMode(str, Enum):
     SURVEYOR            = "SURVEYOR"
     REALTOR             = "REALTOR"
     ARCHITECT           = "ARCHITECT"
-    INSTITUTIONAL_DEV   = "INSTITUTIONAL_DEV"
+    DEVELOPER           = "DEVELOPER"
+    LEGAL_PRACTITIONER  = "LEGAL_PRACTITIONER"
+    ESTATE_VALUER       = "ESTATE_VALUER"
+    OTHERS              = "OTHERS"
 
 
 class AdapterID(str, Enum):
@@ -136,6 +139,44 @@ class Coordinate(BaseModel):
     lat: float
     lng: float
 
+class COGOStartingPoint(BaseModel):
+    easting: float
+    northing: float
+    crs: str
+    confidence: str # "confirmed" or "approximate"
+
+class COGOStation(BaseModel):
+    station_id: str
+    easting_raw: float
+    northing_raw: float
+    easting_adjusted: Optional[float] = None
+    northing_adjusted: Optional[float] = None
+    source: str = "cogo_computed"
+    bearing: Optional[str] = None
+    distance: Optional[float] = None
+
+class COGOClosure(BaseModel):
+    error_m: float
+    classification: str
+    adjustment_applied: str
+
+class COGOTraversePayload(BaseModel):
+    input_mode: str = "cogo_traverse"
+    starting_point: COGOStartingPoint
+    stations: list[COGOStation]
+    closure: COGOClosure
+    is_closed_traverse: bool
+    computed_area_sqm: float
+    stated_area_sqm: Optional[float] = None
+    area_discrepancy_pct: Optional[float] = None
+    crs: str
+    
+    @field_validator("crs")
+    @classmethod
+    def validate_crs(cls, v):
+        if not v or str(v).strip() == "":
+            raise ValueError("CRS is explicitly required and cannot be empty")
+        return v
 
 class CoordExtractOutput(BaseModel):
     """Output contract for the CoordExtract agent (Step 1)."""
@@ -158,6 +199,7 @@ class CoordExtractOutput(BaseModel):
     warnings            : list[str] = []
     crs_dialog_triggers : list[str] = []            # which dialogs (T1–T5) should fire
     discovery_method    : str = "Unknown"           # How the CRS was discovered
+    beacons             : list[CadastralStationEntry] = []
 
     @field_validator("coordinates")
     @classmethod
@@ -248,6 +290,7 @@ class GISAnalysisOutput(BaseModel):
     distance_to_town_m      : Optional[float] = None
     encroachment_flag       : Optional[bool] = None
     encroachment_detail     : Optional[str] = None
+    soil_composition        : Optional[dict] = None
     ndwi                    : Optional[float] = None    # null if out of Sentinel zone
     ndvi                    : Optional[float] = None    # null if out of Sentinel zone
     data_confidence         : float = Field(ge=0.0, le=100.0)
@@ -363,6 +406,7 @@ class TerrainAssessment(BaseModel):
     outfall_connected: Optional[bool] = None
     outfall_distance_m: Optional[float] = None
     outfall_asset_type: Optional[str] = None
+    soil_composition : Optional[dict] = None
 
 
 class ProfilePoint(BaseModel):

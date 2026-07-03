@@ -250,11 +250,17 @@ def run(
     lng = coord_output.centroid.lng
     run_id = coord_output.run_id
     warnings: list[str] = []
-    data_sources_used: list[str] = [feed_schema.feed_meta.adapter_id.value]
+    data_sources_used: list[str] = [
+        feed_schema.feed_meta.adapter_id.value,
+        "nominatim_geocoding",
+        "overpass_api_fallback",
+        "open_elevation_api_fallback"
+    ]
 
     # Detect state for routing
     state = (
         feed_schema.supplemental_gis.state_confirmed
+        or coord_output.state
         or detect_state_from_centroid(lat, lng)
     )
 
@@ -269,6 +275,10 @@ def run(
             "SRTM elevation data not available for this location. "
             "Regional elevation terrain data is currently unavailable for this specific coordinate block."
         )
+
+    soil_composition = data_loader.fetch_isric_soil_properties(lat, lng)
+    if soil_composition:
+        data_sources_used.append("isric_soilgrids_api")
 
     # ── HYDROLOGY ─────────────────────────────────────────────────────────────
     distance_to_river_m, river_strahler_order = data_loader.nearest_river_distance_and_order(
@@ -575,6 +585,7 @@ def run(
         distance_to_town_m=None,       # Deferred to post-MVP
         encroachment_flag=encroachment_flag,
         encroachment_detail=encroachment_detail,
+        soil_composition=soil_composition,
         ndwi=ndwi,
         ndvi=ndvi,
         data_confidence=data_confidence,
