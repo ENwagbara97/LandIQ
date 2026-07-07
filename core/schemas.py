@@ -32,6 +32,16 @@ class CRSName(str, Enum):
     UNKNOWN = "UNKNOWN"
 
 
+class PlanType(str, Enum):
+    """Survey document classification (Chapter 1.1 — Masterclass Prompt)."""
+    TYPE_A = "TYPE_A"   # Simple single-parcel boundary (existing, working)
+    TYPE_B = "TYPE_B"   # Composite subdivision (multiple lots, shared boundaries)
+    TYPE_C = "TYPE_C"   # Engineering / topographic layout (contours + buildings)
+    TYPE_D = "TYPE_D"   # Topographic survey only (contours, no layout)
+    TYPE_E = "TYPE_E"   # Title deed / registry doc — reject as boundary source
+
+
+
 class FloodRiskLevel(str, Enum):
     HIGH   = "HIGH"
     MEDIUM = "MEDIUM"
@@ -178,6 +188,20 @@ class COGOTraversePayload(BaseModel):
             raise ValueError("CRS is explicitly required and cannot be empty")
         return v
 
+class LotExtract(BaseModel):
+    """A single lot extracted from a composite (Type B) survey plan."""
+    lot_id            : str                      # "1", "2", "Parcel A" etc.
+    label             : str                      # Display label e.g. "Lot 1"
+    highlighted       : bool = False             # Yellow-filled on scan
+    coordinates       : list[list[float]] = []   # [[lat, lng], ...] WGS84
+    computed_area_sqm : float = 0.0
+    computed_area_ha  : float = 0.0
+    centroid          : Optional[Coordinate] = None
+    closure_error_m   : float = 0.0             # Traverse closure error
+    is_closed         : bool = False
+    shared_with       : list[str] = []           # lot_ids sharing a boundary
+
+
 class CoordExtractOutput(BaseModel):
     """Output contract for the CoordExtract agent (Step 1)."""
     run_id              : str
@@ -200,6 +224,13 @@ class CoordExtractOutput(BaseModel):
     crs_dialog_triggers : list[str] = []            # which dialogs (T1–T5) should fire
     discovery_method    : str = "Unknown"           # How the CRS was discovered
     beacons             : list[CadastralStationEntry] = []
+    # ── Composite / Engineering plan fields (Type B / C) ──────────────────────
+    plan_type           : PlanType = PlanType.TYPE_A
+    is_composite        : bool = False               # True for Type B / C plans
+    lots                : list[LotExtract] = []      # All detected lots (pre-selection)
+    master_boundary     : list[list[float]] = []     # Outer envelope polygon
+    selected_lot_id     : Optional[str] = None       # Set after user selects a lot
+    premium_assets      : Optional[dict] = None      # contours, buildings (Type C)
 
     @field_validator("coordinates")
     @classmethod

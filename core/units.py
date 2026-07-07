@@ -135,9 +135,9 @@ def ha_to_area_display(
     display_simple = (
         f"{sqm:,.0f} sqm  ·  ≈ {plots:.1f} plots  ·  {area_ha:.2f} ha"
     )
-    label_text = "(Std.)" if label == "Std." else f"({label} std.)"
+    label_text = "Std." if label == "Std." else f"{label} std."
     display_expert = (
-        f"{sqm:,.0f} sqm  ·  ≈ {plots:.1f} plots {label_text}  ·  {area_ha:.4f} ha"
+        f"{sqm:,.0f} sqm  ·  ≈ {plots:.1f} plots ({label_text} of {plot_sqm:,.0f} m² per plot)  ·  {area_ha:.4f} ha"
     )
     display_plots_only = f"≈ {plots:.1f} plots"
 

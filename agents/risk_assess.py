@@ -423,9 +423,9 @@ def generate_advisory_flags(
 
     if not title_verified:
         flags.append(
-            "I have verified the coordinates, checked the geography, and assessed the flood "
-            "risks for this parcel. You still need a lawyer to manually confirm the title "
-            "at the State Land Registry before making any payment."
+            "TITLE UNVERIFIED: Registry status is not verified. "
+            "Engage a qualified lawyer to manually search the records at "
+            "the State Land Registry before completing any transaction."
         )
 
     if minna_datum_detected:

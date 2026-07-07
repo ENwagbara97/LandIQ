@@ -157,6 +157,95 @@ def _execute_pipeline_task(
 # REST ENDPOINTS
 # =============================================================================
 
+# ── COGO Draft (Stateless, Non-Saving) ───────────────────────────────────────
+class CogoDraftRow(BaseModel):
+    station_id: str
+    bearing: str
+    distance: float
+
+class CogoDraftRequest(BaseModel):
+    start_easting: float
+    start_northing: float
+    crs: str  # e.g. "EPSG:32632"
+    rows: list[CogoDraftRow]
+
+@app.post("/api/cogo/draft")
+async def cogo_draft(payload: CogoDraftRequest):
+    """
+    Stateless, non-saving endpoint.
+    Projects COGO traverse rows from UTM to WGS84 Lat/Lng for the live-plotter.
+    Returns coordinate array and closure error in meters.
+    """
+    import math
+    try:
+        from pyproj import Transformer
+    except ImportError:
+        try:
+            import subprocess, sys
+            subprocess.check_call([sys.executable, "-m", "pip", "install", "pyproj"])
+            from pyproj import Transformer
+        except Exception:
+            raise HTTPException(status_code=500, detail="pyproj not available on this server.")
+
+    def parse_bearing(b_str: str) -> float | None:
+        """Parse bearing string into azimuth degrees (0-360)."""
+        b = b_str.upper().strip()
+        quad = __import__("re").match(
+            r'^([NS])[\-\s]*(\d{1,3})[°\-\s]*(\d{0,2})[\'`\-\s]*(\d{0,2})["\-\s]*([EW])$', b
+        )
+        if quad:
+            ns, deg, mn, sec, ew = quad.groups()
+            angle = float(deg) + (float(mn or 0) / 60) + (float(sec or 0) / 3600)
+            if ns == 'N' and ew == 'E': return angle
+            if ns == 'S' and ew == 'E': return 180 - angle
+            if ns == 'S' and ew == 'W': return 180 + angle
+            if ns == 'N' and ew == 'W': return 360 - angle
+        parts = __import__("re").split(r'[°\'"°\-\s]+', b)
+        parts = [p for p in parts if p]
+        if parts:
+            return (float(parts[0]) + (float(parts[1]) / 60 if len(parts) > 1 else 0)
+                    + (float(parts[2]) / 3600 if len(parts) > 2 else 0)) % 360
+        return None
+
+    try:
+        transformer = Transformer.from_crs(payload.crs, "EPSG:4326", always_xy=True)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Invalid CRS '{payload.crs}': {e}")
+
+    utm_points: list[tuple[float, float]] = []
+    curr_e = payload.start_easting
+    curr_n = payload.start_northing
+    utm_points.append((curr_e, curr_n))
+
+    for row in payload.rows:
+        az = parse_bearing(row.bearing)
+        if az is None or row.distance <= 0:
+            continue
+        az_rad = math.radians(az)
+        curr_e += row.distance * math.sin(az_rad)
+        curr_n += row.distance * math.cos(az_rad)
+        utm_points.append((curr_e, curr_n))
+
+    # Project to WGS84
+    wgs_coords: list[list[float]] = []
+    for (e, n) in utm_points:
+        lng, lat = transformer.transform(e, n)
+        wgs_coords.append([lat, lng])  # Leaflet expects [lat, lng]
+
+    # Closure error
+    err_e = curr_e - payload.start_easting
+    err_n = curr_n - payload.start_northing
+    closure_error_m = math.sqrt(err_e ** 2 + err_n ** 2)
+    is_closed = closure_error_m <= 0.50 and len(utm_points) > 3
+
+    return {
+        "wgs_coords": wgs_coords,
+        "closure_error_m": round(closure_error_m, 3),
+        "is_closed": is_closed,
+        "station_count": len(wgs_coords),
+    }
+
+
 @app.post("/api/upload")
 async def upload_coordinates(
     file: Optional[UploadFile] = File(None),
@@ -213,6 +302,22 @@ async def upload_coordinates(
                 except Exception:
                     pass
 
+        # ── Plan Type Classification (Chapter 1.2 — Masterclass Prompt) ─────
+        detected_plan_type = "TYPE_A"
+        plan_type_signals: list = []
+        if raw_text:
+            try:
+                from agents.plan_classifier import classify_plan_type
+                clf_result = classify_plan_type(raw_text)
+                detected_plan_type = clf_result.plan_type.value
+                plan_type_signals = clf_result.signals
+                logger.info(
+                    f"[server] Plan classified as {detected_plan_type} "
+                    f"(confidence={clf_result.confidence:.2f}) signals={plan_type_signals}"
+                )
+            except Exception as clf_exc:
+                logger.warning(f"[server] Plan classifier failed: {clf_exc}. Defaulting to TYPE_A.")
+
         from agents.cadastral_engine import run as run_cadastral
         from core.schemas import MCPErrorResponse
         from agents.coord_extract import ocr_file
@@ -267,7 +372,7 @@ async def upload_coordinates(
 
         if not isinstance(cad_result, MCPErrorResponse):
             import uuid
-            from core.schemas import SessionState, CoordExtractOutput, Coordinate, PipelineStage, CRSName
+            from core.schemas import SessionState, CoordExtractOutput, Coordinate, PipelineStage, CRSName, PlanType
 
             run_id = f"cad-{uuid.uuid4().hex[:8]}"
             data_dump = cad_result.model_dump()
@@ -311,7 +416,8 @@ async def upload_coordinates(
                 area_discrepancy_pct=cad_result.polygon.area_discrepancy_pct,
                 discovery_method=cad_result.extraction_meta.extraction_method,
                 warnings=[],
-                beacons=cad_result.beacons
+                beacons=cad_result.beacons,
+                plan_type=PlanType(detected_plan_type) if detected_plan_type else PlanType.TYPE_A,
             )
 
             try: pm = PersonaMode(persona_mode)
@@ -367,6 +473,8 @@ async def upload_coordinates(
             )
 
         return result
+    except HTTPException:
+        raise
     except Exception as exc:
         logger.exception(f"[server] Unhandled exception in upload_coordinates: {exc}")
         raise HTTPException(
@@ -431,6 +539,7 @@ class ConfirmPayload(BaseModel):
     llm_provider: Optional[str] = None
     llm_api_key: Optional[str] = None
     llm_grounding: Optional[str] = None
+    selected_lot_id: Optional[str] = None   # Composite plan lot selection gate
 
 @app.post("/api/confirm/{run_id}")
 async def confirm_gate(
@@ -501,6 +610,24 @@ async def get_report(report_id: str):
             detail=f"Report with ID {report_id} not found.",
         )
     return report
+
+
+@app.get("/api/report/{report_id}/gee-elevation")
+async def get_gee_elevation(report_id: str):
+    """Fetch the resampled 2D elevation grid and contour metadata for expert views."""
+    report = history_manager.get_report(report_id)
+    if not report:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Report with ID {report_id} not found.",
+        )
+    
+
+        
+    from core.elevation_contour import get_gee_elevation_contours
+    coordinates = report.parcel_geometry.coordinates
+    result = get_gee_elevation_contours(report_id, coordinates)
+    return result
 
 
 @app.post("/api/report/{report_id}/generate-pdf")
@@ -890,4 +1017,4 @@ def serve_spa_catchall(full_path: str):
     return HTMLResponse(content="<h1>Frontend build not found</h1>", status_code=404)
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("main_v3:app", host="127.0.0.1", port=5000, reload=True)
+    uvicorn.run("main_v3:app", host="127.0.0.1", port=8000, reload=True)

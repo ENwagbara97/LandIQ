@@ -162,6 +162,33 @@ def generate_pdf(
     if not include_elevation_profile:
         report = report.model_copy(update={"premium_elevation_profile": None})
 
+    # Ensure location is not "—" or unresolved
+    geom = report.parcel_geometry
+    loc = geom.location_context
+    state_val = getattr(loc, "state", None) or "—"
+    lga_val = getattr(loc, "lga", None) or "—"
+    if (
+        state_val in ("—", "", "None")
+        or "Unresolved" in state_val
+        or lga_val in ("—", "", "None")
+        or "Unresolved" in lga_val
+    ):
+        from agents.coord_extract import reverse_geocode
+        lat = geom.centroid.lat
+        lng = geom.centroid.lng
+        state_fb, lga_fb = reverse_geocode(lat, lng)
+        report = report.model_copy(
+            update={
+                "parcel_geometry": geom.model_copy(
+                    update={
+                        "location_context": loc.model_copy(
+                            update={"state": state_fb, "lga": lga_fb}
+                        )
+                    }
+                )
+            }
+        )
+
     pm = persona_mode or report.persona_mode
     persona_cfg = PERSONA_CONFIG.get(pm, PERSONA_CONFIG[PersonaMode.EVERYDAY_BUYER])
     tl = report.summary.traffic_light
@@ -460,6 +487,47 @@ def _build_inline_html(ctx: dict) -> str:
 
     profile_html = _generate_svg_chart(r)
 
+    # ── Topographic Contour Map (Phase 4) ──────────────────────────────
+    topo_html = ""
+    try:
+        from core.elevation_contour import get_gee_elevation_contours, generate_static_contour_map
+        coords = r.parcel_geometry.coordinates
+        topo_data = get_gee_elevation_contours(r.meta.report_id, coords)
+        
+        if topo_data.get("elevation_available"):
+            import uuid
+            temp_png = REPORTS_DIR / f"temp_topo_{uuid.uuid4().hex}.png"
+            success = generate_static_contour_map(
+                coordinates=coords,
+                grid_data=topo_data["grid"],
+                bounds=topo_data["bounds"],
+                interval_m=topo_data["interval_m"],
+                output_path=temp_png
+            )
+            
+            if success and temp_png.exists():
+                import base64
+                topo_b64 = base64.b64encode(temp_png.read_bytes()).decode()
+                try:
+                    temp_png.unlink()
+                except Exception:
+                    pass
+                
+                topo_html = f"""
+                <section style="page-break-before: always;">
+                  <h2>Topographic Assessment</h2>
+                  <div class="summary-box" style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 6px; padding: 12px; margin-bottom: 12px; font-size: 10pt; line-height: 1.5;">
+                    <p><strong>Topographic Elevation Context:</strong> Calculated at a resampled grid resolution of {topo_data['scale_m']}m. Elevation ranges from {topo_data['min_elevation']}m to {topo_data['max_elevation']}m above mean sea level, with a vertical contour interval of {topo_data['interval_m']}m.</p>
+                  </div>
+                  <div class="map-container" style="text-align: center; margin: 12px 0;">
+                    <img src="data:image/png;base64,{topo_b64}" style="width: 100%; max-height: 380px; object-fit: contain; border: 1px solid #e2e8f0; border-radius: 6px;" alt="2D Topographic Contours Map" />
+                  </div>
+                  <p style="font-size: 8pt; color: #64748b; font-style: italic; margin-top: 4px;">Note: This contour model is an engineering approximation processed directly from NASADEM satellite data and is intended for preliminary site planning only.</p>
+                </section>
+                """
+    except Exception as topo_err:
+        logger.warning(f"Failed to generate topographic assessment for PDF: {topo_err}")
+
     return f"""<!DOCTYPE html>
 <html>
 <head>
@@ -541,6 +609,8 @@ def _build_inline_html(ctx: dict) -> str:
     <div class="metric"><div class="metric-label">Growth Potential</div><div class="metric-val">{r.growth_potential.level.value}</div></div>
   </div>
 </section>
+
+{topo_html}
 
 {profile_html}
 

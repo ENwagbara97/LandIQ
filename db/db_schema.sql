@@ -137,6 +137,19 @@ CREATE INDEX IF NOT EXISTS idx_exports_report_id     ON exports(report_id);
 CREATE INDEX IF NOT EXISTS idx_benchmarks_lga_state  ON lga_benchmarks(lga, state);
 
 -- =============================================================================
+-- TABLE: gee_elevation_cache
+-- Cache layer for GEE elevation contour data.
+-- =============================================================================
+CREATE TABLE IF NOT EXISTS gee_elevation_cache (
+    report_id           TEXT    PRIMARY KEY,
+    fetched_at          TEXT    NOT NULL,                   -- ISO8601
+    scale_m             REAL    NOT NULL,
+    interval_m          REAL    NOT NULL,
+    response_json       TEXT    NOT NULL,                   -- Full JSON output
+    FOREIGN KEY (report_id) REFERENCES reports(report_id)
+);
+
+-- =============================================================================
 -- Schema version tracking
 -- =============================================================================
 CREATE TABLE IF NOT EXISTS schema_versions (
@@ -147,4 +160,4 @@ CREATE TABLE IF NOT EXISTS schema_versions (
 );
 
 INSERT OR IGNORE INTO schema_versions (version, applied_at, description)
-VALUES ('1.0', datetime('now'), 'Initial LandIQ schema — all core tables');
+VALUES ('1.1', datetime('now'), 'Add GEE elevation contour cache table');

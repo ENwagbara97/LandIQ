@@ -3,7 +3,7 @@ LandIQ — tests/test_api_integration.py
 
 Integration tests for the FastAPI backend — covers the full user flow:
   upload → session → confirm → report
-All tests hit a live local server at http://127.0.0.1:5000.
+All tests hit a live local server at http://127.0.0.1:8000.
 Skipped automatically when the server is unavailable.
 """
 from __future__ import annotations
@@ -11,7 +11,7 @@ from __future__ import annotations
 import pytest
 import requests
 
-API = "http://127.0.0.1:5000"
+API = "http://127.0.0.1:8000"
 
 SAMPLE_UTM_COORDS = """
 SC/AK/K 49703  387875.100  550865.400
@@ -32,7 +32,7 @@ def server_available() -> bool:
 
 skip_no_server = pytest.mark.skipif(
     not server_available(),
-    reason="Local server not running at http://127.0.0.1:5000"
+    reason="Local server not running at http://127.0.0.1:8000"
 )
 
 

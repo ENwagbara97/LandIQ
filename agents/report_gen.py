@@ -573,8 +573,12 @@ def assemble_report(
     )
 
     # ── Coordinate validation ──────────────────────────────────────────────────
+    detected_crs_val = coord.detected_crs.value
+    if coord.minna_datum_detected or "MINNA" in detected_crs_val.upper():
+        detected_crs_val = "Input: MINNA → Analysed in WGS84"
+
     coord_validation = CoordinateValidation(
-        detected_crs=coord.detected_crs.value,
+        detected_crs=detected_crs_val,
         crs_confidence=coord.crs_confidence,
         is_inside_nigeria=coord.is_inside_nigeria,
         area_discrepancy_pct=coord.area_discrepancy_pct,
@@ -642,9 +646,7 @@ def assemble_report(
 
     # ── Combined advisory flags (FIX 2.5) ──────────────────────────────────────
     all_advisory = risk.advisory_flags.copy()
-    if growth.growth_notes and growth.growth_notes not in all_advisory:
-        all_advisory.append(growth.growth_notes)
-        
+    
     try:
         import os, json
         from pathlib import Path

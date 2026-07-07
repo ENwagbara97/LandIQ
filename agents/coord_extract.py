@@ -901,6 +901,315 @@ Return ONLY a perfectly formatted JSON object conforming to the schema below. Do
 """
 
 
+# =============================================================================
+# COMPOSITE SUBDIVISION PROMPT (TYPE_B) — Chapter 4.1 Masterclass Prompt v1.0
+# =============================================================================
+_COMPOSITE_PLAN_PROMPT = """
+You are a Nigerian cadastral surveying specialist reading a composite subdivision plan.
+
+This plan contains MULTIPLE LOTS sharing a MASTER BOUNDARY.
+The master boundary is the HEAVIEST, outermost closed polygon on the plan.
+
+SURVEYING GROUND RULES YOU MUST FOLLOW:
+- BOUNDARY lines are the HEAVIEST lines. Interior lines (contours, dimensions, fences) are ALWAYS lighter.
+- Nigerian cadastral traverses run CLOCKWISE. Walk clockwise from each lot's starting beacon.
+- In a composite plan, adjacent lots share a boundary leg. That shared leg appears ONCE in the bearing table.
+  Lot 1 uses it in the FORWARD direction. Lot 2 uses the BACK BEARING: back = (forward + 180) % 360.
+- Lot numbers are single or double-digit numbers printed IN THE CENTRE of each lot polygon.
+- Area values appear adjacent to lot numbers, formatted as "XXXX m\u00b2" or "XXXXm2" or "XXXXsqm".
+- Highlighted / yellow-filled lots are the current transaction parcels.
+
+Your task:
+1. Identify ALL individual lots with their lot numbers and stated areas.
+2. Identify which lots are highlighted (yellow/coloured fill).
+3. Extract the complete bearing/distance table.
+4. Identify SHARED boundary lines between adjacent lots (internal division lines).
+5. Identify the master boundary polygon stations in clockwise order.
+
+Return ONLY this JSON structure. No markdown, no explanation:
+{
+  "plan_type": "TYPE_B_COMPOSITE",
+  "plan_metadata": {
+    "plan_number": "string or null",
+    "owner_name": "string or null",
+    "datum": "string or null",
+    "scale": "string or null"
+  },
+  "lots": [
+    {
+      "lot_id": "1",
+      "area_sqm": 1664.0,
+      "highlighted": true,
+      "stations": ["P1", "P2", "P3", "P4"],
+      "shared_boundary_with": ["2"],
+      "shared_station_from": "P2",
+      "shared_station_to": "P3"
+    }
+  ],
+  "bearing_table": [
+    {
+      "from_station": "P1",
+      "to_station": "P2",
+      "bearing_dms": "045\u00b030'00\"",
+      "distance_m": 45.20,
+      "belongs_to_lots": ["1"],
+      "is_shared": false
+    },
+    {
+      "from_station": "P2",
+      "to_station": "P3",
+      "bearing_dms": "135\u00b015'00\"",
+      "distance_m": 22.10,
+      "belongs_to_lots": ["1", "2"],
+      "is_shared": true
+    }
+  ],
+  "reference_coordinates": {
+    "station_id": "P1",
+    "easting": null,
+    "northing": null,
+    "source": "margin_label_or_anchor"
+  }
+}
+"""
+
+
+# =============================================================================
+# ENGINEERING / TOPOGRAPHIC PROMPT (TYPE_C) — Chapter 4.2 Masterclass Prompt v1.0
+# =============================================================================
+_ENGINEERING_PLAN_PROMPT = """
+You are a Nigerian engineering surveyor reading a combined topographic and engineering layout survey.
+
+This plan contains:
+1. A master PROPERTY BOUNDARY (the heaviest outer line, often shown in red or darkest colour)
+2. Contour lines (smooth CURVED lines labeled with elevation values — these are NOT boundaries)
+3. Building footprints (filled rectangles labeled with function names e.g. ADMIN, STORE, CHEM LAB)
+4. Possibly roads, fences, and drainage features
+
+CRITICAL RULES:
+- Smooth curved lines = CONTOUR LINES. NEVER include in the boundary traverse.
+- Filled rectangles = BUILDING FOOTPRINTS. NEVER include in the boundary traverse.
+- The boundary traverse ONLY contains STRAIGHT segments between numbered station points.
+- All distances are in METRES.
+
+Your task IN THIS EXACT ORDER:
+1. Identify the MASTER PROPERTY BOUNDARY only (outermost, heaviest, straight-segment polygon).
+2. Extract master boundary stations in clockwise order with bearings and distances.
+3. Extract ALL margin grid coordinate labels (e.g. "XXXXXX.XXX m E" or "XXXXXX.XXX m N").
+4. Extract ALL elevation contour labels (integers or decimals adjacent to curved lines).
+5. Extract the title block: institution name, LGA, state, scale, datum, plan number, surveyor.
+6. Extract building footprint labels.
+
+Return ONLY this JSON. No markdown, no explanation:
+{
+  "plan_type": "TYPE_C_ENGINEERING",
+  "plan_metadata": {
+    "institution": "string or null",
+    "lga": "string or null",
+    "state": "string or null",
+    "scale": "string or null",
+    "datum": "string or null",
+    "plan_number": "string or null",
+    "surveyor": "string or null",
+    "stated_area_sqm": null
+  },
+  "master_boundary_stations": [
+    {"station_id": "P1", "easting": 515278.885, "northing": 228617.625, "crs_source": "margin_label"}
+  ],
+  "bearing_table": [
+    {"from_station": "P1", "to_station": "P2", "bearing_dms": "045\u00b030'00\"", "distance_m": 120.5}
+  ],
+  "contour_labels": [
+    {"elevation_m": 44},
+    {"elevation_m": 46}
+  ],
+  "contour_interval_m": 2,
+  "building_footprints": [
+    {"label": "ADMIN"},
+    {"label": "STORE"}
+  ],
+  "margin_grid": {
+    "easting_labels": [],
+    "northing_labels": [],
+    "zone": null
+  }
+}
+"""
+
+
+# =============================================================================
+# SHARED BOUNDARY TRAVERSE ENGINE — Chapter 5.1 Masterclass Prompt v1.0
+# =============================================================================
+
+def _bearing_dms_to_decimal(bearing_dms: str) -> float:
+    """
+    Convert bearing string to decimal degrees azimuth (0–360).
+    Handles: '045\u00b030\'00"', 'N45\u00b030E', '045.50', '45 30 00', numeric.
+    """
+    import math
+    s = bearing_dms.strip()
+
+    # Handle quadrant bearings: N45\u00b030'E, S22\u00b015'W etc.
+    quad_match = re.match(
+        r"([NS])\s*(\d{1,3})[\u00b0\s]+(\d{1,2})['\'\s]*(\d{0,2}(?:\.\d+)?)[\"'\s]*([EW])",
+        s, re.IGNORECASE
+    )
+    if quad_match:
+        ns, d, m, sec, ew = quad_match.groups()
+        dd = float(d) + float(m) / 60.0 + (float(sec or 0)) / 3600.0
+        if ns.upper() == "N" and ew.upper() == "E":
+            return dd
+        elif ns.upper() == "S" and ew.upper() == "E":
+            return 180.0 - dd
+        elif ns.upper() == "S" and ew.upper() == "W":
+            return 180.0 + dd
+        elif ns.upper() == "N" and ew.upper() == "W":
+            return 360.0 - dd
+
+    # Whole-circle bearing: 045\u00b030'00"
+    wc_match = re.match(
+        r"(\d{1,3})[\u00b0\s]+(\d{1,2})['\'\s]*(\d{0,2}(?:\.\d+)?)",
+        s
+    )
+    if wc_match:
+        d, m, sec = wc_match.groups()
+        return float(d) + float(m) / 60.0 + (float(sec or 0)) / 3600.0
+
+    # Plain decimal
+    try:
+        return float(s)
+    except ValueError:
+        return 0.0
+
+
+def compute_lot_traverse(
+    lot_id: str,
+    lot_info: dict,
+    bearing_table: list[dict],
+    reference_easting: float,
+    reference_northing: float,
+    crs_name_str: str = "UTM_32N",
+) -> list[tuple[float, float]]:
+    """
+    Compute per-lot WGS84 polygon from the bearing table (Chapter 5.1).
+
+    For shared legs (is_shared=True), the bearing is used as-is for the lot
+    that owns the forward direction.  Adjacent lots must call with reverse=True
+    or the back bearing computed externally.
+
+    Returns: list of (lat, lng) WGS84 tuples.
+    """
+    import math
+    from core.schemas import CRSName
+
+    # Determine which legs belong to this lot
+    lot_stations = lot_info.get("stations", [])
+    lot_station_set = set(lot_stations)
+
+    lot_legs = [
+        leg for leg in bearing_table
+        if lot_id in (leg.get("belongs_to_lots") or [])
+        or (
+            leg.get("from_station") in lot_station_set
+            and leg.get("to_station") in lot_station_set
+        )
+    ]
+
+    if not lot_legs:
+        return []
+
+    # Determine if this lot needs back-bearing for the shared leg
+    # The lot whose station ORDER runs reverse of the table uses back bearing
+    shared_station_from = lot_info.get("shared_station_from")
+    shared_station_to = lot_info.get("shared_station_to")
+
+    easting = reference_easting
+    northing = reference_northing
+    utm_points: list[tuple[float, float]] = [(northing, easting)]
+
+    for leg in lot_legs:
+        bearing_str = leg.get("bearing_dms") or leg.get("bearing") or "0"
+        distance = float(leg.get("distance_m") or leg.get("distance_meters") or 0.0)
+
+        # Shared leg reversal: if this lot traverses it in reverse direction
+        is_shared = leg.get("is_shared", False)
+        needs_reverse = (
+            is_shared
+            and shared_station_from is not None
+            and leg.get("from_station") == shared_station_to  # order is reversed
+        )
+        if needs_reverse:
+            azimuth = (_bearing_dms_to_decimal(bearing_str) + 180.0) % 360.0
+        else:
+            azimuth = _bearing_dms_to_decimal(bearing_str)
+
+        az_rad = math.radians(azimuth)
+        delta_e = distance * math.sin(az_rad)
+        delta_n = distance * math.cos(az_rad)
+        easting += delta_e
+        northing += delta_n
+        utm_points.append((northing, easting))
+
+    # Transform to WGS84
+    crs_map = {
+        "UTM_31N": CRSName.UTM_31N,
+        "UTM_32N": CRSName.UTM_32N,
+        "UTM_33N": CRSName.UTM_33N,
+        "MINNA":   CRSName.MINNA,
+    }
+    crs = crs_map.get(crs_name_str, CRSName.UTM_32N)
+    try:
+        wgs_pts = [utm_to_wgs84(n, e, crs) for n, e in utm_points]
+        return wgs_pts
+    except Exception:
+        return []
+
+
+def _composite_vision_to_lots(
+    vision_json: dict,
+) -> tuple[str, list[dict]]:
+    """
+    Convert TYPE_B Gemini response into (plan_type_str, lots_list).
+    Each lot dict contains: lot_id, label, highlighted, bearing_legs, area_sqm,
+    shared_station_from, shared_station_to, stations.
+    """
+    plan_type_str = vision_json.get("plan_type", "TYPE_B_COMPOSITE")
+    raw_lots = vision_json.get("lots", [])
+    bearing_table = vision_json.get("bearing_table", [])
+
+    lots_out = []
+    for lot in raw_lots:
+        lots_out.append({
+            "lot_id": str(lot.get("lot_id", "?")),
+            "label": f"Lot {lot.get('lot_id', '?')}",
+            "highlighted": bool(lot.get("highlighted", False)),
+            "area_sqm": float(lot.get("area_sqm") or 0.0),
+            "stations": lot.get("stations", []),
+            "shared_with": lot.get("shared_boundary_with", []),
+            "shared_station_from": lot.get("shared_station_from"),
+            "shared_station_to": lot.get("shared_station_to"),
+            "bearing_legs": [
+                leg for leg in bearing_table
+                if str(lot.get("lot_id")) in (leg.get("belongs_to_lots") or [])
+            ],
+        })
+
+    return plan_type_str, lots_out
+
+
+def _engineering_vision_to_premium_assets(vision_json: dict) -> dict:
+    """Extract premium assets (contours, buildings) from TYPE_C Gemini response."""
+    return {
+        "contour_labels": vision_json.get("contour_labels", []),
+        "contour_interval_m": vision_json.get("contour_interval_m"),
+        "building_footprints": vision_json.get("building_footprints", []),
+        "margin_grid": vision_json.get("margin_grid", {}),
+        "title_block": vision_json.get("plan_metadata", {}),
+        "data_source": "field_survey_from_uploaded_plan",
+    }
+
+
+
 def _vision_result_to_text(vision_json: dict) -> str:
     """
     Convert the structured JSON from a Cloud Vision API into the flat text
@@ -1001,10 +1310,18 @@ def _vision_result_to_text(vision_json: dict) -> str:
     return "\n".join(lines)
 
 
-def _ocr_via_gemini(image_bytes: bytes, api_key: str, stated_area_ha: float | None = None) -> str:
-    """Call Gemini 2.5 Flash Vision API and return extracted coordinate text.
+def _ocr_via_gemini(
+    image_bytes: bytes,
+    api_key: str,
+    stated_area_ha: float | None = None,
+    plan_type: str = "TYPE_A",
+) -> str:
+    """Call Gemini Vision API and return extracted coordinate text.
 
-    Uses the direct Google Generative AI REST API with an AIzaSy... key.
+    Selects the appropriate system prompt based on plan_type:
+      TYPE_A  → existing _SURVEYOR_INTELLIGENCE_PROMPT (unchanged)
+      TYPE_B  → _COMPOSITE_PLAN_PROMPT
+      TYPE_C  → _ENGINEERING_PLAN_PROMPT
     """
     import base64
     import json as _json
@@ -1026,10 +1343,17 @@ def _ocr_via_gemini(image_bytes: bytes, api_key: str, stated_area_ha: float | No
         )
 
     b64 = base64.b64encode(image_bytes).decode()
+    # Select prompt based on plan type
+    if plan_type == "TYPE_B":
+        active_prompt = _COMPOSITE_PLAN_PROMPT
+    elif plan_type == "TYPE_C":
+        active_prompt = _ENGINEERING_PLAN_PROMPT
+    else:
+        active_prompt = _SURVEYOR_INTELLIGENCE_PROMPT
     payload = {
         "contents": [{
             "parts": [
-                {"text": _SURVEYOR_INTELLIGENCE_PROMPT},
+                {"text": active_prompt},
                 {"inline_data": {"mime_type": "image/png", "data": b64}},
             ]
         }]
@@ -1354,7 +1678,7 @@ def reverse_geocode(lat: float, lng: float) -> tuple[str, str]:
     lga = "Unresolved — confirm LGA"
     try:
         url = f"https://nominatim.openstreetmap.org/reverse?lat={lat}&lon={lng}&format=json&zoom=10"
-        headers = {"User-Agent": "LandIQ-Pipeline"}
+        headers = {"User-Agent": "LandIQ-Pipeline-Agent"}
         resp = requests.get(url, headers=headers, timeout=5)
         if resp.status_code == 200:
             data = resp.json()
@@ -1367,6 +1691,31 @@ def reverse_geocode(lat: float, lng: float) -> tuple[str, str]:
                 lga = addr["city"]
     except Exception as e:
         logging.getLogger("landiq.coord_extract").warning(f"Nominatim lookup failed: {e}")
+
+    # Fallback Chain if geocoding returns unresolved, dashes, or empty values
+    if "Unresolved" in state or not state or state == "—" or "Unresolved" in lga or not lga or lga == "—":
+        # Akwa Ibom / Uyo bounding box check
+        # Akwa Ibom bounds roughly: lat [4.4, 5.5], lon [7.4, 8.3]
+        if 4.4 <= lat <= 5.5 and 7.4 <= lng <= 8.3:
+            state = "Akwa Ibom"
+            # Uyo LGA bounds roughly: lat [4.95, 5.15], lon [7.85, 8.05]
+            if 4.95 <= lat <= 5.15 and 7.85 <= lng <= 8.05:
+                lga = "Uyo"
+            else:
+                lga = "Uyo area"
+        # Lagos bounds: lat [6.2, 6.8], lon [2.6, 4.5]
+        elif 6.2 <= lat <= 6.8 and 2.6 <= lng <= 4.5:
+            state = "Lagos"
+            # Lagos Island area: lat [6.4, 6.5], lon [3.35, 3.45]
+            if 6.4 <= lat <= 6.5 and 3.35 <= lng <= 3.45:
+                lga = "Lagos Island"
+            else:
+                lga = "Ikeja"
+        # Abuja FCT bounds: lat [8.2, 9.3], lon [6.7, 7.6]
+        elif 8.2 <= lat <= 9.3 and 6.7 <= lng <= 7.6:
+            state = "Federal Capital Territory"
+            lga = "Abuja Municipal"
+            
     return state, lga
 
 
