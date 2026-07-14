@@ -172,52 +172,75 @@ def _engine_staticmap(
             centre_lng = min_lng + (max_lng - min_lng) / 2
             centre_lat = min_lat + (max_lat - min_lat) / 2
 
-        # Use local tile cache if available, else Google Hybrid (requires internet)
-        tile_url = LOCAL_TILE_URL
-        if "{z}" in tile_url and tile_url.startswith("file:"):
-            # Check local tiles exist
-            sample = tile_url.replace("{z}", str(zoom)).replace("{x}", "0").replace("{y}", "0")
-            if not Path(sample.replace("file:///", "")).exists():
-                tile_url = "https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}"
-
-        m = StaticMap(
-            SNAPSHOT_WIDTH,
-            SNAPSHOT_HEIGHT,
-            url_template=tile_url,
-            headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"},
-        )
-
-        # Polygon: staticmap expects (lng, lat) order
-        poly_coords = [(pt[1], pt[0]) for pt in coordinates]
+        import os
+        import numpy as np
         
-        polygon = SMapPolygon(
-            poly_coords,
-            fill_color="#dc26261f",  # 12% opacity red fill
-            outline_color=None,
-        )
-        m.add_polygon(polygon)
+        mapbox_key = os.getenv("MAPBOX_TOKEN")
+        sources = [
+            {"url": "https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}", "name": "GoogleHybrid"},
+            {"url": "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", "name": "EsriWorldImagery"},
+        ]
+        if mapbox_key:
+            sources.append({"url": f"https://api.mapbox.com/styles/v1/mapbox/satellite-v9/tiles/{{z}}/{{x}}/{{y}}?access_token={mapbox_key}", "name": "MapboxSatellite"})
+            
+        sources.append({"url": "https://tile.openstreetmap.org/{z}/{x}/{y}.png", "name": "OSMStandard"})
 
-        # Use Line for custom thick stroke
-        line_coords = list(poly_coords)
-        if line_coords and line_coords[0] != line_coords[-1]:
-            line_coords.append(line_coords[0]) # close the loop
-        m.add_line(SMapLine(line_coords, color="#dc2626", width=6))
+        def _is_blank_image(pil_img):
+            # Prevent Gemini from hallucinating on blank grey/white PNGs
+            arr = np.array(pil_img)
+            return np.std(arr) < 5.0
 
-        # Centroid marker
-        m.add_marker(CircleMarker(
-            (centroid["lng"], centroid["lat"]),
-            color="#1e40af",
-            width=10,
-        ))
+        for src in sources:
+            try:
+                m = StaticMap(
+                    SNAPSHOT_WIDTH,
+                    SNAPSHOT_HEIGHT,
+                    url_template=src["url"],
+                    headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"},
+                )
 
-        image = m.render(zoom=zoom, center=[centre_lng, centre_lat])
+                # Polygon: staticmap expects (lng, lat) order
+                poly_coords = [(pt[1], pt[0]) for pt in coordinates]
+                
+                polygon = SMapPolygon(
+                    poly_coords,
+                    fill_color="#dc26261f",  # 12% opacity red fill
+                    outline_color=None,
+                )
+                m.add_polygon(polygon)
 
-        # Compose final image with metadata strip
-        final = _add_metadata_strip(image, coordinates, centroid, report_id)
-        final.save(str(output_path), "PNG", optimize=True)
+                # Use Line for custom thick stroke
+                line_coords = list(poly_coords)
+                if line_coords and line_coords[0] != line_coords[-1]:
+                    line_coords.append(line_coords[0]) # close the loop
+                m.add_line(SMapLine(line_coords, color="#dc2626", width=6))
 
-        logger.info(f"[snapshot] staticmap engine succeeded → {output_path.name}")
-        return True
+                # Centroid marker
+                m.add_marker(CircleMarker(
+                    (centroid["lng"], centroid["lat"]),
+                    color="#1e40af",
+                    width=10,
+                ))
+
+                image = m.render(zoom=zoom, center=[centre_lng, centre_lat])
+                
+                if _is_blank_image(image):
+                    logger.debug(f"[snapshot] {src['name']} returned blank image. Cascading...")
+                    continue
+
+                # Compose final image with metadata strip
+                final = _add_metadata_strip(image, coordinates, centroid, report_id)
+                final.save(str(output_path), "PNG", optimize=True)
+
+                logger.info(f"[snapshot] staticmap engine succeeded with {src['name']} → {output_path.name}")
+                return True
+                
+            except Exception as e:
+                logger.debug(f"[snapshot] {src['name']} failed: {e}. Cascading...")
+                continue
+                
+        logger.error(f"[snapshot] All staticmap sources failed for report_id {report_id}")
+        return False
 
     except Exception as exc:
         logger.warning(f"[snapshot] staticmap engine failed: {exc}")

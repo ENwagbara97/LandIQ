@@ -226,6 +226,59 @@ def detect_state_from_centroid(lat: float, lng: float) -> str | None:
             return state
     return None
 
+def fetch_vegetation_indices_cascade(lat: float, lng: float) -> tuple[float | None, float | None]:
+    """
+    Tier 1: Strict Sentinel-2 L2A (Recent, low cloud)
+    Tier 2: Relaxed Sentinel-2 L2A (Older, higher cloud)
+    Tier 3: Landsat 9 / Landsat 8
+    """
+    import ee
+    import concurrent.futures
+    
+    # Buffer lat/lng to a 50m bbox for sampling
+    buffer_deg = 50.0 / 111000.0
+    bbox = ee.Geometry.Rectangle([
+        lng - buffer_deg, lat - buffer_deg,
+        lng + buffer_deg, lat + buffer_deg
+    ])
+    
+    sources = [
+        {"coll": "COPERNICUS/S2_SR_HARMONIZED", "filter": "CLOUDY_PIXEL_PERCENTAGE", "max_cloud": 10, "g": "B3", "n": "B8", "r": "B4", "scale": 10},
+        {"coll": "COPERNICUS/S2_SR_HARMONIZED", "filter": "CLOUDY_PIXEL_PERCENTAGE", "max_cloud": 30, "g": "B3", "n": "B8", "r": "B4", "scale": 10},
+        {"coll": "LANDSAT/LC09/C02/T1_L2", "filter": "CLOUD_COVER", "max_cloud": 10, "g": "SR_B3", "n": "SR_B5", "r": "SR_B4", "scale": 30},
+        {"coll": "LANDSAT/LC08/C02/T1_L2", "filter": "CLOUD_COVER", "max_cloud": 10, "g": "SR_B3", "n": "SR_B5", "r": "SR_B4", "scale": 30}
+    ]
+    
+    def fetch_source(src):
+        col = ee.ImageCollection(src["coll"]) \
+            .filterBounds(bbox) \
+            .filterMetadata(src["filter"], "less_than", src["max_cloud"]) \
+            .sort("system:time_start", False)
+            
+        first_img = col.first()
+        if not first_img:
+            return None
+            
+        ndwi_img = first_img.normalizedDifference([src["g"], src["n"]])
+        ndvi_img = first_img.normalizedDifference([src["n"], src["r"]])
+        
+        ndwi_val = ndwi_img.reduceRegion(reducer=ee.Reducer.mean(), geometry=bbox, scale=src["scale"]).get('nd').getInfo()
+        ndvi_val = ndvi_img.reduceRegion(reducer=ee.Reducer.mean(), geometry=bbox, scale=src["scale"]).get('nd').getInfo()
+        
+        return {"ndwi": ndwi_val, "ndvi": ndvi_val}
+
+    for src in sources:
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            future = executor.submit(fetch_source, src)
+            try:
+                res = future.result(timeout=10)
+                if res and res["ndwi"] is not None and res["ndvi"] is not None:
+                    return float(res["ndwi"]), float(res["ndvi"])
+            except Exception as e:
+                logger.debug(f"[gis_analysis] Vegetation cascade source {src['coll']} failed: {e}")
+                continue
+                
+    return None, None
 
 # =============================================================================
 # MAIN RUN FUNCTION
@@ -298,14 +351,13 @@ def run(
         )
 
     # ── SENTINEL-2 NDWI / NDVI ────────────────────────────────────────────────
-    ndwi, out_of_sentinel_zone = data_loader.load_ndwi(lat, lng)
-    ndvi, _ = data_loader.load_ndvi(lat, lng)
+    ndwi, ndvi = fetch_vegetation_indices_cascade(lat, lng)
 
-    if out_of_sentinel_zone:
+    if ndwi is None or ndvi is None:
         warnings.append(
-            "Satellite water/vegetation data (Sentinel-2) is not available "
-            "for this area. Only Lagos and Rivers State zones are pre-processed "
-            "in this release. Manual site inspection is recommended."
+            "Satellite water/vegetation data (Sentinel-2, Landsat) timed out or is unavailable "
+            "due to extreme cloud cover. Flood proximity score computed using elevation and "
+            "river proximity only. Manual site inspection is recommended."
         )
     data_sources_used.append("sentinel2")
 

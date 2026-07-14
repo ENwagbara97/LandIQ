@@ -1,7 +1,7 @@
 import unittest.mock as mock
 import pytest
 from fastapi.testclient import TestClient
-from main_v3 import app
+from main import app
 from core.elevation_contour import get_nice_interval, get_gee_elevation_contours
 from core.schemas import PersonaMode
 
@@ -38,9 +38,9 @@ def test_gee_elevation_live_mocked(mock_ee, mock_conn):
     mock_cursor.fetchone.return_value = None # Cache miss
     mock_conn.return_value.execute.return_value = mock_cursor
 
-    mock_ee.Image.return_value.select.return_value.resample.return_value.reproject.return_value.sampleRectangle.return_value.getInfo.return_value = {
+    mock_ee.ImageCollection.return_value.select.return_value.mosaic.return_value.resample.return_value.reproject.return_value.sampleRectangle.return_value.getInfo.return_value = {
         "properties": {
-            "elevation": [[10.0, 12.0], [11.0, 13.0]]
+            "DEM": [[10.0, 12.0], [11.0, 13.0]]
         }
     }
 

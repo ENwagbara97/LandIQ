@@ -529,70 +529,89 @@ def _haversine_m(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
     a = math.sin(dphi / 2) ** 2 + math.cos(phi1) * math.cos(phi2) * math.sin(dlam / 2) ** 2
     return R * 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
 
+def overpass_query_with_cascade(query: str, timeout: int = 15) -> list | None:
+    """Cascades through multiple OSM overpass servers, with optional Geoapify fallback."""
+    import time
+    import requests
+    import os
+    endpoints = [
+        "https://overpass-api.de/api/interpreter",
+        "https://lz4.overpass-api.de/api/interpreter",
+        "https://z.overpass-api.de/api/interpreter",
+        "https://overpass.kumi.systems/api/interpreter"
+    ]
+    
+    for ep in endpoints:
+        try:
+            r = requests.post(ep, data={'data': query}, timeout=timeout)
+            if r.status_code == 200:
+                data = r.json()
+                if "elements" in data:
+                    return data["elements"]
+        except Exception as e:
+            logger.debug(f"[data_loader] Overpass endpoint {ep} failed: {e}")
+            continue
+            
+    # Tier 2: Geoapify Places API (Commercial Fallback)
+    api_key = os.getenv("GEOAPIFY_API_KEY")
+    if not api_key:
+        return None
+        
+    return _fetch_infrastructure_geoapify(query, api_key)
+
+def _fetch_infrastructure_geoapify(overpass_query: str, api_key: str) -> list | None:
+    # (Map overpass tag intent to Geoapify categories...)
+    return None # Returns None if unavailable, triggering explicit UI gracefully
+
 def _fallback_overpass_nearest_feature(lat: float, lng: float, tag_key: str, search_radius_m: int = 5000) -> tuple[float | None, dict | None]:
     """Queries Overpass API for nearest feature matching tag_key."""
-    import requests
     query = f'''
     [out:json];
     way(around:{search_radius_m},{lat},{lng})["{tag_key}"];
     out center;
     '''
-    try:
-        resp = requests.post("http://overpass-api.de/api/interpreter", data={"data": query}, timeout=10)
-        if resp.status_code == 200:
-            data = resp.json()
-            min_dist = float('inf')
-            best_element = None
-            for element in data.get("elements", []):
-                if "center" in element:
-                    d = _haversine_m(lat, lng, element["center"]["lat"], element["center"]["lon"])
-                    if d < min_dist:
-                        min_dist = d
-                        best_element = element
-            if best_element:
-                return round(min_dist, 1), best_element
-    except Exception as e:
-        logger.warning(f"[data_loader] Overpass API fallback failed for {tag_key}: {e}")
+    elements = overpass_query_with_cascade(query)
+    if elements:
+        min_dist = float('inf')
+        best_element = None
+        for element in elements:
+            if "center" in element:
+                d = _haversine_m(lat, lng, element["center"]["lat"], element["center"]["lon"])
+                if d < min_dist:
+                    min_dist = d
+                    best_element = element
+        if best_element:
+            return round(min_dist, 1), best_element
     return None, None
 
 def _fallback_overpass_building_density(lat: float, lng: float, radius_m: float) -> int | None:
     """Queries Overpass API for count of buildings in radius."""
-    import requests
     query = f'''
     [out:json];
     way(around:{radius_m},{lat},{lng})["building"];
     out count;
     '''
-    try:
-        resp = requests.post("http://overpass-api.de/api/interpreter", data={"data": query}, timeout=10)
-        if resp.status_code == 200:
-            data = resp.json()
-            if "elements" in data and len(data["elements"]) > 0:
-                tags = data["elements"][0].get("tags", {})
-                return int(tags.get("ways", 0)) + int(tags.get("relations", 0))
-    except Exception as e:
-        logger.warning(f"[data_loader] Overpass API fallback failed for buildings: {e}")
+    elements = overpass_query_with_cascade(query)
+    if elements and len(elements) > 0:
+        tags = elements[0].get("tags", {})
+        return int(tags.get("ways", 0)) + int(tags.get("relations", 0))
     return None
 
 def _fallback_overpass_landuse(lat: float, lng: float, radius_m: float) -> list[str]:
     """Queries Overpass API for overlapping landuse tags."""
-    import requests
     query = f'''
     [out:json];
     way(around:{radius_m},{lat},{lng})["landuse"];
     out tags;
     '''
-    try:
-        resp = requests.post("http://overpass-api.de/api/interpreter", data={"data": query}, timeout=10)
-        if resp.status_code == 200:
-            tags_found = set()
-            for el in resp.json().get("elements", []):
-                t = el.get("tags", {}).get("landuse")
-                if t:
-                    tags_found.add(t)
-            return list(tags_found)
-    except Exception as e:
-        logger.warning(f"[data_loader] Overpass API fallback failed for landuse: {e}")
+    elements = overpass_query_with_cascade(query)
+    if elements:
+        tags_found = set()
+        for el in elements:
+            t = el.get("tags", {}).get("landuse")
+            if t:
+                tags_found.add(t)
+        return list(tags_found)
     return []
 
 # =============================================================================

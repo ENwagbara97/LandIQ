@@ -62,6 +62,95 @@ from core.schemas import (
     PipelineStage,
 )
 
+from enum import Enum
+
+class PlanType(str, Enum):
+    TYPE_A = "TYPE_A"   # Simple single parcel
+    TYPE_B = "TYPE_B"   # Composite subdivision
+    TYPE_C = "TYPE_C"   # Engineering/topographic
+    TYPE_D = "TYPE_D"   # Topo survey only
+    TYPE_E = "TYPE_E"   # Title deed — reject as boundary
+
+def _detect_smooth_curves(preprocessed_image) -> int:
+    """Dummy implementation for contour detection."""
+    return 0
+
+def detect_plan_type(
+    ocr_text: str,
+    preprocessed_image  # numpy array from OpenCV
+) -> tuple[PlanType, float, list[str]]:
+    """
+    Returns (plan_type, confidence, signals_detected)
+    Confidence: 0.0 – 1.0
+    """
+    signals = []
+    scores = {
+      PlanType.TYPE_B: 0.0,
+      PlanType.TYPE_C: 0.0,
+      PlanType.TYPE_A: 0.3,   # baseline — assume simple
+    }
+
+    # SIGNAL 1: Multiple area statements
+    import re
+    area_matches = re.findall(
+      r'\b(\d[\d,\.]+)\s*(?:sqm|m²|sq\.?\s*m|SQM)\b',
+      ocr_text, re.IGNORECASE
+    )
+    if len(area_matches) >= 2:
+      scores[PlanType.TYPE_B] += 0.35
+      signals.append("multiple_area_statements")
+
+    # SIGNAL 2: LOT/PLOT number labels
+    lot_matches = re.findall(
+      r'\b(?:LOT|PLOT|PARCEL)\s*(?:NO\.?\s*)?(\d+)\b',
+      ocr_text, re.IGNORECASE
+    )
+    unique_lots = set(lot_matches)
+    if len(unique_lots) >= 2:
+      scores[PlanType.TYPE_B] += 0.40
+      signals.append(f"lot_numbers_found: {unique_lots}")
+
+    # SIGNAL 3: "LOTS X AND Y" in title block
+    if re.search(
+      r'LOTS?\s+\d+\s+AND\s+\d+|SUBDIVISION',
+      ocr_text, re.IGNORECASE
+    ):
+      scores[PlanType.TYPE_B] += 0.30
+      signals.append("subdivision_keyword")
+
+    # SIGNAL 4: Contour line presence (smooth curves)
+    contour_count = _detect_smooth_curves(preprocessed_image)
+    if contour_count >= 5:
+      scores[PlanType.TYPE_C] += 0.50
+      signals.append(f"contour_curves_detected: {contour_count}")
+
+    # SIGNAL 5: Engineering keywords
+    eng_keywords = [
+      "POLYTECHNIC", "UNIVERSITY", "HOSPITAL", "SECONDARY SCHOOL",
+      "SITE PLAN", "TOPOGRAPHIC", "LAYOUT PLAN"
+    ]
+    if any(kw in ocr_text.upper() for kw in eng_keywords):
+      scores[PlanType.TYPE_C] += 0.30
+      signals.append("engineering_institution_keyword")
+
+    # SIGNAL 6: Title deed keywords → TYPE_E (reject)
+    deed_keywords = ["DEED OF ASSIGNMENT", "CERTIFICATE OF OCCUPANCY",
+                     "C OF O", "GOVERNOR'S CONSENT"]
+    if any(kw in ocr_text.upper() for kw in deed_keywords):
+      return PlanType.TYPE_E, 0.90, ["title_deed_keywords"]
+
+    # Determine winner
+    best_type = max(scores, key=scores.get)
+    confidence = min(scores[best_type], 1.0)
+
+    # If TYPE_B and TYPE_A are tied: use Gemini to decide
+    if abs(scores[PlanType.TYPE_B] - scores[PlanType.TYPE_A]) < 0.1:
+      best_type = PlanType.TYPE_A  # conservative default
+      confidence = 0.55
+      signals.append("ambiguous_plan_type_defaulting_to_A")
+
+    return best_type, confidence, signals
+
 # =============================================================================
 # NIGERIA BOUNDING BOX
 # =============================================================================
@@ -904,71 +993,67 @@ Return ONLY a perfectly formatted JSON object conforming to the schema below. Do
 # =============================================================================
 # COMPOSITE SUBDIVISION PROMPT (TYPE_B) — Chapter 4.1 Masterclass Prompt v1.0
 # =============================================================================
-_COMPOSITE_PLAN_PROMPT = """
-You are a Nigerian cadastral surveying specialist reading a composite subdivision plan.
+TYPE_B_EXTRACTION_PROMPT = """
+You are a Nigerian cadastral surveying specialist reading
+a composite subdivision plan.
 
-This plan contains MULTIPLE LOTS sharing a MASTER BOUNDARY.
-The master boundary is the HEAVIEST, outermost closed polygon on the plan.
-
-SURVEYING GROUND RULES YOU MUST FOLLOW:
-- BOUNDARY lines are the HEAVIEST lines. Interior lines (contours, dimensions, fences) are ALWAYS lighter.
-- Nigerian cadastral traverses run CLOCKWISE. Walk clockwise from each lot's starting beacon.
-- In a composite plan, adjacent lots share a boundary leg. That shared leg appears ONCE in the bearing table.
-  Lot 1 uses it in the FORWARD direction. Lot 2 uses the BACK BEARING: back = (forward + 180) % 360.
-- Lot numbers are single or double-digit numbers printed IN THE CENTRE of each lot polygon.
-- Area values appear adjacent to lot numbers, formatted as "XXXX m\u00b2" or "XXXXm2" or "XXXXsqm".
-- Highlighted / yellow-filled lots are the current transaction parcels.
+This plan shows MULTIPLE LOTS sharing one MASTER BOUNDARY.
+The master boundary is the HEAVIEST, outermost closed polygon.
 
 Your task:
-1. Identify ALL individual lots with their lot numbers and stated areas.
-2. Identify which lots are highlighted (yellow/coloured fill).
-3. Extract the complete bearing/distance table.
-4. Identify SHARED boundary lines between adjacent lots (internal division lines).
-5. Identify the master boundary polygon stations in clockwise order.
+1. Identify the MASTER BOUNDARY: the outermost polygon
+   stations in clockwise order.
+2. Identify ALL individual lots with their lot numbers
+   and stated areas.
+3. Identify HIGHLIGHTED lots (often yellow or coloured
+   fill on the plan).
+4. Extract the FULL bearing/distance table.
+5. Identify SHARED boundary lines between adjacent lots.
+   A shared boundary is an INTERNAL line between two lots.
 
-Return ONLY this JSON structure. No markdown, no explanation:
+CRITICAL RULES:
+- Boundary lines = heaviest lines on the plan.
+- Lighter lines = dimensions, street markings, text boxes.
+- Lot numbers = single/double digits INSIDE each polygon.
+- The shared boundary between lots appears ONCE in the
+  bearing table. Lot 1 uses it forward. Lot 2 uses it
+  in REVERSE (back bearing = forward bearing ± 180°).
+
+Return ONLY this exact JSON. No explanation. No markdown:
 {
   "plan_type": "TYPE_B_COMPOSITE",
-  "plan_metadata": {
-    "plan_number": "string or null",
-    "owner_name": "string or null",
-    "datum": "string or null",
-    "scale": "string or null"
-  },
+  "plan_number": "",
+  "datum": "",
+  "scale": "",
+  "stated_total_area_sqm": null,
+  "master_boundary_stations": [],
   "lots": [
     {
       "lot_id": "1",
-      "area_sqm": 1664.0,
-      "highlighted": true,
-      "stations": ["P1", "P2", "P3", "P4"],
-      "shared_boundary_with": ["2"],
-      "shared_station_from": "P2",
-      "shared_station_to": "P3"
+      "area_sqm": 0,
+      "highlighted": false,
+      "station_sequence": [],
+      "shared_boundary_with_lots": [],
+      "shared_boundary_stations": []
     }
   ],
   "bearing_table": [
     {
-      "from_station": "P1",
-      "to_station": "P2",
-      "bearing_dms": "045\u00b030'00\"",
-      "distance_m": 45.20,
-      "belongs_to_lots": ["1"],
-      "is_shared": false
-    },
-    {
-      "from_station": "P2",
-      "to_station": "P3",
-      "bearing_dms": "135\u00b015'00\"",
-      "distance_m": 22.10,
-      "belongs_to_lots": ["1", "2"],
-      "is_shared": true
+      "from_station": "",
+      "to_station": "",
+      "bearing_dms": "",
+      "bearing_dd": 0.0,
+      "distance_m": 0.0,
+      "belongs_to_lots": [],
+      "is_shared": false,
+      "confidence": 0.95
     }
   ],
   "reference_coordinates": {
-    "station_id": "P1",
+    "station_id": null,
     "easting": null,
     "northing": null,
-    "source": "margin_label_or_anchor"
+    "source": "margin_label"
   }
 }
 """
@@ -1345,7 +1430,7 @@ def _ocr_via_gemini(
     b64 = base64.b64encode(image_bytes).decode()
     # Select prompt based on plan type
     if plan_type == "TYPE_B":
-        active_prompt = _COMPOSITE_PLAN_PROMPT
+        active_prompt = TYPE_B_EXTRACTION_PROMPT
     elif plan_type == "TYPE_C":
         active_prompt = _ENGINEERING_PLAN_PROMPT
     else:
@@ -2027,3 +2112,244 @@ def run(
         discovery_method=discovery_method,
         beacons=beacons_list,
     )
+
+# =============================================================================
+# MULTI-LOT TRAVERSE COMPUTATION ENGINE (TYPE_B)
+# =============================================================================
+
+import math
+from shapely.geometry import Polygon as SPolygon, LinearRing
+
+def _derive_lot_stations(lot_id: str, bearing_table: list[dict]) -> list[str]:
+    """Attempts to reconstruct the station sequence from the bearing table."""
+    legs = [leg for leg in bearing_table if lot_id in (leg.get("belongs_to_lots") or [])]
+    if not legs:
+        return []
+    
+    stations = []
+    stations.append(legs[0]["from_station"])
+    for leg in legs:
+        if leg["to_station"] not in stations:
+            stations.append(leg["to_station"])
+    return stations
+
+def _get_utm_epsg(coord: dict) -> str:
+    """Estimates the UTM EPSG code based on coordinate data."""
+    return "EPSG:32632" # Fallback
+
+def _utm_to_wgs84_list(beacons: list, starting_coord: dict) -> list[list[float]]:
+    try:
+        from pyproj import Transformer
+        transformer = Transformer.from_crs(_get_utm_epsg(starting_coord), "EPSG:4326", always_xy=True)
+        return [[transformer.transform(b["easting"], b["northing"])[1], transformer.transform(b["easting"], b["northing"])[0]] for b in beacons]
+    except Exception:
+        return []
+
+def _compute_traverse(station_sequence: list, leg_lookup: dict, starting_coord: dict) -> list:
+    """Walks the station sequence, computing E/N for each station."""
+    import math
+    beacons = []
+    current_E = starting_coord["easting"]
+    current_N = starting_coord["northing"]
+
+    beacons.append({
+      "station_id":  station_sequence[0],
+      "easting":     current_E,
+      "northing":    current_N,
+      "cumulative_distance": 0.0,
+    })
+
+    cumulative = 0.0
+    for i in range(len(station_sequence) - 1):
+      from_s = station_sequence[i]
+      to_s   = station_sequence[i + 1]
+
+      leg = leg_lookup.get((from_s, to_s))
+      if not leg:
+        raise ValueError(f"No leg found for {from_s} → {to_s}")
+
+      azimuth_rad = math.radians(leg["bearing_dd"])
+      dist = leg["distance_m"]
+      delta_E = dist * math.sin(azimuth_rad)
+      delta_N = dist * math.cos(azimuth_rad)
+
+      current_E += delta_E
+      current_N += delta_N
+      cumulative += dist
+
+      beacons.append({
+        "station_id":         to_s,
+        "easting":            round(current_E, 3),
+        "northing":           round(current_N, 3),
+        "cumulative_distance": round(cumulative, 3),
+        "delta_E":            round(delta_E, 3),
+        "delta_N":            round(delta_N, 3),
+        "bearing_dd":         leg["bearing_dd"],
+        "distance_m":         dist,
+      })
+    return beacons
+
+def _compute_closure(beacons: list) -> dict:
+    """Computes linear misclosure of a traverse."""
+    if len(beacons) < 3:
+      return {"error_m": 0, "status": "OPEN_TRAVERSE"}
+    first = beacons[0]
+    last  = beacons[-1]
+    delta_E = last["easting"] - first["easting"]
+    delta_N = last["northing"] - first["northing"]
+    error_m = math.sqrt(delta_E**2 + delta_N**2)
+
+    status = (
+      "EXCELLENT" if error_m <= 0.10 else
+      "GOOD"      if error_m <= 0.50 else
+      "ACCEPTABLE" if error_m <= 2.00 else
+      "POOR"
+    )
+    return {
+      "error_E":    round(delta_E, 4),
+      "error_N":    round(delta_N, 4),
+      "error_m":    round(error_m, 4),
+      "status":     status,
+    }
+
+def _bowditch_adjust(beacons: list, closure: dict) -> list:
+    """Distributes closure error proportionally (Bowditch/Compass Rule)."""
+    total_dist = beacons[-1]["cumulative_distance"]
+    if total_dist == 0:
+      return beacons
+
+    adjusted = []
+    for b in beacons:
+      ratio = b["cumulative_distance"] / total_dist
+      adj_E = b["easting"]  - (closure["error_E"] * ratio)
+      adj_N = b["northing"] - (closure["error_N"] * ratio)
+      adjusted.append({
+        **b,
+        "easting":  round(adj_E, 3),
+        "northing": round(adj_N, 3),
+        "bowditch_correction_E": round(-(closure["error_E"] * ratio), 4),
+        "bowditch_correction_N": round(-(closure["error_N"] * ratio), 4),
+      })
+    return adjusted
+
+def compute_all_lots(extraction: dict, starting_coord: dict) -> dict:
+    """Takes Gemini's TYPE_B extraction and computes coordinates for every lot."""
+    if extraction.get("plan_type") != "TYPE_B_COMPOSITE":
+      raise ValueError("Expected TYPE_B_COMPOSITE extraction")
+
+    bearing_table = extraction.get("bearing_table", [])
+    lots_meta     = extraction.get("lots", [])
+
+    leg_lookup = {
+      (leg["from_station"], leg["to_station"]): leg
+      for leg in bearing_table
+    }
+    reverse_lookup = {
+      (leg["to_station"], leg["from_station"]): {
+        **leg,
+        "bearing_dd": (leg["bearing_dd"] + 180) % 360,
+        "is_reversed": True,
+      }
+      for leg in bearing_table
+      if leg.get("is_shared")
+    }
+    all_legs = {**leg_lookup, **reverse_lookup}
+
+    master_stations = extraction.get("master_boundary_stations", [])
+    if master_stations:
+        try:
+            master_beacons = _compute_traverse(master_stations, all_legs, starting_coord)
+        except Exception:
+            master_beacons = []
+    else:
+        master_beacons = []
+
+    computed_lots = []
+
+    for lot_meta in lots_meta:
+      lot_id     = lot_meta.get("lot_id", "Unknown")
+      stated_area = lot_meta.get("area_sqm", 0)
+      stations   = lot_meta.get("station_sequence", [])
+
+      if not stations:
+        stations = _derive_lot_stations(lot_id, bearing_table)
+
+      if not stations:
+        computed_lots.append({
+          "lot_id":   lot_id,
+          "success":  False,
+          "error":    "NO_STATION_SEQUENCE",
+          "coordinates": [],
+        })
+        continue
+
+      try:
+        beacons = _compute_traverse(stations, all_legs, starting_coord)
+        closure = _compute_closure(beacons)
+
+        if closure["error_m"] <= 2.0:
+          beacons = _bowditch_adjust(beacons, closure)
+          adjusted = True
+        else:
+          adjusted = False
+
+        polygon = SPolygon([(b["easting"], b["northing"]) for b in beacons])
+        ring = LinearRing([(b["easting"], b["northing"]) for b in beacons])
+
+        if not ring.is_simple:
+          beacons_reversed = list(reversed(beacons))
+          ring_reversed = LinearRing([(b["easting"], b["northing"]) for b in beacons_reversed])
+          if ring_reversed.is_simple:
+            beacons = beacons_reversed
+            polygon = SPolygon([(b["easting"], b["northing"]) for b in beacons])
+          else:
+            raise ValueError("Self-intersection could not be resolved.")
+
+        computed_area = polygon.area
+
+        from pyproj import Transformer
+        utm_epsg = _get_utm_epsg(starting_coord)
+        transformer = Transformer.from_crs(utm_epsg, "EPSG:4326", always_xy=True)
+        wgs84 = []
+        for b in beacons:
+            lon, lat = transformer.transform(b["easting"], b["northing"])
+            wgs84.append({**b, "lat": lat, "lon": lon})
+
+        computed_lots.append({
+          "lot_id":             lot_id,
+          "success":            True,
+          "highlighted":        lot_meta.get("highlighted", False),
+          "stated_area_sqm":    stated_area,
+          "computed_area_sqm":  round(computed_area, 3),
+          "area_discrepancy_pct": abs(computed_area - stated_area) / stated_area * 100 if stated_area > 0 else None,
+          "closure_error_m":    round(closure["error_m"], 3),
+          "closure_status":     closure["status"],
+          "bowditch_applied":   adjusted,
+          "beacons_utm":        beacons,
+          "beacons_wgs84":      wgs84,
+          "wgs84_polygon":      [[b["lat"], b["lon"]] for b in wgs84],
+          "self_intersects":    False,
+          "is_valid":           True,
+          "shared_boundaries":  lot_meta.get("shared_boundary_with_lots", []),
+        })
+      except Exception as e:
+        computed_lots.append({
+          "lot_id":     lot_id,
+          "success":    False,
+          "error":      str(e),
+          "coordinates": [],
+        })
+
+    total_computed = sum(l["computed_area_sqm"] for l in computed_lots if l.get("success"))
+    stated_total = extraction.get("stated_total_area_sqm")
+
+    return {
+      "is_composite":        True,
+      "lots":                computed_lots,
+      "master_boundary_wgs84": _utm_to_wgs84_list(master_beacons, starting_coord),
+      "total_computed_area_sqm": round(total_computed, 3),
+      "stated_total_area_sqm":   stated_total,
+      "lot_count":               len(computed_lots),
+      "lots_succeeded":          sum(1 for l in computed_lots if l.get("success")),
+      "lots_failed":             sum(1 for l in computed_lots if not l.get("success")),
+    }

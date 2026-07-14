@@ -279,6 +279,40 @@ def get_history(
 
 
 # =============================================================================
+# HISTORY DELETION
+# =============================================================================
+
+def delete_report(report_id: str, user_id: str) -> bool:
+    """Delete a single report ensuring it belongs to the user."""
+    conn = _conn()
+    try:
+        # First verify it belongs to user
+        row = conn.execute("SELECT report_id FROM reports WHERE report_id = ? AND user_id = ?", (report_id, user_id)).fetchone()
+        if not row:
+            return False
+            
+        conn.execute("DELETE FROM report_data_sources WHERE report_id = ?", (report_id,))
+        conn.execute("DELETE FROM reports WHERE report_id = ?", (report_id,))
+        conn.execute("DELETE FROM sessions WHERE run_id = ?", (report_id,))
+        conn.commit()
+        return True
+    finally:
+        conn.close()
+
+def delete_user_history(user_id: str) -> bool:
+    """Clear all reports for a specific user."""
+    conn = _conn()
+    try:
+        conn.execute("DELETE FROM report_data_sources WHERE report_id IN (SELECT report_id FROM reports WHERE user_id = ?)", (user_id,))
+        conn.execute("DELETE FROM reports WHERE user_id = ?", (user_id,))
+        conn.execute("DELETE FROM sessions WHERE user_id = ?", (user_id,))
+        conn.commit()
+        return True
+    finally:
+        conn.close()
+
+
+# =============================================================================
 # DATA SOURCES TRANSPARENCY
 # =============================================================================
 

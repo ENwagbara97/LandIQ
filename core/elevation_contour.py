@@ -14,6 +14,7 @@ import sqlite3
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
+import concurrent.futures
 
 import numpy as np
 import ee
@@ -101,13 +102,23 @@ def get_gee_elevation_contours(report_id: str, coordinates: list[list[float]]) -
             buffered_max_lat
         ])
 
-        image = ee.ImageCollection("COPERNICUS/DEM/GLO30").select("DEM").mosaic()
-        resampled = image.resample('bilinear')
-        proj = ee.Projection('EPSG:4326').atScale(scale_m)
-        reprojected = resampled.reproject(crs=proj)
-
-        pixel_data = reprojected.sampleRectangle(region=bbox, defaultValue=-9999).getInfo()
-        elevations = pixel_data['properties']['elevation']
+        elevations = fetch_elevation_with_cascade(bbox, scale_m)
+        if not elevations:
+            # Explicitly format the unavailability response so the frontend knows what happened
+            return {
+                "elevation_available": False,
+                "reason": "All upstream topography providers (NASA, SRTM, JAXA) timed out.",
+                "grid": [],
+                "bounds": [
+                    [buffered_min_lat, buffered_min_lng],
+                    [buffered_max_lat, buffered_max_lng]
+                ],
+                "scale_m": round(scale_m, 1),
+                "interval_m": 1.0,
+                "min_elevation": 0.0,
+                "max_elevation": 0.0,
+                "dimensions": [0, 0]
+            }
 
         rows = len(elevations)
         cols = len(elevations[0]) if rows > 0 else 0
@@ -190,16 +201,16 @@ def generate_static_contour_map(
     output_path: Path
 ) -> bool:
     """
-    Generate a fused satellite/contour map using matplotlib + contextily.
+    Generate a clean engineering contour map using matplotlib.
+    Contours are clipped/masked exactly to the boundary polygon.
     Saves the static map to output_path.
     """
     try:
         import matplotlib
         matplotlib.use("Agg")
         import matplotlib.pyplot as plt
-        from matplotlib.patches import Polygon as MplPolygon
-        from matplotlib.collections import PatchCollection
-        import contextily as cx
+        import matplotlib.path as mpath
+        from matplotlib.patches import PathPatch
 
         elevations = np.array(grid_data, dtype=float)
         rows, cols = elevations.shape
@@ -212,17 +223,11 @@ def generate_static_contour_map(
         lngs = np.linspace(buffered_min_lng, buffered_max_lng, cols)
         X, Y = np.meshgrid(lngs, lats)
 
-        fig, ax = plt.subplots(figsize=(10, 8), dpi=150)
+        fig, ax = plt.subplots(figsize=(10, 8), dpi=200)
 
-        # Draw fast CartoDB Positron basemap
-        try:
-            cx.add_basemap(
-                ax,
-                crs="EPSG:4326",
-                source=cx.providers.CartoDB.Positron
-            )
-        except Exception as basemap_err:
-            logger.warning(f"[elevation] Basemap loading skipped: {basemap_err}")
+        # White background
+        fig.patch.set_facecolor('white')
+        ax.set_facecolor('white')
 
         ax.set_xlim(buffered_min_lng, buffered_max_lng)
         ax.set_ylim(buffered_min_lat, buffered_max_lat)
@@ -234,36 +239,84 @@ def generate_static_contour_map(
         index_levels = np.arange(math.floor(min_z / index_interval) * index_interval, max_z + index_interval, index_interval)
         normal_levels = [lvl for lvl in all_levels if lvl not in index_levels]
 
+        # Create clipping path from boundary coordinates
+        # coordinates are [lat, lng], but matplotlib expects (x, y) which is (lng, lat)
+        poly_pts = [(lng, lat) for lat, lng in coordinates]
+        # Close the polygon path if needed
+        if poly_pts[0] != poly_pts[-1]:
+            poly_pts.append(poly_pts[0])
+            
+        clip_path = mpath.Path(poly_pts)
+        patch = PathPatch(clip_path, facecolor='none', edgecolor='none')
+        ax.add_patch(patch)
+
         # Thin contours (normal)
         if len(normal_levels) > 0:
-            ax.contour(X, Y, elevations, levels=normal_levels, colors='#475569', alpha=0.25, linewidths=0.6)
+            thin = ax.contour(X, Y, elevations, levels=normal_levels, colors='#64748b', alpha=0.7, linewidths=0.5)
+            for col in thin.collections:
+                col.set_clip_path(patch)
 
         # Thick contours (index)
         if len(index_levels) > 0:
-            thick = ax.contour(X, Y, elevations, levels=index_levels, colors='#0f172a', alpha=0.55, linewidths=1.2)
-            ax.clabel(thick, inline=True, fontsize=7, fmt="%g m", colors='#0f172a')
+            thick = ax.contour(X, Y, elevations, levels=index_levels, colors='#0f172a', alpha=0.9, linewidths=1.2)
+            for col in thick.collections:
+                col.set_clip_path(patch)
+            ax.clabel(thick, inline=True, fontsize=8, fmt="%g m", colors='#0f172a')
 
         # Draw brand blue boundary
-        poly_pts = [(lng, lat) for lat, lng in coordinates]
-        polygon_patch = MplPolygon(poly_pts, closed=True)
-        patch_collection = PatchCollection(
-            [polygon_patch],
-            facecolor=(0/255, 88/255, 189/255, 0.12),  # 12% brand blue
+        boundary_patch = PathPatch(
+            clip_path,
+            facecolor=(0/255, 88/255, 189/255, 0.05),  # very faint blue fill
             edgecolor=(0/255, 88/255, 189/255, 1.0),   # solid brand blue
             linewidths=2.5,
             zorder=4
         )
-        ax.add_collection(patch_collection)
+        ax.add_patch(boundary_patch)
 
         ax.axis("off")
         plt.tight_layout(pad=0)
         
         output_path.parent.mkdir(parents=True, exist_ok=True)
-        plt.savefig(str(output_path), dpi=150, bbox_inches="tight", pad_inches=0.1)
+        plt.savefig(str(output_path), dpi=200, bbox_inches="tight", pad_inches=0.1, facecolor='white')
         plt.close(fig)
 
-        logger.info(f"[elevation] Saved static contour map to {output_path.name}")
+        logger.info(f"[elevation] Saved static engineering contour map to {output_path.name}")
         return True
     except Exception as e:
-        logger.error(f"[elevation] Failed to generate static contour map: {e}")
+        logger.error(f"[elevation] Failed to generate static engineering contour map: {e}")
         return False
+
+def _gee_call_with_timeout(collection_name: str, bbox, scale_m: float, timeout: int = 10):
+    """Executes a GEE sampleRectangle call with a strict timeout to prevent hangs."""
+    def fetch():
+        img = ee.ImageCollection(collection_name).select("DEM").mosaic()
+        resampled = img.resample('bilinear')
+        proj = ee.Projection('EPSG:4326').atScale(scale_m)
+        reprojected = resampled.reproject(crs=proj)
+        return reprojected.sampleRectangle(region=bbox, defaultValue=-9999).getInfo()
+    
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        future = executor.submit(fetch)
+        try:
+            return future.result(timeout=timeout)
+        except concurrent.futures.TimeoutError:
+            return None
+
+def fetch_elevation_with_cascade(bbox, scale_m: float):
+    """Cascades through multiple live elevation sources, returning the first successful grid."""
+    sources = [
+        "COPERNICUS/DEM/GLO30",    # 30m, primary
+        "NASA/NASADEM_HGT/001",    # 30m, most modern
+        "USGS/SRTMGL1_003",        # 30m, global standard
+        "JAXA/ALOS/AW3D30/V3_2",   # 30m, excellent backup
+    ]
+    
+    for src in sources:
+        try:
+            data = _gee_call_with_timeout(src, bbox, scale_m, timeout=8)
+            if data and 'properties' in data:
+                return data['properties'].get('DEM') or data['properties'].get('elevation')
+        except Exception:
+            continue
+            
+    return None

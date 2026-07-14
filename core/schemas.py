@@ -675,3 +675,113 @@ class CadastralResult(BaseModel):
     polygon: Optional[PolygonData] = None
     extraction_confidence: ExtractionConfidence
 
+
+# =============================================================================
+# VIA — VISUAL INTELLIGENCE ADVISOR SCHEMAS
+# Output contracts for the satellite visual scan module (agents/via_engine.py).
+# These models are never modified by the deterministic pipeline — they live
+# alongside the ReportSchema, not inside it.
+# =============================================================================
+
+class VIAStatus(str, Enum):
+    PENDING  = "pending"
+    COMPLETE = "complete"
+    TIMEOUT  = "timeout"
+    ERROR    = "error"
+
+
+class VIAImageQuality(BaseModel):
+    satellite_clarity     : str = "unknown"  # "clear"|"moderate"|"poor"
+    estimated_image_age   : str = "unknown"  # "recent (<2yr)"|"dated (2-5yr)"|"unknown"
+    cloud_cover_pct       : int = 0
+
+
+class VIAParcelInterior(BaseModel):
+    current_use_observed      : str = "unclear"  # "vacant"|"residential"|"agricultural"|...
+    structures_visible_inside  : bool = False
+    structure_count_estimate   : int = 0
+    vegetation_cover          : str = "none"     # "dense"|"moderate"|"sparse"|"none"
+    surface_condition         : str = "unclear"  # "dry and stable"|"waterlogged"|"eroded"|"unclear"
+
+
+class VIARoadAccess(BaseModel):
+    road_visible           : bool = False
+    road_type              : str = "none"        # "paved"|"unpaved"|"footpath"|"none"
+    road_proximity         : str = "none visible"
+    named_road_if_visible  : Optional[str] = None
+
+
+class VIAWaterFeatures(BaseModel):
+    water_body_visible     : bool = False
+    type                   : str = "none"        # "river"|"creek"|"canal"|"drainage channel"|"pond"|"none"
+    proximity_to_parcel    : str = "none"
+    direction_from_parcel  : Optional[str] = None
+
+
+class VIASettlementPattern(BaseModel):
+    settlement_type             : str = "none"   # "formal residential"|"informal settlement"|"mixed"|"rural"|"none"
+    density                     : str = "none"   # "high"|"medium"|"low"|"none"
+    commercial_activity_visible : bool = False
+
+
+class VIARiskObservations(BaseModel):
+    erosion_visible             : bool = False
+    erosion_severity            : Optional[str] = None   # "severe"|"moderate"|"minor"|null
+    marshy_terrain_visible      : bool = False
+    industrial_activity_visible : bool = False
+    industrial_type             : Optional[str] = None
+    encroachment_risk_visual    : bool = False
+    encroachment_detail         : Optional[str] = None
+    flooding_evidence_visible   : bool = False
+    flooding_evidence_detail    : Optional[str] = None
+
+
+class VIADevelopmentContext(BaseModel):
+    area_development_trend          : str = "rural stagnant"  # "growing"|"established"|"declining"|"rural stagnant"
+    infrastructure_quality_visual   : str = "absent"          # "good"|"fair"|"poor"|"absent"
+    notable_landmarks_visible       : list[str] = []
+
+
+class VIASurroundings(BaseModel):
+    road_access         : VIARoadAccess = VIARoadAccess()
+    water_features      : VIAWaterFeatures = VIAWaterFeatures()
+    settlement_pattern  : VIASettlementPattern = VIASettlementPattern()
+    risk_observations   : VIARiskObservations = VIARiskObservations()
+    development_context : VIADevelopmentContext = VIADevelopmentContext()
+
+
+class VIAConfidence(BaseModel):
+    overall_confidence     : str = "low"    # "high"|"medium"|"low"
+    low_confidence_reasons : list[str] = []
+
+
+class VIACallAResult(BaseModel):
+    """Structured output from Gemini Vision Call A (feature extraction)."""
+    image_quality                : VIAImageQuality = VIAImageQuality()
+    parcel_interior              : VIAParcelInterior = VIAParcelInterior()
+    immediate_surroundings_250m  : VIASurroundings = VIASurroundings()
+    confidence                   : VIAConfidence = VIAConfidence()
+
+
+class VIAUsageMeta(BaseModel):
+    """Token usage and cost tracking for a single VIA run."""
+    input_tokens_a    : int = 0
+    output_tokens_a   : int = 0
+    input_tokens_b    : int = 0
+    output_tokens_b   : int = 0
+    model             : str = "gemini-2.0-flash"
+    call_duration_ms  : int = 0
+
+
+class VIAResult(BaseModel):
+    """
+    Top-level VIA output stored in reports.via_result_json.
+    Never modifies traffic_light or any deterministic field.
+    """
+    status          : VIAStatus = VIAStatus.PENDING
+    call_a          : Optional[VIACallAResult] = None
+    call_b_text     : Optional[str] = None          # plain-English paragraphs for the report card
+    advisory_flags  : list[str] = []                # VIA_ prefixed flag strings only
+    usage_meta      : Optional[VIAUsageMeta] = None
+    completed_at    : Optional[str] = None          # ISO8601
+    error_detail    : Optional[str] = None          # internal only — never surfaced to user

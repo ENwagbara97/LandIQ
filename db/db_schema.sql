@@ -161,3 +161,6 @@ CREATE TABLE IF NOT EXISTS schema_versions (
 
 INSERT OR IGNORE INTO schema_versions (version, applied_at, description)
 VALUES ('1.1', datetime('now'), 'Add GEE elevation contour cache table');
+
+INSERT OR IGNORE INTO schema_versions (version, applied_at, description)
+VALUES ('1.2', datetime('now'), 'Add VIA (Visual Intelligence Advisor) columns to reports table');

@@ -157,99 +157,11 @@ def _execute_pipeline_task(
 # REST ENDPOINTS
 # =============================================================================
 
-# ── COGO Draft (Stateless, Non-Saving) ───────────────────────────────────────
-class CogoDraftRow(BaseModel):
-    station_id: str
-    bearing: str
-    distance: float
-
-class CogoDraftRequest(BaseModel):
-    start_easting: float
-    start_northing: float
-    crs: str  # e.g. "EPSG:32632"
-    rows: list[CogoDraftRow]
-
-@app.post("/api/cogo/draft")
-async def cogo_draft(payload: CogoDraftRequest):
-    """
-    Stateless, non-saving endpoint.
-    Projects COGO traverse rows from UTM to WGS84 Lat/Lng for the live-plotter.
-    Returns coordinate array and closure error in meters.
-    """
-    import math
-    try:
-        from pyproj import Transformer
-    except ImportError:
-        try:
-            import subprocess, sys
-            subprocess.check_call([sys.executable, "-m", "pip", "install", "pyproj"])
-            from pyproj import Transformer
-        except Exception:
-            raise HTTPException(status_code=500, detail="pyproj not available on this server.")
-
-    def parse_bearing(b_str: str) -> float | None:
-        """Parse bearing string into azimuth degrees (0-360)."""
-        b = b_str.upper().strip()
-        quad = __import__("re").match(
-            r'^([NS])[\-\s]*(\d{1,3})[°\-\s]*(\d{0,2})[\'`\-\s]*(\d{0,2})["\-\s]*([EW])$', b
-        )
-        if quad:
-            ns, deg, mn, sec, ew = quad.groups()
-            angle = float(deg) + (float(mn or 0) / 60) + (float(sec or 0) / 3600)
-            if ns == 'N' and ew == 'E': return angle
-            if ns == 'S' and ew == 'E': return 180 - angle
-            if ns == 'S' and ew == 'W': return 180 + angle
-            if ns == 'N' and ew == 'W': return 360 - angle
-        parts = __import__("re").split(r'[°\'"°\-\s]+', b)
-        parts = [p for p in parts if p]
-        if parts:
-            return (float(parts[0]) + (float(parts[1]) / 60 if len(parts) > 1 else 0)
-                    + (float(parts[2]) / 3600 if len(parts) > 2 else 0)) % 360
-        return None
-
-    try:
-        transformer = Transformer.from_crs(payload.crs, "EPSG:4326", always_xy=True)
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Invalid CRS '{payload.crs}': {e}")
-
-    utm_points: list[tuple[float, float]] = []
-    curr_e = payload.start_easting
-    curr_n = payload.start_northing
-    utm_points.append((curr_e, curr_n))
-
-    for row in payload.rows:
-        az = parse_bearing(row.bearing)
-        if az is None or row.distance <= 0:
-            continue
-        az_rad = math.radians(az)
-        curr_e += row.distance * math.sin(az_rad)
-        curr_n += row.distance * math.cos(az_rad)
-        utm_points.append((curr_e, curr_n))
-
-    # Project to WGS84
-    wgs_coords: list[list[float]] = []
-    for (e, n) in utm_points:
-        lng, lat = transformer.transform(e, n)
-        wgs_coords.append([lat, lng])  # Leaflet expects [lat, lng]
-
-    # Closure error
-    err_e = curr_e - payload.start_easting
-    err_n = curr_n - payload.start_northing
-    closure_error_m = math.sqrt(err_e ** 2 + err_n ** 2)
-    is_closed = closure_error_m <= 0.50 and len(utm_points) > 3
-
-    return {
-        "wgs_coords": wgs_coords,
-        "closure_error_m": round(closure_error_m, 3),
-        "is_closed": is_closed,
-        "station_count": len(wgs_coords),
-    }
-
-
 @app.post("/api/upload")
 async def upload_coordinates(
     file: Optional[UploadFile] = File(None),
     raw_text: Optional[str] = Form(None),
+    cogo_payload: Optional[str] = Form(None),
     stated_area_ha: Optional[float] = Form(None),
     coordinate_hint: Optional[str] = Form(None),
     datum_label: Optional[str] = Form(None),
@@ -257,7 +169,6 @@ async def upload_coordinates(
     user_id: str = Form("anonymous"),
     vision_provider: Optional[str] = Form(None),
     vision_api_key: Optional[str] = Form(None),
-    cogo_payload: Optional[str] = Form(None),
 ):
     """
     Accept coordinates text, manual fields, or an uploaded survey plan.
@@ -301,22 +212,6 @@ async def upload_coordinates(
                         f.write(raw_text or "")
                 except Exception:
                     pass
-
-        # ── Plan Type Classification (Chapter 1.2 — Masterclass Prompt) ─────
-        detected_plan_type = "TYPE_A"
-        plan_type_signals: list = []
-        if raw_text:
-            try:
-                from agents.plan_classifier import classify_plan_type
-                clf_result = classify_plan_type(raw_text)
-                detected_plan_type = clf_result.plan_type.value
-                plan_type_signals = clf_result.signals
-                logger.info(
-                    f"[server] Plan classified as {detected_plan_type} "
-                    f"(confidence={clf_result.confidence:.2f}) signals={plan_type_signals}"
-                )
-            except Exception as clf_exc:
-                logger.warning(f"[server] Plan classifier failed: {clf_exc}. Defaulting to TYPE_A.")
 
         from agents.cadastral_engine import run as run_cadastral
         from core.schemas import MCPErrorResponse
@@ -372,75 +267,63 @@ async def upload_coordinates(
 
         if not isinstance(cad_result, MCPErrorResponse):
             import uuid
-            from core.schemas import SessionState, CoordExtractOutput, Coordinate, PipelineStage, CRSName, PlanType
+            from core.schemas import SessionState, CoordExtractOutput, Coordinate, PipelineStage, CRSName
 
             run_id = f"cad-{uuid.uuid4().hex[:8]}"
             data_dump = cad_result.model_dump()
             data_dump["run_id"] = run_id
 
             # Only create a session if the polygon is closed and valid
-            if not cad_result.polygon or not cad_result.polygon.is_closed or len(cad_result.polygon.wgs84_coordinates) < 3:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail={"error_code": "INVALID_POLYGON", "message": "Could not clearly extract a valid, closed boundary (at least 3 points) from this document. Please enter coordinates manually."}
+            if cad_result.polygon and cad_result.polygon.is_closed and len(cad_result.polygon.wgs84_coordinates) >= 3:
+                coords = [[c[0], c[1]] for c in cad_result.polygon.wgs84_coordinates]
+                center_lat = sum(c[0] for c in coords)/len(coords)
+                center_lng = sum(c[1] for c in coords)/len(coords)
+
+                epsg = 32632
+                if "31" in cad_result.polygon.crs_input: epsg = 32631
+                elif "33" in cad_result.polygon.crs_input: epsg = 32633
+
+                crs_name = CRSName.UNKNOWN
+                if "MINNA" in cad_result.polygon.crs_input.upper(): crs_name = CRSName.MINNA
+                elif "31" in cad_result.polygon.crs_input: crs_name = CRSName.UTM_31N
+                elif "32" in cad_result.polygon.crs_input: crs_name = CRSName.UTM_32N
+                elif "33" in cad_result.polygon.crs_input: crs_name = CRSName.UTM_33N
+                elif "WGS84" in cad_result.polygon.crs_input.upper(): crs_name = CRSName.WGS84
+
+                computed_ha = cad_result.polygon.computed_area_ha
+                if computed_ha <= 0: computed_ha = 0.001
+
+                c_out = CoordExtractOutput(
+                    run_id=run_id,
+                    coordinates=coords,
+                    centroid=Coordinate(lat=center_lat, lng=center_lng),
+                    detected_crs=crs_name,
+                    crs_confidence=100.0,
+                    metric_analysis_epsg=epsg,
+                    is_inside_nigeria=True,
+                    computed_area_ha=computed_ha,
+                    stated_area_ha=(cad_result.polygon.stated_area_sqm / 10000.0) if cad_result.polygon.stated_area_sqm else None,
+                    area_discrepancy_pct=cad_result.polygon.area_discrepancy_pct,
+                    discovery_method=cad_result.extraction_meta.extraction_method,
+                    warnings=[],
+                    beacons=cad_result.beacons
                 )
 
-            coords = [[c[0], c[1]] for c in cad_result.polygon.wgs84_coordinates]
-            center_lat = sum(c[0] for c in coords)/len(coords)
-            center_lng = sum(c[1] for c in coords)/len(coords)
+                try: pm = PersonaMode(persona_mode)
+                except ValueError: pm = PersonaMode.EVERYDAY_BUYER
 
-            epsg = 32632
-            if "31" in cad_result.polygon.crs_input: epsg = 32631
-            elif "33" in cad_result.polygon.crs_input: epsg = 32633
+                from datetime import datetime, timezone
+                session = SessionState(
+                    run_id=run_id,
+                    user_id=user_id,
+                    created_at=datetime.now(timezone.utc).isoformat(),
+                    coord_extract=c_out,
+                    pipeline_stage=PipelineStage.GATE,
+                    persona_mode=pm
+                )
+                gate._save_session(session)
 
-            crs_name = CRSName.UNKNOWN
-            if "MINNA" in cad_result.polygon.crs_input.upper(): crs_name = CRSName.MINNA
-            elif "31" in cad_result.polygon.crs_input: crs_name = CRSName.UTM_31N
-            elif "32" in cad_result.polygon.crs_input: crs_name = CRSName.UTM_32N
-            elif "33" in cad_result.polygon.crs_input: crs_name = CRSName.UTM_33N
-            elif "WGS84" in cad_result.polygon.crs_input.upper(): crs_name = CRSName.WGS84
-
-            computed_ha = cad_result.polygon.computed_area_ha
-            if computed_ha <= 0: computed_ha = 0.001
-
-            c_out = CoordExtractOutput(
-                run_id=run_id,
-                coordinates=coords,
-                centroid=Coordinate(lat=center_lat, lng=center_lng),
-                detected_crs=crs_name,
-                crs_confidence=100.0,
-                metric_analysis_epsg=epsg,
-                is_inside_nigeria=True,
-                computed_area_ha=computed_ha,
-                stated_area_ha=(cad_result.polygon.stated_area_sqm / 10000.0) if cad_result.polygon.stated_area_sqm else None,
-                area_discrepancy_pct=cad_result.polygon.area_discrepancy_pct,
-                discovery_method=cad_result.extraction_meta.extraction_method,
-                warnings=[],
-                beacons=cad_result.beacons,
-                plan_type=PlanType(detected_plan_type) if detected_plan_type else PlanType.TYPE_A,
-            )
-
-            try: pm = PersonaMode(persona_mode)
-            except ValueError: pm = PersonaMode.EVERYDAY_BUYER
-
-            from datetime import datetime, timezone
-            session = SessionState(
-                run_id=run_id,
-                user_id=user_id,
-                created_at=datetime.now(timezone.utc).isoformat(),
-                coord_extract=c_out,
-                pipeline_stage=PipelineStage.GATE,
-                persona_mode=pm
-            )
-            gate._save_session(session)
-
-            return {
-                "cadastral_mode": True,
-                "data": data_dump,
-                "cad_result": data_dump,
-                "session_id": run_id,
-            }
-
+            return {"cadastral_mode": True, "data": data_dump}
 
         # Allow fallback to the standard gate if Cadastral Engine couldn't handle it
         if cad_result.error_code not in ("INSUFFICIENT_SPATIAL_DATA", "UNSUPPORTED_FORMAT", "FILE_PARSE_ERROR"):
@@ -473,8 +356,6 @@ async def upload_coordinates(
             )
 
         return result
-    except HTTPException:
-        raise
     except Exception as exc:
         logger.exception(f"[server] Unhandled exception in upload_coordinates: {exc}")
         raise HTTPException(
@@ -486,6 +367,8 @@ async def upload_coordinates(
                 "detail": str(exc)
             }
         )
+
+
 @app.get("/api/session/{run_id}")
 async def get_session_status(run_id: str):
     """Retrieve the current session status and pipeline progress stage."""
@@ -495,12 +378,6 @@ async def get_session_status(run_id: str):
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Session with ID {run_id} not found.",
         )
-
-    coord_dump = session.coord_extract.model_dump() if session.coord_extract else None
-    if coord_dump:
-        # Add alias keys for compatibility with older components expecting different naming conventions
-        coord_dump["wgs84_polygon"] = coord_dump.get("coordinates")
-        coord_dump["coordinates_wgs84"] = coord_dump.get("coordinates")
 
     return {
         "run_id": session.run_id,
@@ -512,8 +389,6 @@ async def get_session_status(run_id: str):
         "pipeline_stage": session.pipeline_stage.value,
         "error_detail": session.error_detail,
         "snapshot_path": session.snapshot_path,
-        "report_id": session.run_id,
-        "coord_extract": coord_dump,
     }
 
 
@@ -539,7 +414,6 @@ class ConfirmPayload(BaseModel):
     llm_provider: Optional[str] = None
     llm_api_key: Optional[str] = None
     llm_grounding: Optional[str] = None
-    selected_lot_id: Optional[str] = None   # Composite plan lot selection gate
 
 @app.post("/api/confirm/{run_id}")
 async def confirm_gate(
@@ -610,24 +484,6 @@ async def get_report(report_id: str):
             detail=f"Report with ID {report_id} not found.",
         )
     return report
-
-
-@app.get("/api/report/{report_id}/gee-elevation")
-async def get_gee_elevation(report_id: str):
-    """Fetch the resampled 2D elevation grid and contour metadata for expert views."""
-    report = history_manager.get_report(report_id)
-    if not report:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Report with ID {report_id} not found.",
-        )
-    
-
-        
-    from core.elevation_contour import get_gee_elevation_contours
-    coordinates = report.parcel_geometry.coordinates
-    result = get_gee_elevation_contours(report_id, coordinates)
-    return result
 
 
 @app.post("/api/report/{report_id}/generate-pdf")
@@ -869,17 +725,6 @@ async def get_report_history(
     )
     return history
 
-@app.delete("/api/history")
-async def clear_report_history():
-    """Clear all history (Admin only)."""
-    history_manager.clear_history()
-    return {"status": "ok"}
-
-@app.get("/api/admin/stats")
-async def get_admin_stats():
-    """Return live dashboard metrics."""
-    return history_manager.get_admin_stats()
-
 
 @app.get("/api/compare/{id_a}/{id_b}")
 async def compare_reports(id_a: str, id_b: str):
@@ -947,20 +792,6 @@ async def payment_webhook(payload: dict):
     return {"status": "ignored"}
 
 
-@app.get("/api/config/personas")
-async def get_personas():
-    """Return the available personas supported by the backend engine."""
-    return [
-        {"id": "EVERYDAY_BUYER", "label": "Land buyer", "desc": ""},
-        {"id": "SURVEYOR", "label": "Surveyor", "desc": ""},
-        {"id": "REALTOR", "label": "Realtor", "desc": ""},
-        {"id": "ARCHITECT", "label": "Architect", "desc": ""},
-        {"id": "DEVELOPER", "label": "Developer", "desc": ""},
-        {"id": "LEGAL_PRACTITIONER", "label": "Legal practitioner", "desc": ""},
-        {"id": "ESTATE_VALUER", "label": "Estate valuer", "desc": ""},
-        {"id": "OTHERS", "label": "Others", "desc": ""}
-    ]
-
 # =============================================================================
 # STATIC DASHBOARD ROUTING
 # =============================================================================
@@ -968,7 +799,7 @@ async def get_personas():
 @app.get("/", response_class=HTMLResponse)
 def serve_index():
     """Serve the main frontend application file directly from the workspace root."""
-    frontend_path = Path(history_manager.ROOT_DIR) / "frontend" / "Land-Intelligence" / "artifacts" / "landiq" / "dist" / "public" / "index.html"
+    frontend_path = Path(history_manager.ROOT_DIR) / "frontend" / "index.html"
     if not frontend_path.exists():
         return f"""
         <html>
@@ -976,8 +807,8 @@ def serve_index():
           <body style="font-family:sans-serif;padding:40px;background:#1e293b;color:#f8fafc;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;">
             <div style="text-align:center;background:#0f172a;padding:40px;border-radius:12px;border:1px solid #334155;max-width:600px;box-shadow:0 10px 15px -3px rgba(0,0,0,0.3)">
               <h1 style="color:#3b82f6;margin-top:0;">LandIQ API Server is Running</h1>
-              <p>The backend server is up and listening. However, the frontend dashboard files have not been generated yet under <code>/frontend/Land-Intelligence/artifacts/landiq/dist/public/index.html</code>.</p>
-              <p style="color:#94a3b8;font-size:14px;margin-bottom:0;">Please run <code>pnpm run build</code> in the frontend directory.</p>
+              <p>The backend server is up and listening. However, the frontend dashboard files have not been generated yet under <code>/frontend/index.html</code>.</p>
+              <p style="color:#94a3b8;font-size:14px;margin-bottom:0;">Please wait a moment while the agent completes the build of the Tier 3 Frontend Dashboard.</p>
             </div>
           </body>
         </html>
@@ -985,36 +816,9 @@ def serve_index():
     return HTMLResponse(content=frontend_path.read_text(encoding="utf-8"))
 
 
-@app.get("/index_light.html", response_class=HTMLResponse)
-def serve_light_sandbox():
-    """Serve the main index.html with the light theme class pre-injected."""
-    main_path = Path(history_manager.ROOT_DIR) / "frontend" / "index.html"
-    if not main_path.exists():
-        return HTMLResponse(content="<h1>index.html not found</h1>", status_code=404)
-    # Inject the theme-light class so the page opens in light mode without a flash
-    html = main_path.read_text(encoding="utf-8")
-    html = html.replace(
-        "if (isLightPage || localStorage.getItem('landiq-theme') === 'light') {",
-        "if (true || isLightPage || localStorage.getItem('landiq-theme') === 'light') {",
-        1,
-    )
-    return HTMLResponse(content=html)
-
-
 # Serve other frontend assets if any
-app.mount("/assets", StaticFiles(directory=str(Path(history_manager.ROOT_DIR) / "frontend" / "Land-Intelligence" / "artifacts" / "landiq" / "dist" / "public" / "assets"), check_dir=False), name="assets")
+app.mount("/static", StaticFiles(directory=str(Path(history_manager.ROOT_DIR) / "frontend" / "static"), check_dir=False), name="static")
 
-# Fallback for SPA Routing (React Wouter)
-@app.get("/{full_path:path}", response_class=HTMLResponse)
-def serve_spa_catchall(full_path: str):
-    # Ignore API calls that 404
-    if full_path.startswith("api/"):
-        raise HTTPException(status_code=404, detail="API route not found")
-        
-    frontend_path = Path(history_manager.ROOT_DIR) / "frontend" / "Land-Intelligence" / "artifacts" / "landiq" / "dist" / "public" / "index.html"
-    if frontend_path.exists():
-        return HTMLResponse(content=frontend_path.read_text(encoding="utf-8"))
-    return HTMLResponse(content="<h1>Frontend build not found</h1>", status_code=404)
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("main_v3:app", host="127.0.0.1", port=8000, reload=True)
+    uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=True)

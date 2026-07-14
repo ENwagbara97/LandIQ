@@ -201,6 +201,27 @@ def generate_pdf(
         import base64
         snapshot_b64 = base64.b64encode(Path(snapshot_path).read_bytes()).decode()
 
+    # Fetch VIA (Visual Intelligence Advisor) result if available
+    via_status = "pending"
+    via_result = None
+    try:
+        import sqlite3
+        db_file = ROOT_DIR / "db" / "landiq.db"
+        if db_file.exists():
+            conn = sqlite3.connect(str(db_file))
+            conn.row_factory = sqlite3.Row
+            row = conn.execute(
+                "SELECT via_status, via_result_json FROM reports WHERE report_id = ?",
+                (report.meta.report_id,),
+            ).fetchone()
+            conn.close()
+            if row:
+                via_status = row["via_status"] or "pending"
+                if row["via_result_json"]:
+                    via_result = json.loads(row["via_result_json"])
+    except Exception as exc:
+        logger.warning(f"[pdf] Could not fetch VIA details for PDF: {exc}")
+
     # Build template context
     ctx = {
         "report":         report,
@@ -214,6 +235,8 @@ def generate_pdf(
         "generated_at":   datetime.now(timezone.utc).strftime("%d %B %Y · %H:%M UTC"),
         "due_diligence":  _build_due_diligence(report),
         "mode":           mode,
+        "via_status":     via_status,
+        "via_result":     via_result,
     }
 
     env = _get_jinja_env()
@@ -358,6 +381,80 @@ def _build_inline_html(ctx: dict) -> str:
     tl_colour = ctx["tl_colour"]
     tl_bg = ctx["tl_bg"]
 
+    via_html = ""
+    via_status_val = ctx.get("via_status", "pending")
+    via_res = ctx.get("via_result")
+    if via_status_val == "complete" and via_res:
+        call_b_paragraphs = ""
+        call_b_text = via_res.get("call_b_text", "")
+        if call_b_text:
+            for p in call_b_text.split("\n\n"):
+                if p.strip():
+                    call_b_paragraphs += f"<p>{p.strip()}</p>"
+        
+        # Advisory observations list
+        via_flags_html = ""
+        for flag in via_res.get("advisory_flags", []):
+            text = flag.split(":", 1)[-1].strip() if ":" in flag else flag
+            via_flags_html += f"""
+            <li style="margin-bottom: 4px; font-size: 9.5pt; color: #475569;">
+              <strong>SATELLITE OBSERVATION</strong>: {text}
+            </li>"""
+        if via_flags_html:
+            via_flags_html = f"<ul style='margin-top: 10px; padding-left: 20px;'>{via_flags_html}</ul>"
+
+        # Key Observations Strip
+        chips_html = ""
+        call_a = via_res.get("call_a", {})
+        confidence = call_a.get("confidence", {}).get("overall_confidence", "low")
+        if confidence != "low":
+            surr = call_a.get("immediate_surroundings_250m", {})
+            road = surr.get("road_access", {})
+            water = surr.get("water_features", {})
+            risk = surr.get("risk_observations", {})
+            settle = surr.get("settlement_pattern", {})
+
+            chips = []
+            if road.get("road_visible"):
+                chips.append(("Road nearby", "#3b82f6"))
+            if water.get("water_body_visible"):
+                chips.append(("Water visible", "#f59e0b"))
+            if risk.get("erosion_visible"):
+                chips.append(("Erosion risk", "#ef4444"))
+            if "informal" in settle.get("settlement_type", "").lower():
+                chips.append(("Informal settlement", "#f59e0b"))
+            if settle.get("commercial_activity_visible"):
+                chips.append(("Commercial activity", "#3b82f6"))
+            if risk.get("industrial_activity_visible"):
+                chips.append(("Industrial nearby", "#ef4444"))
+
+            for label, color in chips[:3]:
+                chips_html += f"""
+                <span style="display: inline-block; margin-right: 15px; font-size: 9pt; font-weight: bold; color: {color};">
+                  ● {label}
+                </span>"""
+            if chips_html:
+                chips_html = f"<div style='margin-top: 12px;'>{chips_html}</div>"
+
+        via_html = f"""
+        <section style="page-break-inside: avoid; border-left: 3px solid #3b82f6; padding-left: 15px; margin: 20px 0;">
+          <h2>What We Observed Around This Land</h2>
+          {call_b_paragraphs}
+          {chips_html}
+          {via_flags_html}
+          <p style="font-size: 8pt; color: #94a3b8; font-style: italic; margin-top: 10px; border-top: 1px solid #e2e8f0; padding-top: 4px;">
+            Visual observations based on satellite imagery (may be 1–3 years old). Verify on-site.
+          </p>
+        </section>
+        """
+    else:
+        via_html = f"""
+        <section style="page-break-inside: avoid; border-left: 3px solid #3b82f6; padding-left: 15px; margin: 20px 0;">
+          <h2>What We Observed Around This Land</h2>
+          <p style="color: #64748b; font-style: italic;">Visual satellite scan was not available for this report. A physical site visit is recommended.</p>
+        </section>
+        """
+
     profile_html = ""
     if r.premium_elevation_profile:
         # Build internal points rows
@@ -425,6 +522,7 @@ def _build_inline_html(ctx: dict) -> str:
 
     sources_html = ""
     for src in ctx["data_sources"]:
+        # confidence_score stored as plain float e.g. 74.0 means 74%
         conf = src.get("confidence_score", 0)
         conf_pct = f"{conf:.0f}%"
         row_class = "amber" if conf < 50 else ("red" if conf < 30 else "")
@@ -485,7 +583,9 @@ def _build_inline_html(ctx: dict) -> str:
         </div>
         '''
 
-    profile_html = _generate_svg_chart(r)
+    # Only fall back to bare SVG chart if the expert outfall block didn't build a full profile_html above
+    if not profile_html:
+        profile_html = _generate_svg_chart(r)
 
     # ── Topographic Contour Map (Phase 4) ──────────────────────────────
     topo_html = ""
@@ -513,16 +613,43 @@ def _build_inline_html(ctx: dict) -> str:
                 except Exception:
                     pass
                 
+                relief = round(topo_data['max_elevation'] - topo_data['min_elevation'], 2)
                 topo_html = f"""
                 <section style="page-break-before: always;">
-                  <h2>Topographic Assessment</h2>
-                  <div class="summary-box" style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 6px; padding: 12px; margin-bottom: 12px; font-size: 10pt; line-height: 1.5;">
-                    <p><strong>Topographic Elevation Context:</strong> Calculated at a resampled grid resolution of {topo_data['scale_m']}m. Elevation ranges from {topo_data['min_elevation']}m to {topo_data['max_elevation']}m above mean sea level, with a vertical contour interval of {topo_data['interval_m']}m.</p>
-                  </div>
+                  <h2>Engineering Topographic Assessment</h2>
                   <div class="map-container" style="text-align: center; margin: 12px 0;">
-                    <img src="data:image/png;base64,{topo_b64}" style="width: 100%; max-height: 380px; object-fit: contain; border: 1px solid #e2e8f0; border-radius: 6px;" alt="2D Topographic Contours Map" />
+                    <img src="data:image/png;base64,{topo_b64}" style="width: 100%; max-height: 450px; object-fit: contain; border: 1px solid #e2e8f0; border-radius: 6px;" alt="2D Topographic Contours Map" />
                   </div>
-                  <p style="font-size: 8pt; color: #64748b; font-style: italic; margin-top: 4px;">Note: This contour model is an engineering approximation processed directly from NASADEM satellite data and is intended for preliminary site planning only.</p>
+                  <div class="elevation-stats-panel" style="margin-top: 16px;">
+                    <h4 style="margin-bottom: 8px; color: #0f172a; font-size: 11pt;">Terrain Elevation Summary</h4>
+                    <table style="width: 100%; border-collapse: collapse; font-size: 10pt;">
+                      <tr>
+                        <th style="border: 1px solid #cbd5e1; padding: 6px 12px; background-color: #f8fafc; text-align: left; width: 40%;">Indicator</th>
+                        <th style="border: 1px solid #cbd5e1; padding: 6px 12px; background-color: #f8fafc; text-align: left;">Value</th>
+                      </tr>
+                      <tr>
+                        <td style="border: 1px solid #cbd5e1; padding: 6px 12px;">Minimum Elevation</td>
+                        <td style="border: 1px solid #cbd5e1; padding: 6px 12px;">{topo_data['min_elevation']}m AMSL</td>
+                      </tr>
+                      <tr>
+                        <td style="border: 1px solid #cbd5e1; padding: 6px 12px;">Maximum Elevation</td>
+                        <td style="border: 1px solid #cbd5e1; padding: 6px 12px;">{topo_data['max_elevation']}m AMSL</td>
+                      </tr>
+                      <tr>
+                        <td style="border: 1px solid #cbd5e1; padding: 6px 12px;">Total Relief</td>
+                        <td style="border: 1px solid #cbd5e1; padding: 6px 12px;">{relief}m</td>
+                      </tr>
+                      <tr>
+                        <td style="border: 1px solid #cbd5e1; padding: 6px 12px;">Contour Interval</td>
+                        <td style="border: 1px solid #cbd5e1; padding: 6px 12px;">{topo_data['interval_m']}m</td>
+                      </tr>
+                      <tr>
+                        <td style="border: 1px solid #cbd5e1; padding: 6px 12px;">Data Source</td>
+                        <td style="border: 1px solid #cbd5e1; padding: 6px 12px;">Copernicus GLO-30 (NASADEM)</td>
+                      </tr>
+                    </table>
+                    <p style="font-size: 8pt; color: #64748b; font-style: italic; margin-top: 8px;">Note: This contour model is an engineering approximation processed directly from NASADEM satellite data. It does not replace a physical on-site topographic survey.</p>
+                  </div>
                 </section>
                 """
     except Exception as topo_err:
@@ -614,6 +741,8 @@ def _build_inline_html(ctx: dict) -> str:
 
 {profile_html}
 
+{via_html}
+
 <section>
   <h2>Advisory Flags</h2>
   <ul class="flag-list">{flags_html}</ul>
@@ -673,121 +802,198 @@ def generate_png_card(
     snapshot_path: str | None = None,
 ) -> Path:
     """
-    Generate an 800×800 summary card PNG.
-    Layout: Traffic light badge (dominant) + 3 key metrics + LandIQ branding + QR code.
+    Generate a premium 900×640 summary card PNG — realtor sharing format.
+
+    Layout (top-down):
+      - Hero: full-bleed satellite snapshot fills the top 420px
+      - Gradient: dark scrim fades up from bottom of hero so text is legible
+      - Overlay (top-left on hero): LandIQ logo + risk score pill
+      - Overlay (bottom of hero): Location name + area in large white text
+      - Footer (220px): dark navy — 3 metric cards side-by-side + QR + watermark
     """
-    from PIL import Image, ImageDraw, ImageFont
+    from PIL import Image, ImageDraw, ImageFont, ImageFilter
 
     REPORTS_DIR.mkdir(exist_ok=True)
     out_path = REPORTS_DIR / f"{report.meta.report_id}_card.png"
 
+    # ── Dimensions ─────────────────────────────────────────────────────────
+    W, H        = 900, 640
+    HERO_H      = 420          # satellite image occupies top portion
+    FOOTER_H    = H - HERO_H  # metric cards live here
+    DARK_NAVY   = (10, 15, 28)
+    CARD_BG     = (18, 24, 40)
+    BORDER_CLR  = (36, 46, 70)
+
+    # ── Traffic-light palette ───────────────────────────────────────────────
     tl = report.summary.traffic_light
-    tl_colour_hex  = TRAFFIC_COLOURS[tl]["hex"]
-    tl_bg_hex      = TRAFFIC_COLOURS[tl]["bg"]
+    tl_text = tl.value  # "GREEN" / "AMBER" / "RED"
 
-    # Parse hex colours to RGB
-    def hex_rgb(h: str) -> tuple:
-        h = h.lstrip("#")
-        return tuple(int(h[i:i+2], 16) for i in (0, 2, 4))
+    tl_palette = {
+        "GREEN": {"rgb": (16, 185, 129),  "pill_bg": (6, 78, 59,  200)},
+        "AMBER": {"rgb": (245, 158, 11),  "pill_bg": (92, 55, 0,  200)},
+        "RED":   {"rgb": (239, 68, 68),   "pill_bg": (127, 29, 29, 200)},
+    }
+    pal       = tl_palette.get(tl_text, tl_palette["AMBER"])
+    tl_rgb    = pal["rgb"]
+    pill_bg   = pal["pill_bg"][:3]          # opaque version for rounded rect
+    sub_label = {
+        "GREEN": "Lower Risk — Proceed",
+        "AMBER": "Proceed with Caution",
+        "RED":   "High Risk — Review Required",
+    }.get(tl_text, "")
 
-    tl_rgb    = hex_rgb(tl_colour_hex)
-    tl_bg_rgb = hex_rgb(tl_bg_hex)
-
-    W, H = 800, 800
-    img  = Image.new("RGB", (W, H), (15, 23, 42))   # dark navy
-    draw = ImageDraw.Draw(img)
-
-    # Try to load a font
-    def _font(size: int):
-        for face in ["arialbd.ttf", "arial.ttf", "DejaVuSans-Bold.ttf", "DejaVuSans.ttf"]:
+    # ── Font loader ─────────────────────────────────────────────────────────
+    def _font(size: int, bold: bool = False):
+        faces = (
+            ["arialbd.ttf", "DejaVuSans-Bold.ttf"] if bold
+            else ["arial.ttf", "DejaVuSans.ttf", "arialbd.ttf"]
+        )
+        for face in faces:
             try:
                 return ImageFont.truetype(face, size)
             except (IOError, OSError):
                 pass
         return ImageFont.load_default()
 
-    font_xl   = _font(52)
-    font_lg   = _font(32)
-    font_md   = _font(22)
-    font_sm   = _font(16)
-    font_xs   = _font(12)
+    font_hero_loc  = _font(26, bold=True)   # location name on hero
+    font_hero_sub  = _font(14)              # area/centroid on hero
+    font_pill_big  = _font(18, bold=True)   # AMBER / GREEN text in pill
+    font_pill_sm   = _font(12)              # sub-label in pill
+    font_score     = _font(28, bold=True)   # risk score
+    font_label     = _font(11)             # metric card label
+    font_val       = _font(17, bold=True)  # metric card value
+    font_watermark = _font(10)             # bottom ID line
 
-    # Header bar
-    draw.rectangle([(0, 0), (W, 72)], fill=(30, 64, 175))
-    draw.text((24, 14), "LandIQ", fill=(255, 255, 255), font=font_lg)
-    draw.text((W - 24, 14), "Land Risk Report", fill=(147, 197, 253), font=font_sm, anchor="ra")
+    # ── Build canvas ────────────────────────────────────────────────────────
+    img  = Image.new("RGBA", (W, H), (*DARK_NAVY, 255))
+    draw = ImageDraw.Draw(img)
 
-    # Traffic light badge (large centre block)
-    badge_top, badge_bottom = 90, 310
-    draw.rounded_rectangle([(40, badge_top), (W - 40, badge_bottom)], radius=16, fill=tl_bg_rgb)
-
-    # Big coloured circle
-    cx, cy = 120, (badge_top + badge_bottom) // 2
-    draw.ellipse([(cx - 42, cy - 42), (cx + 42, cy + 42)], fill=tl_rgb)
-
-    tl_text = tl.value
-    sub_text = {
-        "GREEN": "Lower Risk Indicators",
-        "AMBER": "Proceed with Caution",
-        "RED":   "High Risk — Review Required",
-    }.get(tl_text, "")
-
-    draw.text((180, badge_top + 44), tl_text, fill=tl_rgb, font=font_xl)
-    draw.text((180, badge_top + 108), sub_text, fill=(203, 213, 225), font=font_md)
-    draw.text((180, badge_top + 148), f"Risk Score: {report.summary.overall_risk_score:.1f}/100", fill=(148, 163, 184), font=font_sm)
-
-    # 3 key metrics
-    metrics = [
-        ("Flood Risk",      report.flood_risk_metrics.level.value,                   None),
-        ("Terrain",         report.terrain_assessment.suitability or "—",             None),
-        ("Growth Potential",report.growth_potential.level.value,                      None),
-    ]
-    col_w = (W - 80) // 3
-    for i, (label, val, _) in enumerate(metrics):
-        x = 40 + i * col_w
-        draw.rounded_rectangle([(x, 328), (x + col_w - 12, 448)], radius=8, fill=(30, 41, 59))
-        draw.text((x + 14, 342), label, fill=(100, 116, 139), font=font_xs)
-        draw.text((x + 14, 368), val, fill=(226, 232, 240), font=font_md)
-
-    # Location
-    loc_lga   = report.parcel_geometry.location_context.lga   or "Unknown LGA"
-    loc_state = report.parcel_geometry.location_context.state or "Unknown State"
-    draw.text((40, 464), f"📍 {loc_lga}, {loc_state}", fill=(148, 163, 184), font=font_sm)
-    draw.text((40, 490), f"Area: {report.parcel_geometry.computed_area_ha:.2f} ha  ·  "
-              f"Centroid: {report.parcel_geometry.centroid.lat:.4f}°N, {report.parcel_geometry.centroid.lng:.4f}°E",
-              fill=(100, 116, 139), font=font_xs)
-
-    # Snapshot thumbnail (if available)
+    # ── 1. HERO: paste satellite snapshot ───────────────────────────────────
+    hero_placed = False
     if snapshot_path and Path(snapshot_path).exists():
         try:
-            thumb = Image.open(snapshot_path).convert("RGB")
-            thumb.thumbnail((720, 200), Image.LANCZOS)
-            x_off = (W - thumb.width) // 2
-            img.paste(thumb, (x_off, 514))
-        except Exception:
-            pass
+            sat = Image.open(snapshot_path).convert("RGBA")
+            # Scale to fill full width, crop to HERO_H
+            scale  = W / sat.width
+            new_h  = int(sat.height * scale)
+            sat    = sat.resize((W, new_h), Image.LANCZOS)
+            # Centre-crop vertically
+            crop_y = max(0, (new_h - HERO_H) // 2)
+            sat    = sat.crop((0, crop_y, W, crop_y + HERO_H))
+            img.paste(sat, (0, 0))
+            hero_placed = True
+        except Exception as e:
+            logger.warning(f"[png_card] Could not load snapshot: {e}")
 
-    # Executive summary (truncated)
-    summary_text = report.summary.executive_summary[:180] + ("…" if len(report.summary.executive_summary) > 180 else "")
-    _draw_wrapped(draw, summary_text, font_xs, (40, 722), (W - 80), fill=(148, 163, 184))
+    if not hero_placed:
+        # Fallback: textured dark gradient background
+        for y in range(HERO_H):
+            shade = int(20 + 30 * (y / HERO_H))
+            draw.rectangle([(0, y), (W, y + 1)], fill=(shade, shade + 5, shade + 18, 255))
 
-    # QR code
+    # ── 2. Gradient scrim over hero (bottom fade to near-black) ─────────────
+    scrim = Image.new("RGBA", (W, HERO_H), (0, 0, 0, 0))
+    scrim_draw = ImageDraw.Draw(scrim)
+    scrim_start = HERO_H // 3           # gradient starts at 1/3 down
+    for y in range(scrim_start, HERO_H):
+        progress = (y - scrim_start) / (HERO_H - scrim_start)
+        alpha    = int(220 * (progress ** 1.6))  # eased curve
+        scrim_draw.rectangle([(0, y), (W, y + 1)], fill=(5, 10, 20, alpha))
+    img = Image.alpha_composite(img, Image.new("RGBA", (W, H), (0, 0, 0, 0)))
+    img.paste(scrim, (0, 0), scrim)
+    draw = ImageDraw.Draw(img)
+
+    # ── 3. Top-left: LandIQ logo ─────────────────────────────────────────────
+    logo_font  = _font(15, bold=True)
+    # Small semi-transparent pill behind logo
+    draw.rounded_rectangle([(16, 16), (106, 42)], radius=10, fill=(0, 0, 0, 160))
+    draw.text((28, 22), "Land", fill=(255, 255, 255), font=logo_font)
+    # measure "Land" width
+    land_w = int(draw.textlength("Land", font=logo_font))
+    draw.text((28 + land_w, 22), "IQ", fill=(59, 130, 246), font=logo_font)
+
+    # ── 4. Top-right: Risk Score pill ────────────────────────────────────────
+    score_val  = f"{report.summary.overall_risk_score:.0f}/100"
+    score_w    = int(draw.textlength(score_val, font=font_score)) + 40
+    pill_x1    = W - score_w - 16
+    pill_y1, pill_y2 = 12, 60
+    draw.rounded_rectangle([(pill_x1, pill_y1), (W - 16, pill_y2)], radius=14, fill=(*pill_bg, 210))
+    draw.text((pill_x1 + 20, pill_y1 + 6), score_val, fill=tl_rgb, font=font_score)
+
+    # ── 5. Bottom of hero: Traffic-light badge + location ────────────────────
+    tl_badge_y = HERO_H - 88
+
+    # Badge pill (e.g. "● AMBER  Proceed with Caution")
+    badge_text_w = int(draw.textlength(f"  {tl_text}  {sub_label}  ", font=font_pill_big))
+    bx1, bx2    = 24, min(24 + badge_text_w + 32, W - 24)
+    draw.rounded_rectangle([(bx1, tl_badge_y), (bx2, tl_badge_y + 34)], radius=17, fill=(*pill_bg, 230))
+    # Coloured dot
+    draw.ellipse([(bx1 + 10, tl_badge_y + 9), (bx1 + 26, tl_badge_y + 25)], fill=tl_rgb)
+    draw.text((bx1 + 34, tl_badge_y + 6),
+              f"{tl_text}  ·  {sub_label}",
+              fill=(240, 240, 240), font=font_pill_big)
+
+    # Location name large white text
+    loc_lga   = report.parcel_geometry.location_context.lga   or "Unknown LGA"
+    loc_state = report.parcel_geometry.location_context.state or "Unknown State"
+    area_ha   = report.parcel_geometry.computed_area_ha or 0
+    area_str  = f"{area_ha:.2f} ha"
+
+    draw.text((24, HERO_H - 50), f"{loc_lga}, {loc_state}",
+              fill=(255, 255, 255), font=font_hero_loc)
+    draw.text((24, HERO_H - 24),
+              f"Area: {area_str}  ·  {report.parcel_geometry.centroid.lat:.4f}°N, {report.parcel_geometry.centroid.lng:.4f}°E",
+              fill=(180, 195, 215), font=font_hero_sub)
+
+    # ── 6. Footer: dark navy background ─────────────────────────────────────
+    draw.rectangle([(0, HERO_H), (W, H)], fill=(*CARD_BG, 255))
+    # Thin top separator line
+    draw.rectangle([(0, HERO_H), (W, HERO_H + 1)], fill=(*BORDER_CLR, 255))
+
+    # ── 7. Footer: 3 metric cards ────────────────────────────────────────────
+    metrics = [
+        ("Flood Risk",       report.flood_risk_metrics.level.value),
+        ("Terrain",          report.terrain_assessment.suitability or "—"),
+        ("Growth Potential", report.growth_potential.level.value),
+    ]
+    col_w   = (W - 180) // 3   # leave 180px on right for QR
+    card_y1 = HERO_H + 16
+    card_y2 = H - 16
+    for i, (label, val) in enumerate(metrics):
+        cx1 = 12 + i * (col_w + 10)
+        cx2 = cx1 + col_w
+        draw.rounded_rectangle([(cx1, card_y1), (cx2, card_y2)], radius=10,
+                                fill=(*DARK_NAVY, 255), outline=(*BORDER_CLR, 255), width=1)
+        draw.text((cx1 + 14, card_y1 + 12), label.upper(),
+                  fill=(75, 95, 130), font=font_label)
+        draw.text((cx1 + 14, card_y1 + 30), val,
+                  fill=(225, 232, 245), font=font_val)
+
+    # ── 8. QR code (bottom-right of footer) ─────────────────────────────────
     try:
         import qrcode
-        qr = qrcode.QRCode(version=1, box_size=3, border=2)
+        qr = qrcode.QRCode(version=1, box_size=4, border=2)
         qr.add_data(f"landiq://report/{report.meta.report_id[:12]}")
         qr.make(fit=True)
-        qr_img = qr.make_image(fill_color="white", back_color="#0f172a").convert("RGB")
-        qr_img = qr_img.resize((96, 96), Image.LANCZOS)
-        img.paste(qr_img, (W - 112, H - 112))
+        qr_img = qr.make_image(fill_color="white", back_color="#0a0f1c").convert("RGB")
+        qr_size = FOOTER_H - 28
+        qr_img  = qr_img.resize((qr_size, qr_size), Image.LANCZOS)
+        img.paste(qr_img, (W - qr_size - 10, HERO_H + 14))
+        # "Scan to view" label
+        draw.text((W - qr_size - 10, HERO_H + 14 + qr_size + 2),
+                  "Scan report", fill=(60, 80, 110), font=font_watermark)
     except Exception:
         pass
 
-    # Report ID watermark (bottom)
-    draw.text((40, H - 22), f"ID: {report.meta.report_id[:12]}  ·  LandIQ v{report.meta.version}", fill=(51, 65, 85), font=font_xs)
+    # ── 9. Watermark ────────────────────────────────────────────────────────
+    draw.text((14, H - 14),
+              f"ID: {report.meta.report_id[:12]}  ·  LandIQ v{report.meta.version}",
+              fill=(36, 50, 75), font=font_watermark)
 
+    # Convert RGBA → RGB for PNG save (no alpha needed)
+    img = img.convert("RGB")
     img.save(str(out_path), "PNG", optimize=True)
-    logger.info(f"[pdf] PNG card: {out_path.name}")
+    logger.info(f"[pdf] PNG card (hero layout): {out_path.name}")
     return out_path
 
 
