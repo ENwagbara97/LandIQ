@@ -919,10 +919,9 @@ async def _generate_pdf_background(report_id: str) -> None:
             loop.run_in_executor(
                 None,
                 lambda: generate_pdf(
-                    report_id=report_id,
                     report=report,
+                    data_sources=sources,
                     snapshot_path=snapshot_path,
-                    sources=sources,
                     include_elevation_profile=False,
                     mode="expert"
                 )
