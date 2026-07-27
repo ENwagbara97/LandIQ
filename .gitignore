@@ -23,3 +23,9 @@ scratch/
 .gemini/
 data/snapshots/
 tests/eval_logs/
+
+# Temp / scratch prompt files (never commit these)
+temp_prompt*.txt
+final_prompt*.txt
+*_prompt_content.txt
+*.tmp
