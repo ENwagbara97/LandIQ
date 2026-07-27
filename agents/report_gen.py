@@ -158,7 +158,7 @@ def _llm_call(
         provider = llm_provider.lower().strip()
         try:
             if provider == "gemini":
-                url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={llm_api_key}"
+                url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key={llm_api_key}"
                 payload = {
                     "systemInstruction": {"parts": [{"text": system}]},
                     "contents": [{"parts": [{"text": prompt}]}],
@@ -440,19 +440,33 @@ def _build_executive_summary_prompt(
     )
 
 
+import re
+
 def _parse_executive_summary_response(raw: str) -> tuple[str, str]:
     """Extract EXECUTIVE_SUMMARY and RECOMMENDATION from Ollama response."""
     exec_summary = ""
     ai_rec = ""
-    for line in raw.splitlines():
-        if line.upper().startswith("EXECUTIVE_SUMMARY:"):
-            exec_summary = line.split(":", 1)[1].strip()
-        elif line.upper().startswith("RECOMMENDATION:") or line.upper().startswith("AI_RECOMMENDATION:"):
-            ai_rec = line.split(":", 1)[1].strip()
-
-    # Fallback: use raw as exec summary if parse fails
-    if not exec_summary and raw:
+    
+    raw = raw.strip()
+    
+    exec_match = re.search(r"(?i)(?:EXECUTIVE_?_?SUMMARY:?\s*)(.*?)(?=(?:AI_?)?RECOMMENDATION:|$)", raw, re.DOTALL)
+    if exec_match:
+        exec_summary = exec_match.group(1).strip()
+        
+    rec_match = re.search(r"(?i)(?:(?:AI_?)?RECOMMENDATION:?\s*)(.*)", raw, re.DOTALL)
+    if rec_match:
+        ai_rec = rec_match.group(1).strip()
+        
+    if not exec_summary and not ai_rec:
         exec_summary = raw[:500].strip()
+        
+    # Bug 1 Fix: Aggressive prefix stripping
+    exec_summary = re.sub(r"^(?i)\*?\*?EXECUTIVE[_ ]SUMMARY:?\*?\*?\s*", "", exec_summary).strip()
+    ai_rec = re.sub(r"^(?i)\*?\*?(?:AI[_ ])?RECOMMENDATION:?\*?\*?\s*", "", ai_rec).strip()
+
+    # Bug 2 Fix & Bug 7 Fix: Remove inline disclaimers (belongs only in Section 7)
+    ai_rec = re.sub(r"This report is advisory only.*?before committing funds\.?", "", ai_rec, flags=re.IGNORECASE).strip()
+    exec_summary = re.sub(r"This report is advisory only.*?before committing funds\.?", "", exec_summary, flags=re.IGNORECASE).strip()
 
     return exec_summary, ai_rec
 
@@ -550,10 +564,11 @@ def assemble_report(
     Populate the full v2.0 ReportSchema from all upstream agent outputs.
     Python fills every field — LLM text is injected into prose fields only.
     """
-    import uuid
-
+    from datetime import timedelta
+    WAT = timezone(timedelta(hours=1))
+    
     report_id = coord.run_id
-    now = datetime.now(timezone.utc).isoformat()
+    now = datetime.now(WAT).isoformat()
 
     # ── Location context ───────────────────────────────────────────────────────
     location = LocationContext(

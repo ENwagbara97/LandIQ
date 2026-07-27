@@ -36,15 +36,19 @@ DB_PATH  = ROOT_DIR / "db" / "landiq.db"
 # =============================================================================
 
 def _conn() -> sqlite3.Connection:
-    c = sqlite3.connect(str(DB_PATH), check_same_thread=False)
+    c = sqlite3.connect(str(DB_PATH), check_same_thread=False, timeout=30.0)
     c.row_factory = sqlite3.Row
     c.execute("PRAGMA journal_mode=WAL;")
+    c.execute("PRAGMA synchronous=NORMAL;")
     c.execute("PRAGMA foreign_keys=ON;")
     return c
 
 
+from datetime import timedelta
+WAT = timezone(timedelta(hours=1))
+
 def _iso() -> str:
-    return datetime.now(timezone.utc).isoformat()
+    return datetime.now(WAT).isoformat()
 
 def clear_history():
     """Wipes the reports, sessions, and data sources tables."""
@@ -58,8 +62,10 @@ def get_admin_stats() -> dict:
     """Returns total reports, total users, and recent reports list."""
     with _conn() as c:
         reports = c.execute("SELECT COUNT(*) FROM reports").fetchone()[0]
-        failed = c.execute("SELECT COUNT(*) FROM sessions WHERE status = 'failed'").fetchone()[0]
-        users = c.execute("SELECT COUNT(DISTINCT user_id) FROM sessions").fetchone()[0]
+        failed  = c.execute(
+            "SELECT COUNT(*) FROM sessions WHERE status IN ('error', 'failed')"
+        ).fetchone()[0]
+        users   = c.execute("SELECT COUNT(DISTINCT user_id) FROM sessions").fetchone()[0]
         
         recent_rows = c.execute(
             """
@@ -143,6 +149,19 @@ def save_report(
     finally:
         conn.close()
 
+def record_arrival(report_id: str, distance_m: float) -> None:
+    """Record that the user physically arrived at the parcel site."""
+    conn = _conn()
+    try:
+        arrived_at = _iso()
+        conn.execute(
+            "UPDATE reports SET arrived_at = ?, arrival_distance_m = ? WHERE report_id = ?",
+            (arrived_at, distance_m, report_id)
+        )
+        conn.commit()
+        logger.info(f"[history] Recorded arrival for {report_id[:8]} at {distance_m:.1f}m")
+    finally:
+        conn.close()
 
 def update_snapshot_path(report_id: str, new_snapshot_path: str) -> None:
     """Update the snapshot path for a report."""
@@ -221,6 +240,47 @@ def get_report_row(report_id: str) -> dict | None:
             "SELECT * FROM reports WHERE report_id = ?", (report_id,)
         ).fetchone()
         return dict(row) if row else None
+    finally:
+        conn.close()
+
+
+# =============================================================================
+# NAVIGATION
+# =============================================================================
+
+def get_navigation_data(report_id: str) -> dict | None:
+    """Return specific subset of report data needed for the navigation module."""
+    row = get_report_row(report_id)
+    if not row:
+        return None
+        
+    report = ReportSchema.model_validate_json(row["report_json"])
+    
+    # Calculate arrival radius using the formula from specs
+    area = report.parcel_details.stated_area_sqm
+    arrival_radius_m = max(30.0, (area ** 0.5) * 0.8) if area else 30.0
+    
+    return {
+        "centroid_lat": report.parcel_details.centroid_lat,
+        "centroid_lng": report.parcel_details.centroid_lng,
+        "polygon_wgs84": report.parcel_details.coordinates,
+        "arrival_radius_m": arrival_radius_m,
+        "lga": report.parcel_details.lga,
+        "state": report.parcel_details.state,
+        "stated_area_sqm": area,
+        "report_id": report_id,
+    }
+
+def record_arrival(report_id: str, arrived_at: str, distance_m: float) -> bool:
+    """Records the arrival event to the database."""
+    conn = _conn()
+    try:
+        cursor = conn.execute(
+            "UPDATE reports SET arrived_at = ?, arrival_distance_m = ? WHERE report_id = ?",
+            (arrived_at, distance_m, report_id)
+        )
+        conn.commit()
+        return cursor.rowcount > 0
     finally:
         conn.close()
 

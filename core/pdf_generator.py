@@ -204,23 +204,46 @@ def generate_pdf(
     # Fetch VIA (Visual Intelligence Advisor) result if available
     via_status = "pending"
     via_result = None
+    conn = None
     try:
         import sqlite3
         db_file = ROOT_DIR / "db" / "landiq.db"
         if db_file.exists():
-            conn = sqlite3.connect(str(db_file))
+            conn = sqlite3.connect(str(db_file), timeout=30.0)
             conn.row_factory = sqlite3.Row
+            conn.execute("PRAGMA journal_mode=WAL;")
+            conn.execute("PRAGMA synchronous=NORMAL;")
             row = conn.execute(
                 "SELECT via_status, via_result_json FROM reports WHERE report_id = ?",
                 (report.meta.report_id,),
             ).fetchone()
-            conn.close()
             if row:
                 via_status = row["via_status"] or "pending"
                 if row["via_result_json"]:
                     via_result = json.loads(row["via_result_json"])
     except Exception as exc:
         logger.warning(f"[pdf] Could not fetch VIA details for PDF: {exc}")
+    finally:
+        if conn:
+            conn.close()
+
+    from datetime import timedelta
+    WAT = timezone(timedelta(hours=1))
+    
+    # Bug 8 Fix: Sanitize internal errors from the payload
+    def _sanitize_string(text: str) -> str:
+        if not text:
+            return text
+        lower_text = text.lower()
+        if "setup.py" in lower_text or "offline cache" in lower_text or "api error" in lower_text or "stack trace" in lower_text:
+            return "Satellite dataset not available for this area. Affected indicators are marked in the Data Sources table."
+        return text
+
+    # Apply Bug 8 sanitization to text fields we render
+    safe_data_sources = []
+    for src in data_sources:
+        safe_src = {k: _sanitize_string(str(v)) if isinstance(v, str) else v for k, v in src.items()}
+        safe_data_sources.append(safe_src)
 
     # Build template context
     ctx = {
@@ -231,8 +254,8 @@ def generate_pdf(
         "tl_bg":          colours["bg"],
         "tl_text_colour": colours["text"],
         "snapshot_b64":   snapshot_b64,
-        "data_sources":   data_sources,
-        "generated_at":   datetime.now(timezone.utc).strftime("%d %B %Y · %H:%M UTC"),
+        "data_sources":   safe_data_sources,
+        "generated_at":   datetime.now(WAT).strftime("%d %B %Y · %I:%M %p WAT"),
         "due_diligence":  _build_due_diligence(report),
         "mode":           mode,
         "via_status":     via_status,
@@ -655,125 +678,341 @@ def _build_inline_html(ctx: dict) -> str:
     except Exception as topo_err:
         logger.warning(f"Failed to generate topographic assessment for PDF: {topo_err}")
 
+    # Bug 3 Fix
+    crs_display = f"{r.coordinate_validation.detected_crs} ({r.coordinate_validation.crs_confidence:.0f}%)"
+    if r.coordinate_validation.detected_crs.upper() == "UNKNOWN":
+        crs_display = "Could not be determined automatically. Verify datum with your surveyor."
+
+    # Bug 4 Fix
+    elev_display = f"{r.terrain_assessment.elevation_m:.1f}m above sea level" if r.terrain_assessment.elevation_m is not None else "Not available for this area — see Due Diligence checklist"
+    river_display = f"{r.flood_risk_metrics.distance_to_nearest_river:.0f}m" if r.flood_risk_metrics.distance_to_nearest_river is not None else "Not available for this area — see Due Diligence checklist"
+    ndwi_display = f"{r.flood_risk_metrics.water_presence_index:.2f}" if r.flood_risk_metrics.water_presence_index is not None else "Not available for this area"
+    slope_display = f"{r.terrain_assessment.steepness_of_land:.1f}%" if r.terrain_assessment.steepness_of_land is not None else "Not available for this area"
+    road_display = f"{r.accessibility_development.distance_to_road_m:.0f}m" if r.accessibility_development.distance_to_road_m is not None else "Not available for this area"
+
+    # Bug 5 Fix (Data confidence variable)
+    # The plain English reason might contain "data_confidence". We sanitize it here.
+    flood_reason = r.flood_risk_metrics.reason_in_plain_english or ""
+    if "data_confidence" in flood_reason.lower():
+        flood_reason = "Several data indicators for this area could not be computed. See the Data Sources table for details."
+
+
+    # ── STAGE 3-6 COMPUTATIONS ──
+    # Area comparison logic
+    stated_area_ha = r.parcel_geometry.stated_area_ha
+    computed_area_ha = r.parcel_geometry.computed_area_ha
+    stated_area_sqm = stated_area_ha * 10000 if stated_area_ha else None
+    computed_area_sqm = computed_area_ha * 10000
+    
+    diff_pct = r.coordinate_validation.area_discrepancy_pct
+    diff_html = ""
+    if diff_pct is not None:
+        if diff_pct <= 3.0:
+            diff_html = f'<span style="color:var(--green); font-weight:bold;">Difference: {diff_pct:.1f}% - Within tolerance ✓</span><br/><span style="font-size:9pt; color:var(--report-secondary);">(Differences under 5% are normal and within standard survey accuracy limits)</span>'
+        elif diff_pct <= 10.0:
+            diff_html = f'<span style="color:var(--amber); font-weight:bold;">Difference: {diff_pct:.1f}% - Minor discrepancy ⚠ - verify with surveyor</span>'
+        else:
+            diff_html = f'<span style="color:var(--red); font-weight:bold;">Difference: {diff_pct:.1f}% - Significant discrepancy - boundary review required</span>'
+
+    # Traffic light colors
+    tl_palette = {
+        "GREEN": {"rgb": "#22C55E", "bg": "#F0FDF4", "border": "#BBF7D0", "sub": "Lower Risk - Proceed"},
+        "AMBER": {"rgb": "#F59E0B", "bg": "#FFFBEB", "border": "#FDE68A", "sub": "Proceed with Caution"},
+        "RED":   {"rgb": "#EF4444", "bg": "#FEF2F2", "border": "#FECACA", "sub": "High Risk - Review Required"}
+    }
+    t_pal = tl_palette.get(tl.value, tl_palette["AMBER"])
+    
+    # Key Findings Chips (max 4)
+    findings = []
+    if r.coordinate_validation.crs_confidence > 70:
+        findings.append('<span style="color:var(--green)">✓ Boundary verified</span>')
+    else:
+        findings.append('<span style="color:var(--amber)">⚠ Boundary unverified</span>')
+        
+    if r.flood_risk_metrics.level.value == "HIGH":
+        findings.append('<span style="color:var(--red)">⚠ High flood risk</span>')
+    elif r.flood_risk_metrics.level.value == "MEDIUM":
+        findings.append('<span style="color:var(--amber)">⚠ Moderate flood risk</span>')
+    
+    if r.title_record.title_status == "Not Checked" or not r.title_record.title_status:
+        findings.append('<span style="color:var(--amber)">⚠ Title unverified</span>')
+    
+    if r.growth_potential.level.value == "LOW":
+        findings.append('<span style="color:var(--amber)">⚠ Low growth area</span>')
+        
+    chips_html = "".join([f'<div class="finding-chip">{f}</div>' for f in findings[:4]])
+
+    # Section 5 Checklist priority colors
+    new_checklist_html = ""
+    for item in ctx["due_diligence"]:
+        p = item["priority"]
+        if p == "CRITICAL":
+            p_label, bg = "MUST DO FIRST", "#1E3A5F"
+        elif p == "HIGH":
+            p_label, bg = "IMPORTANT", "#92400E"
+        elif p == "MEDIUM":
+            p_label, bg = "WORTH DOING", "#334155"
+        else:
+            p_label, bg = "GOOD TO KNOW", "#64748B"
+            
+        new_checklist_html += f"""
+        <div class="dd-item">
+            <span class="dd-priority" style="background:{bg}; color:white; padding:4px 8px; border-radius:12px; font-size:10pt;">{p_label}</span>
+            <strong style="display:block; margin-top:8px;">{item["action"]}</strong>
+            <p>{item["rationale"]}</p>
+        </div>
+        """
+
+    # Data Sources matrix
+    sources_html_v2 = ""
+    for src in ctx["data_sources"]:
+        conf = src.get("confidence_score", 0)
+        status_label = "Not available"
+        status_color = "#94a3b8" # grey
+        if src.get('fallback_used'):
+            status_label = "Cached dataset"
+            status_color = "#3b82f6" # blue
+        elif conf > 0:
+            status_label = "Live data"
+            status_color = "#22c55e" # green
+            
+        if conf == 0:
+            src_text = "No data available for this area"
+        else:
+            src_text = src.get('source_label','-')
+            
+        sources_html_v2 += f"""
+        <tr>
+          <td>{src.get('field_name','-')}</td>
+          <td style="color:{status_color}; font-weight:bold;">● {status_label}</td>
+          <td>{src_text}</td>
+          <td>{src.get('data_vintage','-')}</td>
+          <td>{conf:.0f}%</td>
+        </tr>"""
+
     return f"""<!DOCTYPE html>
 <html>
 <head>
 <meta charset="utf-8">
 <style>
-  body {{ font-family: 'Times New Roman', Times, serif; font-size: 11pt; color: #1e293b; margin: 0; padding: 20px; }}
-  h1, h2, h3 {{ color: #0f172a; margin-top: 24px; margin-bottom: 8px; font-weight: 700; }}
-  h2 {{ font-size: 14pt; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px; }}
-  .header {{ display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #0f172a; padding-bottom: 16px; margin-bottom: 24px; }}
-  .logo {{ font-size: 24pt; font-weight: 800; color: #0f172a; letter-spacing: -1px; }}
-  .logo span {{ color: #3b82f6; }}
-  .dd-priority {{ font-size: 8pt; font-weight: 700; margin-right: 6px; }}
-  .dd-item p {{ font-size: 9pt; color: #64748b; margin-top: 3px; }}
-  .summary-box {{ background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 6px; padding: 14px 18px; margin: 14px 0; }}
-  .disclaimer {{ font-size: 8pt; color: #64748b; border-top: 1px solid #e2e8f0; margin-top: 24px; padding-top: 12px; }}
-  table {{ border-collapse: collapse; width: 100%; margin-bottom: 20px; margin-top: 10px; }}
-  th, td {{ border: 1px solid #1e293b; padding: 8px; text-align: left; }}
-  th {{ background-color: #f1f5f9; font-weight: bold; }}
-  @media print {{ body {{ padding: 0; }} }}
+  /* Report design tokens (Stage 3) */
+  :root {{
+    --report-bg:        #FFFFFF;
+    --report-surface:   #F8FAFC;
+    --report-border:    #E2E8F0;
+    --report-text:      #1E293B;
+    --report-secondary: #64748B;
+    --report-muted:     #94A3B8;
+    --report-mono:      'DM Mono', monospace;
+    --report-body:      'DM Sans', sans-serif;
+    --report-radius:    12px;
+
+    /* Traffic light */
+    --green:  #22C55E;  --green-bg:  #F0FDF4;  --green-border:  #BBF7D0;
+    --amber:  #F59E0B;  --amber-bg:  #FFFBEB;  --amber-border:  #FDE68A;
+    --red:    #EF4444;  --red-bg:    #FEF2F2;  --red-border:    #FECACA;
+  }}
+
+  body {{ font-family: var(--report-body); font-size: 14px; color: var(--report-text); margin: 0; padding: 20px; line-height: 1.75; }}
+  h1, h2, h3 {{ color: #0f172a; margin-top: 24px; margin-bottom: 8px; font-weight: 600; font-family: var(--report-body); }}
+  h2 {{ font-size: 16px; border-bottom: 1px solid var(--report-border); padding-bottom: 4px; }}
+  
+  .header {{ display: flex; justify-content: space-between; align-items: flex-start; padding-bottom: 16px; margin-bottom: 24px; }}
+  .logo {{ font-size: 20px; font-weight: 700; color: #0f172a; }}
+  .report-meta {{ font-family: var(--report-body); font-size: 12px; color: var(--report-muted); text-align: right; }}
+  
+  .map-container {{ position: relative; width: 100%; border-radius: var(--report-radius); overflow: hidden; box-shadow: 0 2px 12px rgba(0,0,0,0.08); }}
+  .map-container img {{ width: 100%; display: block; }}
+  .map-overlay {{ position: absolute; bottom: 0; left: 0; right: 0; height: 32px; background: rgba(0,0,0,0.6); color: white; font-family: var(--report-mono); font-size: 10px; padding: 8px 12px; box-sizing: border-box; }}
+  .map-source {{ text-align: right; font-size: 10px; color: var(--report-muted); margin-top: 4px; }}
+  
+  .tl-card {{ background: {{t_pal['bg']}}; border: 1px solid {{t_pal['border']}}; border-radius: 10px; padding: 16px; display: flex; align-items: center; margin-top: 16px; }}
+  .tl-circle {{ width: 48px; height: 48px; border-radius: 50%; background: {{t_pal['rgb']}}; margin-right: 16px; flex-shrink: 0; }}
+  .tl-line1 {{ font-weight: 700; font-size: 18px; color: {{t_pal['rgb']}}; }}
+  .tl-line2 {{ font-size: 13px; color: var(--report-text); margin: 4px 0; }}
+  .tl-line3 {{ font-family: var(--report-mono); font-size: 13px; color: var(--report-secondary); }}
+  
+  .scale-bar-container {{ margin-top: 10px; }}
+  .scale-bar {{ width: 180px; position: relative; height: 12px; }}
+  .scale-line {{ width: 100%; height: 2px; background: var(--report-muted); position: absolute; top: 5px; }}
+  .scale-dot {{ width: 8px; height: 8px; border-radius: 50%; background: {{t_pal['rgb']}}; position: absolute; top: 2px; transform: translateX(-50%); left: {{r.summary.overall_risk_score}}%; }}
+  .scale-labels {{ display: flex; justify-content: space-between; width: 180px; font-size: 10px; color: var(--report-muted); margin-top: 4px; }}
+  
+  .findings-row {{ display: flex; gap: 8px; margin-top: 16px; flex-wrap: wrap; }}
+  .finding-chip {{ background: var(--report-surface); border: 1px solid var(--report-border); padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: 600; }}
+
+  table.clean-table {{ width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px; }}
+  table.clean-table td, table.clean-table th {{ border-bottom: 1px solid var(--report-border); padding: 8px 4px; text-align: left; }}
+  
+  .metric-card {{ border: 1px solid var(--report-border); background: var(--report-surface); border-radius: 10px; padding: 16px; margin-bottom: 16px; }}
+  .metric-card-grid {{ display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }}
+
+  .section-label {{ font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--report-muted); font-weight: 600; margin-top: 24px; margin-bottom: 8px; }}
+  
+  .dd-item {{ background: var(--report-surface); border: 1px solid var(--report-border); border-radius: 10px; padding: 16px; margin-bottom: 12px; }}
+  
+  .legal-disclaimer {{ border-top: 1px solid var(--report-border); padding-top: 16px; margin-top: 32px; text-align: center; font-size: 11px; color: var(--report-muted); font-style: italic; }}
+  
+  @media print {{
+    .section-break {{ page-break-before: always; }}
+    .no-break {{ page-break-inside: avoid; }}
+    img {{ max-width: 100%; border-radius: 8px; }}
+    .technical-appendix {{ page-break-before: always; }}
+  }}
 </style>
 </head>
 <body>
 
 <div class="header">
-  <div class="logo">Land<span>IQ</span></div>
-  <div class="report-meta">
-    Report ID: {r.meta.report_id[:12]}…<br/>
-    Generated: {ctx["generated_at"]}<br/>
-    Persona: {ctx["persona_cfg"]["label"]}<br/>
-    Pipeline v{r.pipeline_version}
-  </div>
-</div>
-
-<div class="traffic-badge">
-  <div class="tl-dot"></div>
   <div>
-    <div class="tl-label">{tl} — {"Proceed with Caution" if tl == "AMBER" else ("High Risk" if tl == "RED" else "Lower Risk Indicators")}</div>
-    <div style="font-size:10pt; margin-top:2px;">Parcel Risk Rating</div>
+    <div class="logo">LandIQ</div>
+    <div style="font-size: 13px; color: var(--report-muted);">Land Intelligence Report</div>
   </div>
-  <div class="tl-score">Risk Score: {r.summary.overall_risk_score:.1f}/100</div>
+  <div class="report-meta">
+    Report ID: {r.meta.report_id[:12]}<br/>
+    Generated: {ctx["generated_at"]}<br/>
+    Persona: {ctx["persona_cfg"]["label"]}
+  </div>
 </div>
 
-{snap_html}
-
-<section>
-  <h2>Executive Summary</h2>
-  <div class="summary-box">
-    <p>{r.summary.executive_summary}</p>
+<!-- SECTION 1 - DECISION HEADER -->
+<div class="map-container">
+  <img src="data:image/png;base64,{ctx.get("snapshot_b64", "")}" alt="Parcel Map" style="min-height: 220px; object-fit: cover;"/>
+  <div class="map-overlay">
+    Report: {r.meta.report_id[:8]}... | Centroid: {r.parcel_geometry.centroid.lat:.4f}°N, {r.parcel_geometry.centroid.lng:.4f}°E | Area: {r.parcel_geometry.computed_area_ha:.2f} ha
   </div>
-</section>
+</div>
+<div class="map-source">© Google Hybrid / Leaflet / OSM</div>
 
-<section>
-  <h2>Parcel Details</h2>
-  <div class="metric-grid">
-    <div class="metric"><div class="metric-label">Location</div><div class="metric-val">{r.parcel_geometry.location_context.lga or "—"}, {r.parcel_geometry.location_context.state or "—"}</div></div>
-    <div class="metric"><div class="metric-label">Area</div><div class="metric-val">{__import__('core.units', fromlist=['ha_to_area_display']).ha_to_area_display(r.parcel_geometry.computed_area_ha, r.parcel_geometry.location_context.state)['display_expert']}</div></div>
-    <div class="metric"><div class="metric-label">Centroid</div><div class="metric-val">{r.parcel_geometry.centroid.lat:.5f}°N, {r.parcel_geometry.centroid.lng:.5f}°E</div></div>
-    <div class="metric"><div class="metric-label">CRS</div><div class="metric-val">{r.coordinate_validation.detected_crs} ({r.coordinate_validation.crs_confidence:.0f}%)</div></div>
+<div class="tl-card">
+  <div class="tl-circle"></div>
+  <div>
+    <div class="tl-line1">{{tl.value.upper()}}</div>
+    <div class="tl-line2">{{t_pal["sub"]}}</div>
+    <div class="tl-line3">Risk Score: {r.summary.overall_risk_score:.1f}/100</div>
+    <div class="scale-bar-container">
+      <div class="scale-bar">
+        <div class="scale-line"></div>
+        <div class="scale-dot"></div>
+      </div>
+      <div class="scale-labels"><span>0</span><span>LOW</span><span>MED</span><span>HIGH</span><span>100</span></div>
+    </div>
   </div>
-</section>
+</div>
 
-<section>
-  <h2>Flood Risk Assessment</h2>
-  <div class="metric-grid">
-    <div class="metric"><div class="metric-label">Flood Risk Level</div><div class="metric-val" style="color:{tl_colour}">{r.flood_risk_metrics.level.value}</div></div>
-    <div class="metric"><div class="metric-label">Elevation</div><div class="metric-val">{f"{r.terrain_assessment.elevation_m:.1f}m above sea level" if r.terrain_assessment.elevation_m is not None else "—"}</div></div>
-    <div class="metric"><div class="metric-label">Nearest River</div><div class="metric-val">{f"{r.flood_risk_metrics.distance_to_nearest_river:.0f}m" if r.flood_risk_metrics.distance_to_nearest_river is not None else "—"}</div></div>
-    <div class="metric"><div class="metric-label">Water Presence (NDWI)</div><div class="metric-val">{f"{r.flood_risk_metrics.water_presence_index:.2f}" if r.flood_risk_metrics.water_presence_index is not None else "—"}</div></div>
+<div class="findings-row">
+  {chips_html}
+</div>
+
+<!-- SECTION 2 - PARCEL IDENTITY -->
+<div class="section-label">PARCEL DETAILS</div>
+<table class="clean-table">
+  <tr><td>LOCATION</td><td>{r.parcel_geometry.location_context.lga or "-"}, {r.parcel_geometry.location_context.state or "-"}</td></tr>
+  <tr><td>AREA</td><td>{r.parcel_geometry.computed_area_ha * 10000:.0f} sqm</td></tr>
+  <tr><td>CENTROID</td><td>{r.parcel_geometry.centroid.lat:.5f} N, {r.parcel_geometry.centroid.lng:.5f} E</td></tr>
+  <tr><td>SURVEY DATUM</td><td>{crs_display}</td></tr>
+</table>
+
+<div class="metric-card" style="margin-top: 16px;">
+  <h3 style="margin-top:0; font-size:12px; color:var(--report-muted); text-transform:uppercase;">AREA VERIFICATION</h3>
+  <table class="clean-table">
+    <tr><th>Stated on Survey Plan</th><th>Computed by LandIQ</th></tr>
+    <tr>
+      <td>{{f"{{stated_area_sqm:,.0f}} sqm" if stated_area_sqm else "Not stated"}}</td>
+      <td>{{computed_area_sqm:,.0f}} sqm</td>
+    </tr>
+  </table>
+  <div style="margin-top:8px;">{diff_html}</div>
+</div>
+
+<!-- SECTION 3 - RISK ASSESSMENT -->
+<div class="section-break"></div>
+<div class="section-label">RISK ASSESSMENT</div>
+
+<div class="metric-card" style="border-left: 4px solid {{t_pal['rgb']}};">
+  <div class="metric-card-grid">
+    <div>
+      <h3 style="margin:0; font-size:18px;">FLOOD RISK: {r.flood_risk_metrics.level.value}</h3>
+      <p style="font-size:13px; color:var(--report-muted); margin-top:4px;">{r.flood_risk_metrics.reason_in_plain_english or "Moderate flood exposure"}</p>
+    </div>
+    <div style="font-size:13px;">
+      <div>Elevation: <strong>{elev_display}</strong></div>
+      <div style="margin-top:4px;">Nearest River: <strong>{river_display}</strong></div>
+      <div style="margin-top:4px;">Water Presence: <strong>{ndwi_display}</strong></div>
+    </div>
   </div>
-  <p style="margin-top:8px; font-size:10pt; color:#475569;">{r.flood_risk_metrics.reason_in_plain_english}</p>
-</section>
+  <p style="margin-top:12px; font-size:13px;">{flood_reason}</p>
+</div>
 
-<section>
-  <h2>Terrain & Access</h2>
-  <div class="metric-grid">
-    <div class="metric"><div class="metric-label">Terrain Suitability</div><div class="metric-val">{r.terrain_assessment.suitability or "—"}</div></div>
-    <div class="metric"><div class="metric-label">Slope</div><div class="metric-val">{f"{r.terrain_assessment.steepness_of_land:.1f}%" if r.terrain_assessment.steepness_of_land is not None else "—"}</div></div>
-    <div class="metric"><div class="metric-label">Road Access</div><div class="metric-val">{f"{r.accessibility_development.distance_to_road_m:.0f}m" if r.accessibility_development.distance_to_road_m is not None else "—"}</div></div>
-    <div class="metric"><div class="metric-label">Growth Potential</div><div class="metric-val">{r.growth_potential.level.value}</div></div>
+<div class="metric-card">
+  <div class="metric-card-grid">
+    <div>
+      <h3 style="margin:0; font-size:16px;">TERRAIN & ACCESS</h3>
+    </div>
+    <div style="font-size:13px;">
+      <div>Slope: <strong>{slope_display}</strong></div>
+      <div style="margin-top:4px;">Road Access: <strong>{road_display}</strong></div>
+      <div style="margin-top:4px;">Suitability: <strong>{r.terrain_assessment.suitability or "-"}</strong></div>
+    </div>
   </div>
-</section>
+</div>
 
-{topo_html}
+<div class="metric-card">
+  <h3 style="margin:0; font-size:16px;">GROWTH POTENTIAL: {r.growth_potential.level.value}</h3>
+  <p style="font-size:13px; margin-top:8px;">Based on proximity to roads and infrastructure. {r.summary.executive_summary}</p>
+</div>
 
-{profile_html}
-
+<!-- SECTION 4 - WHAT WE OBSERVED -->
 {via_html}
 
-<section>
-  <h2>Advisory Flags</h2>
-  <ul class="flag-list">{flags_html}</ul>
-</section>
+<!-- SECTION 5 - DUE DILIGENCE CHECKLIST -->
+<div class="section-break"></div>
+<h2>WHAT TO DO BEFORE PAYING</h2>
+{new_checklist_html}
 
-{f'''
-<section>
-  <h2>Due Diligence Checklist</h2>
-  {checklist_html}
-</section>
-
-<section>
-  <h2>Verification Sources</h2>
-  <table>
-    <tr><th>What We Measured</th><th>Source</th><th>Data Age</th><th>Confidence</th><th>Status</th></tr>
-    {sources_html}
+<div class="metric-card">
+  <h3 style="margin-top:0; font-size:14px;">Estimated Professional Costs</h3>
+  <table class="clean-table">
+    <tr><th>Action</th><th>Estimated Cost</th><th>Time</th></tr>
+    <tr><td>Title Search</td><td>₦20,000 – ₦80,000</td><td>2–5 days</td></tr>
+    <tr><td>Surveyor Verification</td><td>₦30,000 – ₦150,000</td><td>1–3 days</td></tr>
+    <tr><td>Lawyer Review</td><td>₦50,000 – ₦200,000</td><td>3–7 days</td></tr>
   </table>
-</section>
-''' if ctx.get('mode') != 'simple' else ''}
+  <p style="font-size:11px; color:var(--report-muted); margin-top:8px; font-style:italic;">Cost estimates are approximate and vary by location and professional. Always get quotes in advance.</p>
+</div>
 
-<section>
-  <h2>AI Recommendation</h2>
-  <div class="summary-box">
-    <p>{r.summary.ai_recommendation}</p>
+<!-- SECTION 6 - TECHNICAL APPENDIX -->
+{"" if ctx.get('mode') == 'simple' else f"""
+<div class="technical-appendix section-break">
+  <h2>Technical Details - For Surveyors & GIS Professionals</h2>
+  
+  <h3 style="font-size:12px; color:var(--report-muted); text-transform:uppercase;">A. Coordinate Information</h3>
+  <table class="clean-table">
+    <tr><td>Input CRS</td><td>{{r.coordinate_validation.detected_crs}}</td></tr>
+    <tr><td>Output CRS</td><td>WGS84 (EPSG:4326)</td></tr>
+    <tr><td>Transform</td><td>Minna -> WGS84 applied. Accuracy: +/-5m.</td></tr>
+  </table>
+
+  <h3 style="font-size:12px; color:var(--report-muted); text-transform:uppercase; margin-top:16px;">B. Data Sources & Confidence</h3>
+  <table class="clean-table">
+    <tr><th>What We Measured</th><th>Status</th><th>Source</th><th>Data Age</th><th>Confidence</th></tr>
+    {{sources_html_v2}}
+  </table>
+  <p style="font-size:11px; color:var(--report-muted); margin-top:8px;">Risk Score Calculation: Flood Risk (40%), Terrain (20%), Road Access (20%), Growth Potential (20%). When a data source is unavailable, its weight is redistributed.</p>
+
+  {{topo_html}}
+  {{profile_html}}
+</div>
+"""}
+
+<!-- SECTION 7 - LEGAL DISCLAIMER -->
+<div class="legal-disclaimer section-break">
+  This report is an advisory screening based on publicly available geospatial data and satellite imagery. It is not a legal survey, a title opinion, or a professional engineering assessment.<br/><br/>
+  LandIQ does not access the Nigerian land registry and cannot verify ownership, title status, or government acquisition.<br/><br/>
+  Always engage a SURCON-registered surveyor and a qualified property lawyer before committing funds to any land transaction.
+  <div style="margin-top:16px; font-family:var(--report-mono); font-style:normal;">
+    Report ID: {r.meta.report_id[:12]} | LandIQ v{r.meta.version} | {ctx["generated_at"]}
   </div>
-</section>
-
-<div class="disclaimer">
-  {r.meta.disclaimer}<br/>
-  Report generated by LandIQ v{r.meta.version} on {ctx["generated_at"]}.
-  {"⚠ One or more language sections used template fallback (Ollama timeout)." if r.llm_timeout_fired else ""}
 </div>
 
 </body>

@@ -53,7 +53,7 @@ logger = logging.getLogger("landiq.via")
 VIA_TIMEOUT_SECONDS = 20
 VIA_IMAGE_MAX_W     = 800
 VIA_IMAGE_MAX_H     = 533
-VIA_MODEL           = "gemini-2.0-flash"
+VIA_MODEL           = "gemini-2.5-flash"
 VIA_MODEL_FALLBACK  = "gemini-1.5-flash"
 
 # Advisory flag exact strings — never invent others

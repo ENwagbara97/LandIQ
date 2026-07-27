@@ -17,9 +17,9 @@ from dotenv import load_dotenv
 load_dotenv(override=True)
 
 from pydantic import BaseModel
-from fastapi import FastAPI, UploadFile, File, Form, BackgroundTasks, HTTPException, status
+from fastapi import FastAPI, UploadFile, File, Form, BackgroundTasks, HTTPException, status, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
 from core.schemas import (
@@ -75,6 +75,46 @@ def startup_event():
     """Run database migrations on server startup to ensure tables exist."""
     logger.info("[server] Starting up... applying database migrations.")
     run_migrations()
+    # Schedule background cleanup of orphaned temp snapshots
+    import asyncio
+    asyncio.ensure_future(_cleanup_temp_snapshots())
+
+
+async def _cleanup_temp_snapshots() -> None:
+    """Runs 30s after startup to purge orphaned temp snapshot PNGs older than 1 hour."""
+    import asyncio as _asyncio
+    import time as _time
+    await _asyncio.sleep(30)
+    _tmp_dir = Path(history_manager.ROOT_DIR) / "data" / "snapshots" / "temp"
+    _tmp_dir.mkdir(parents=True, exist_ok=True)
+    now = _time.time()
+    cleaned = 0
+    for f in _tmp_dir.glob("temp_snap_*.png"):
+        try:
+            if now - f.stat().st_mtime > 3600:
+                f.unlink(missing_ok=True)
+                cleaned += 1
+        except Exception:
+            pass
+    if cleaned:
+        logger.info(f"[Cleanup] Removed {cleaned} orphaned temp snapshot file(s)")
+
+
+import math
+
+def sanitize_for_json(obj: Any) -> Any:
+    """Recursively replaces NaN and Infinity with None to prevent JSON serialization errors."""
+    if isinstance(obj, float):
+        if math.isinf(obj) or math.isnan(obj):
+            return None
+        return obj
+    elif isinstance(obj, dict):
+        return {k: sanitize_for_json(v) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [sanitize_for_json(v) for v in obj]
+    elif isinstance(obj, tuple):
+        return tuple(sanitize_for_json(v) for v in obj)
+    return obj
 
 
 # =============================================================================
@@ -90,6 +130,7 @@ def _execute_pipeline_task(
     llm_grounding: str | None = None,
 ):
     """Background task to run the multi-agent pipeline to completion."""
+    start_t = time.monotonic()
     try:
         session = gate.get_session(run_id)
         if not session or not session.coord_extract:
@@ -121,14 +162,13 @@ def _execute_pipeline_task(
                 conn.close()
         else:
             # Atomic save of completed report to SQLite
-            logger.info(f"[bg-task] Pipeline completed successfully for run_id={run_id}. Saving report.")
-            # Calculate total time
-            # For simplicity, default to 15000 ms if not tracked
+            elapsed_ms = int((time.monotonic() - start_t) * 1000)
+            logger.info(f"[bg-task] Pipeline completed successfully for run_id={run_id} in {elapsed_ms}ms. Saving report.")
             history_manager.save_report(
                 report=report_or_error,
                 snapshot_path=snapshot_path,
                 snapshot_thumb_path=None, # generated at save time
-                total_generation_ms=15000,
+                total_generation_ms=elapsed_ms,
                 user_id=session.user_id,
             )
             # Update session to COMPLETE
@@ -313,7 +353,14 @@ async def via_status(report_id: str):
         "via_result": None,
     }
 
-# ── COGO Draft (Stateless, Non-Saving) ───────────────────────────────────────
+class ViaStatusUpdate(BaseModel):
+    via_status: str
+
+class ArrivalPayload(BaseModel):
+    arrived_at: str
+    distance_from_centroid_m: float
+
+# ── Endpoints ─────────────────────────────────────────────────────────────────
 class CogoDraftRow(BaseModel):
     station_id: str
     bearing: str
@@ -386,24 +433,33 @@ async def cogo_draft(payload: CogoDraftRequest):
     wgs_coords: list[list[float]] = []
     for (e, n) in utm_points:
         lng, lat = transformer.transform(e, n)
+        if math.isinf(lat) or math.isnan(lat) or math.isinf(lng) or math.isnan(lng):
+            continue
         wgs_coords.append([lat, lng])  # Leaflet expects [lat, lng]
 
     # Closure error
     err_e = curr_e - payload.start_easting
     err_n = curr_n - payload.start_northing
-    closure_error_m = math.sqrt(err_e ** 2 + err_n ** 2)
+    try:
+        closure_error_m = math.sqrt(err_e ** 2 + err_n ** 2)
+        if math.isinf(closure_error_m) or math.isnan(closure_error_m):
+            closure_error_m = 999999.0
+    except OverflowError:
+        closure_error_m = 999999.0
+
     is_closed = closure_error_m <= 0.50 and len(utm_points) > 3
 
-    return {
+    return sanitize_for_json({
         "wgs_coords": wgs_coords,
         "closure_error_m": round(closure_error_m, 3),
         "is_closed": is_closed,
         "station_count": len(wgs_coords),
-    }
+    })
 
 
 @app.post("/api/upload")
 async def upload_coordinates(
+    request: Request,
     file: Optional[UploadFile] = File(None),
     raw_text: Optional[str] = Form(None),
     stated_area_ha: Optional[float] = Form(None),
@@ -419,13 +475,44 @@ async def upload_coordinates(
     Accept coordinates text, manual fields, or an uploaded survey plan.
     Initializes a session and runs Coordinate Extraction.
     """
+    # Guard: Prevent large uploads (>15MB)
+    content_length = request.headers.get("content-length")
+    if content_length and int(content_length) > 15 * 1024 * 1024:
+        raise HTTPException(
+            status_code=413,
+            detail={
+                "status": "error",
+                "error_code": "FILE_TOO_LARGE",
+                "instruction": "File size exceeds the 15MB limit. Please compress and upload again."
+            }
+        )
+
     try:
         logger.info(f"[server] /api/upload received file={file.filename if file else None} raw_text={raw_text[:30] if raw_text else None} cogo_payload={cogo_payload[:100] if cogo_payload else None}")
 
         file_bytes = None
         filename = None
         if file:
-            file_bytes = await file.read()
+            # Chunk read to prevent memory spike from very large uploads (e.g. if Content-Length was missing/spoofed)
+            chunk_size = 64 * 1024
+            buffer = bytearray()
+            total_read = 0
+            while True:
+                chunk = await file.read(chunk_size)
+                if not chunk:
+                    break
+                total_read += len(chunk)
+                if total_read > 15 * 1024 * 1024:
+                    raise HTTPException(
+                        status_code=413,
+                        detail={
+                            "status": "error",
+                            "error_code": "FILE_TOO_LARGE",
+                            "instruction": "File size exceeds the 15MB limit. Please compress and upload again."
+                        }
+                    )
+                buffer.extend(chunk)
+            file_bytes = bytes(buffer)
             filename = file.filename
 
         # Extract OCR if it's an image/pdf so Cadastral Engine can use it
@@ -453,8 +540,10 @@ async def upload_coordinates(
                         vision_api_key=vision_api_key,
                         stated_area_ha=stated_area_ha,
                     )
-                    with open(r"C:\Users\Admin\Downloads\Land Risk Intelligent Agent\scratch\ocr_dump.txt", "w", encoding="utf-8") as f:
-                        f.write(raw_text or "")
+                    if os.environ.get("LANDIQ_DEBUG_OCR"):
+                        debug_path = Path(__file__).resolve().parent / "scratch" / "ocr_dump.txt"
+                        debug_path.parent.mkdir(exist_ok=True)
+                        debug_path.write_text(raw_text or "", encoding="utf-8")
                 except Exception:
                     pass
 
@@ -505,8 +594,10 @@ async def upload_coordinates(
                                 vision_api_key=vision_api_key,
                                 stated_area_ha=stated_area_ha,
                             )
-                            with open(r"C:\Users\Admin\Downloads\Land Risk Intelligent Agent\scratch\ocr_dump.txt", "w", encoding="utf-8") as f:
-                                f.write(raw_text or "")
+                            if os.environ.get("LANDIQ_DEBUG_OCR"):
+                                debug_path = Path(__file__).resolve().parent / "scratch" / "ocr_dump.txt"
+                                debug_path.parent.mkdir(exist_ok=True)
+                                debug_path.write_text(raw_text or "", encoding="utf-8")
                         except Exception as exc:
                             logger.error(f"[server] Re-OCR failed: {exc}")
 
@@ -590,12 +681,12 @@ async def upload_coordinates(
             )
             gate._save_session(session)
 
-            return {
+            return sanitize_for_json({
                 "cadastral_mode": True,
                 "data": data_dump,
                 "cad_result": data_dump,
                 "session_id": run_id,
-            }
+            })
 
 
         # Allow fallback to the standard gate if Cadastral Engine couldn't handle it
@@ -625,10 +716,10 @@ async def upload_coordinates(
         if result.get("status") in ("error", "EXECUTION_HAZARD"):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=result,
+                detail=sanitize_for_json(result),
             )
 
-        return result
+        return sanitize_for_json(result)
     except HTTPException:
         raise
     except Exception as exc:
@@ -756,6 +847,146 @@ async def reject_gate(run_id: str):
     return result
 
 
+@app.get("/api/reports/{report_id}/stream")
+async def stream_report(report_id: str, request: Request = None):
+    """
+    SSE endpoint that streams report sections as they complete.
+    Client renders each section immediately.
+    """
+    from core.pipeline_stream import stream_pipeline
+    
+    session = gate.get_session(report_id)
+    if not session:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Session with ID {report_id} not found."
+        )
+
+    # Use the session parameters
+    generator = stream_pipeline(
+        run_id=report_id,
+        persona_mode=session.persona_mode.value,
+        snapshot_path=session.snapshot_path,
+        llm_provider=None, # Pulled from confirm step or env
+        llm_api_key=None,
+        llm_grounding=None,
+    )
+
+    async def event_generator():
+        try:
+            async for event in generator:
+                yield event
+                
+                # Check if this was the last event and trigger PDF
+                if "report_complete" in event:
+                    import asyncio
+                    # Fire and forget PDF generation
+                    asyncio.create_task(_generate_pdf_background(report_id))
+                    
+        except Exception as e:
+            import json
+            yield f"event: error\ndata: {json.dumps({'message': str(e)})}\n\n"
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",
+        }
+    )
+
+async def _generate_pdf_background(report_id: str) -> None:
+    """
+    Runs WeasyPrint in a background executor.
+    Updates reports table with pdf_ready status.
+    """
+    try:
+        import asyncio
+        from core.pdf_generator import generate_pdf
+        
+        report = history_manager.get_report(report_id)
+        if not report:
+            logger.error(f"[PDF] Background generation failed: report {report_id} not found.")
+            return
+            
+        row = history_manager.get_report_row(report_id)
+        snapshot_path = row.get("snapshot_path") if row else None
+        sources = history_manager.get_data_sources(report_id)
+        
+        loop = asyncio.get_running_loop()
+        pdf_path = await asyncio.wait_for(
+            loop.run_in_executor(
+                None,
+                lambda: generate_pdf(
+                    report_id=report_id,
+                    report=report,
+                    snapshot_path=snapshot_path,
+                    sources=sources,
+                    include_elevation_profile=False,
+                    mode="expert"
+                )
+            ),
+            timeout=45.0
+        )
+        
+        conn = history_manager._conn()
+        try:
+            conn.execute(
+                "UPDATE reports SET pdf_ready = TRUE, pdf_path = ? WHERE report_id = ?",
+                (str(pdf_path), report_id)
+            )
+            conn.commit()
+            logger.info(f"[PDF] {report_id} ready at {pdf_path}")
+        finally:
+            conn.close()
+            
+    except Exception as e:
+        logger.error(f"[PDF] Background generation failed: {e}")
+        conn = history_manager._conn()
+        try:
+            conn.execute(
+                "UPDATE reports SET pdf_ready = FALSE, pdf_path = 'ERROR' WHERE report_id = ?",
+                (report_id,)
+            )
+            conn.commit()
+        except Exception:
+            pass
+        finally:
+            conn.close()
+
+@app.get("/api/reports/{report_id}/pdf-status")
+async def get_pdf_status(report_id: str):
+    """Polling endpoint for PDF generation status."""
+    conn = history_manager._conn()
+    try:
+        row = conn.execute(
+            "SELECT pdf_ready, pdf_path FROM reports WHERE report_id = ?",
+            (report_id,)
+        ).fetchone()
+        
+        if not row:
+            return {"pdf_ready": False, "pdf_failed": False}
+            
+        if row["pdf_path"] == "ERROR":
+            return {"pdf_ready": False, "pdf_failed": True}
+            
+        return {"pdf_ready": bool(row["pdf_ready"]), "pdf_failed": False}
+    finally:
+        conn.close()
+
+@app.post("/api/reports/{report_id}/arrival")
+async def record_arrival(report_id: str, payload: ArrivalPayload):
+    """Record physical arrival at the site via GPS geo-fence."""
+    report = history_manager.get_report(report_id)
+    if not report:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Report with ID {report_id} not found."
+        )
+    history_manager.record_arrival(report_id, payload.distance_from_centroid_m)
+    return {"status": "success"}
+
 @app.get("/api/report/{report_id}")
 async def get_report(report_id: str):
     """Fetch the full, structured JSON report from SQLite database."""
@@ -823,7 +1054,9 @@ async def generate_adjusted_pdf(
                 b64_data = b64_data.split(",", 1)[1]
             
             img_bytes = base64.b64decode(b64_data)
-            temp_snap = Path(f"temp_snap_{uuid.uuid4().hex}.png")
+            _tmp_dir = Path(history_manager.ROOT_DIR) / "data" / "snapshots" / "temp"
+            _tmp_dir.mkdir(parents=True, exist_ok=True)
+            temp_snap = _tmp_dir / f"temp_snap_{uuid.uuid4().hex}.png"
             temp_snap.write_bytes(img_bytes)
             snapshot_path = str(temp_snap)
             
@@ -926,7 +1159,9 @@ async def generate_adjusted_card(
                 b64_data = b64_data.split(",", 1)[1]
             
             img_bytes = base64.b64decode(b64_data)
-            temp_snap = Path(f"temp_snap_{uuid.uuid4().hex}.png")
+            _tmp_dir = Path(history_manager.ROOT_DIR) / "data" / "snapshots" / "temp"
+            _tmp_dir.mkdir(parents=True, exist_ok=True)
+            temp_snap = _tmp_dir / f"temp_snap_{uuid.uuid4().hex}.png"
             temp_snap.write_bytes(img_bytes)
             snapshot_path = str(temp_snap)
             
@@ -1171,6 +1406,39 @@ async def compare_reports(id_a: str, id_b: str):
 
 
 # =============================================================================
+# NAVIGATION ENDPOINTS
+# =============================================================================
+
+class ArrivalRequest(BaseModel):
+    arrived_at: str
+    distance_from_centroid_m: float
+
+@app.get("/api/reports/{report_id}/navigation-data")
+async def get_navigation_data(report_id: str):
+    """Return parcel coordinates, centroid, and calculated arrival radius for navigation."""
+    nav_data = history_manager.get_navigation_data(report_id)
+    if not nav_data:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Report not found.",
+        )
+    return nav_data
+
+@app.post("/api/reports/{report_id}/arrival")
+async def record_arrival(report_id: str, payload: ArrivalRequest):
+    """Record that the user has arrived at the parcel site."""
+    success = history_manager.record_arrival(
+        report_id, payload.arrived_at, payload.distance_from_centroid_m
+    )
+    if not success:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Report not found or arrival record failed.",
+        )
+    return {"status": "success", "message": "Arrival recorded."}
+
+
+# =============================================================================
 # PAYSTACK PAYMENT INTEGRATION STUBS
 # =============================================================================
 
@@ -1234,28 +1502,39 @@ async def get_personas():
         {"id": "OTHERS", "label": "Others", "desc": ""}
     ]
 
-# =============================================================================
-# STATIC DASHBOARD ROUTING
-# =============================================================================
+# ── Resilient frontend path resolution ──────────────────────────────────────
+_BASE_DIR = Path(history_manager.ROOT_DIR)
+_FRONTEND_CANDIDATES = [
+    _BASE_DIR / "frontend" / "Land-Intelligence" / "artifacts" / "landiq" / "dist" / "public" / "index.html",
+    _BASE_DIR / "frontend" / "dist" / "index.html",
+    _BASE_DIR / "dist" / "index.html",
+]
+_FRONTEND_INDEX: Path | None = next(
+    (p for p in _FRONTEND_CANDIDATES if p.exists()), None
+)
+if _FRONTEND_INDEX is None:
+    logger.warning(
+        "[server] Frontend build not found. Run: cd frontend/Land-Intelligence && pnpm build"
+    )
+
 
 @app.get("/", response_class=HTMLResponse)
 def serve_index():
-    """Serve the main frontend application file directly from the workspace root."""
-    frontend_path = Path(history_manager.ROOT_DIR) / "frontend" / "Land-Intelligence" / "artifacts" / "landiq" / "dist" / "public" / "index.html"
-    if not frontend_path.exists():
-        return f"""
-        <html>
-          <head><title>LandIQ Server</title></head>
-          <body style="font-family:sans-serif;padding:40px;background:#1e293b;color:#f8fafc;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;">
-            <div style="text-align:center;background:#0f172a;padding:40px;border-radius:12px;border:1px solid #334155;max-width:600px;box-shadow:0 10px 15px -3px rgba(0,0,0,0.3)">
-              <h1 style="color:#3b82f6;margin-top:0;">LandIQ API Server is Running</h1>
-              <p>The backend server is up and listening. However, the frontend dashboard files have not been generated yet under <code>/frontend/Land-Intelligence/artifacts/landiq/dist/public/index.html</code>.</p>
-              <p style="color:#94a3b8;font-size:14px;margin-bottom:0;">Please run <code>pnpm run build</code> in the frontend directory.</p>
-            </div>
-          </body>
-        </html>
-        """
-    return HTMLResponse(content=frontend_path.read_text(encoding="utf-8"))
+    """Serve the main frontend application file."""
+    if _FRONTEND_INDEX and _FRONTEND_INDEX.exists():
+        return HTMLResponse(content=_FRONTEND_INDEX.read_text(encoding="utf-8"))
+    return f"""
+    <html>
+      <head><title>LandIQ Server</title></head>
+      <body style="font-family:sans-serif;padding:40px;background:#1e293b;color:#f8fafc;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;">
+        <div style="text-align:center;background:#0f172a;padding:40px;border-radius:12px;border:1px solid #334155;max-width:600px;box-shadow:0 10px 15px -3px rgba(0,0,0,0.3)">
+          <h1 style="color:#3b82f6;margin-top:0;">LandIQ API Server is Running</h1>
+          <p>The backend server is up and listening. Frontend build not found.</p>
+          <p style="color:#94a3b8;font-size:14px;margin-bottom:0;">Please run <code>pnpm run build</code> in the frontend directory.</p>
+        </div>
+      </body>
+    </html>
+    """
 
 
 @app.get("/index_light.html", response_class=HTMLResponse)
@@ -1283,10 +1562,8 @@ def serve_spa_catchall(full_path: str):
     # Ignore API calls that 404
     if full_path.startswith("api/"):
         raise HTTPException(status_code=404, detail="API route not found")
-        
-    frontend_path = Path(history_manager.ROOT_DIR) / "frontend" / "Land-Intelligence" / "artifacts" / "landiq" / "dist" / "public" / "index.html"
-    if frontend_path.exists():
-        return HTMLResponse(content=frontend_path.read_text(encoding="utf-8"))
+    if _FRONTEND_INDEX and _FRONTEND_INDEX.exists():
+        return HTMLResponse(content=_FRONTEND_INDEX.read_text(encoding="utf-8"))
     return HTMLResponse(content="<h1>Frontend build not found</h1>", status_code=404)
 if __name__ == "__main__":
     import uvicorn

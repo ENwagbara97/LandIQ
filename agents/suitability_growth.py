@@ -192,15 +192,17 @@ def _get_lga_benchmarks(lga: str | None, state: str | None) -> dict:
     }
     if not lga or not DB_PATH.exists():
         return defaults
+    conn = None
     try:
-        conn = sqlite3.connect(str(DB_PATH))
+        conn = sqlite3.connect(str(DB_PATH), timeout=30.0)
         conn.row_factory = sqlite3.Row
+        conn.execute("PRAGMA journal_mode=WAL;")
+        conn.execute("PRAGMA synchronous=NORMAL;")
         row = conn.execute(
             "SELECT avg_flood_score, avg_growth_score, report_count "
             "FROM lga_benchmarks WHERE lga = ? AND state = ?",
             (lga, state or ""),
         ).fetchone()
-        conn.close()
         if not row:
             return defaults
         return {
@@ -211,6 +213,9 @@ def _get_lga_benchmarks(lga: str | None, state: str | None) -> dict:
     except Exception as exc:
         logger.debug(f"[suitability_growth] LGA benchmark query failed: {exc}")
         return defaults
+    finally:
+        if conn:
+            conn.close()
 
 
 def _compute_percentile(
@@ -247,10 +252,13 @@ def update_lga_benchmark(
         return
     if not lga or not state:
         return
+    conn = None
     try:
         from datetime import datetime, timezone
-        conn = sqlite3.connect(str(DB_PATH))
+        conn = sqlite3.connect(str(DB_PATH), timeout=30.0)
         conn.row_factory = sqlite3.Row
+        conn.execute("PRAGMA journal_mode=WAL;")
+        conn.execute("PRAGMA synchronous=NORMAL;")
         existing = conn.execute(
             "SELECT * FROM lga_benchmarks WHERE lga = ? AND state = ?",
             (lga, state),
@@ -306,9 +314,11 @@ def update_lga_benchmark(
                 ),
             )
         conn.commit()
-        conn.close()
     except Exception as exc:
         logger.warning(f"[suitability_growth] LGA benchmark update failed: {exc}")
+    finally:
+        if conn:
+            conn.close()
 
 
 # =============================================================================

@@ -617,7 +617,16 @@ def transform_to_wgs84(
                 lat_wgs, lng_wgs = minna_to_wgs84(lat, lng)
                 transformed.append((lat_wgs, lng_wgs))
     elif is_utm:
-        fallback_crs = crs_name if crs_name in (CRSName.UTM_31N, CRSName.UTM_32N, CRSName.UTM_33N) else CRSName.UTM_32N
+        if points:
+            sample_northing, sample_easting = points[0]
+            detected_crs, confidence = discover_zone_from_raw_metrics(sample_easting, sample_northing)
+            if detected_crs != CRSName.UNKNOWN:
+                fallback_crs = detected_crs
+            else:
+                fallback_crs = crs_name if crs_name in (CRSName.UTM_31N, CRSName.UTM_32N, CRSName.UTM_33N) else CRSName.UTM_32N
+        else:
+            fallback_crs = CRSName.UTM_32N
+
         for northing, easting in points:
             lat, lng = utm_to_wgs84(northing, easting, fallback_crs)
             transformed.append((lat, lng))
@@ -1400,6 +1409,7 @@ def _ocr_via_gemini(
     api_key: str,
     stated_area_ha: float | None = None,
     plan_type: str = "TYPE_A",
+    mime_type: str = "image/png",
 ) -> str:
     """Call Gemini Vision API and return extracted coordinate text.
 
@@ -1419,13 +1429,37 @@ def _ocr_via_gemini(
 
     _logger = logging.getLogger("landiq.vision_ocr")
 
+    _VALID_GEMINI_PREFIXES = ("AIzaSy", "AQ.")
     # Always resolve the freshest key from .env
-    _key = api_key if (api_key and api_key.startswith("AIzaSy")) else os.getenv("GEMINI_API_KEY", "")
-    if not _key or not _key.startswith("AIzaSy"):
+    _key = api_key if (api_key and api_key.startswith(_VALID_GEMINI_PREFIXES)) else os.getenv("GEMINI_API_KEY", "")
+    if not _key or not _key.startswith(_VALID_GEMINI_PREFIXES):
         raise RuntimeError(
-            "Gemini Vision requires a Google AI Studio key (starting with AIzaSy) "
+            "Gemini Vision requires a Google AI Studio key (starting with AIzaSy or AQ.) "
             "set as GEMINI_API_KEY in your .env file."
         )
+
+    # Normalise JPEG aliases and guarantee we send a MIME type Gemini accepts
+    _mime_map = {
+        "image/jpg": "image/jpeg",
+        "image/jpe": "image/jpeg",
+        "image/tiff": "image/tiff",
+        "image/bmp": "image/bmp",
+    }
+    mime_type = _mime_map.get(mime_type.lower(), mime_type)
+
+    # Convert JPEG/BMP/TIFF → PNG for maximum Gemini compatibility
+    if mime_type in ("image/jpeg", "image/bmp", "image/tiff"):
+        try:
+            import io
+            from PIL import Image as _PILImage
+            img = _PILImage.open(io.BytesIO(image_bytes)).convert("RGB")
+            buf = io.BytesIO()
+            img.save(buf, format="PNG")
+            image_bytes = buf.getvalue()
+            mime_type = "image/png"
+            _logger.info("[vision_ocr] Converted JPEG/BMP/TIFF to PNG for Gemini")
+        except Exception as _conv_err:
+            _logger.warning(f"[vision_ocr] PIL conversion failed ({_conv_err}); sending raw bytes with declared mime_type={mime_type}")
 
     b64 = base64.b64encode(image_bytes).decode()
     # Select prompt based on plan type
@@ -1439,16 +1473,15 @@ def _ocr_via_gemini(
         "contents": [{
             "parts": [
                 {"text": active_prompt},
-                {"inline_data": {"mime_type": "image/png", "data": b64}},
+                {"inline_data": {"mime_type": mime_type, "data": b64}},
             ]
         }]
     }
 
     fallback_models = [
-        "gemini-2.5-flash",
-        "gemini-2.0-flash",
-        "gemini-1.5-pro",
-        "gemini-1.5-flash"
+        "gemini-3.5-flash",
+        "gemini-3-flash-preview",
+        "gemini-flash-latest"
     ]
 
     raw = None
@@ -1523,7 +1556,7 @@ def _ocr_via_gemini(
                         "contents": [{
                             "parts": [
                                 {"text": recheck_prompt},
-                                {"inline_data": {"mime_type": "image/png", "data": b64}},
+                                {"inline_data": {"mime_type": mime_type, "data": b64}},
                             ]
                         }]
                     }
@@ -1546,7 +1579,7 @@ def _ocr_via_gemini(
 
 
 
-def _ocr_via_openai(image_bytes: bytes, api_key: str) -> str:
+def _ocr_via_openai(image_bytes: bytes, api_key: str, mime_type: str = "image/png") -> str:
     """Call GPT-4o Vision API and return extracted text."""
     import base64
     import json as _json
@@ -1560,7 +1593,7 @@ def _ocr_via_openai(image_bytes: bytes, api_key: str) -> str:
             "role": "user",
             "content": [
                 {"type": "text", "text": _SURVEYOR_INTELLIGENCE_PROMPT},
-                {"type": "image_url", "image_url": {"url": f"data:image/png;base64,{b64}"}},
+                {"type": "image_url", "image_url": {"url": f"data:{mime_type};base64,{b64}"}},
             ]
         }],
         "max_tokens": 1000,
@@ -1576,7 +1609,7 @@ def _ocr_via_openai(image_bytes: bytes, api_key: str) -> str:
     return _vision_result_to_text(result)
 
 
-def _ocr_via_anthropic(image_bytes: bytes, api_key: str) -> str:
+def _ocr_via_anthropic(image_bytes: bytes, api_key: str, mime_type: str = "image/png") -> str:
     """Call Claude 3.5 Sonnet Vision API and return extracted text."""
     import base64
     import json as _json
@@ -1595,7 +1628,7 @@ def _ocr_via_anthropic(image_bytes: bytes, api_key: str) -> str:
             "role": "user",
             "content": [
                 {"type": "image", "source": {
-                    "type": "base64", "media_type": "image/png", "data": b64
+                    "type": "base64", "media_type": mime_type, "data": b64
                 }},
                 {"type": "text", "text": _SURVEYOR_INTELLIGENCE_PROMPT},
             ]
@@ -1687,16 +1720,27 @@ def ocr_file(
 
         if image_bytes_for_api:
             provider = vision_provider.lower()
+            # Determine correct MIME type from file extension
+            _ext_mime_map = {
+                ".jpg": "image/jpeg",
+                ".jpeg": "image/jpeg",
+                ".png": "image/png",
+                ".tiff": "image/tiff",
+                ".tif": "image/tiff",
+                ".bmp": "image/bmp",
+                ".pdf": "image/png",  # PDFs are always converted to PNG above
+            }
+            detected_mime = _ext_mime_map.get(ext, "image/png")
             try:
                 if provider == "gemini":
-                    _logger.info("[vision_ocr] Using Gemini 1.5 Flash Vision")
-                    return _ocr_via_gemini(image_bytes_for_api, vision_api_key, stated_area_ha=stated_area_ha)
+                    _logger.info(f"[vision_ocr] Using Gemini Vision (mime={detected_mime})")
+                    return _ocr_via_gemini(image_bytes_for_api, vision_api_key, stated_area_ha=stated_area_ha, mime_type=detected_mime)
                 elif provider == "openai":
-                    _logger.info("[vision_ocr] Using GPT-4o Vision")
-                    return _ocr_via_openai(image_bytes_for_api, vision_api_key)
+                    _logger.info(f"[vision_ocr] Using GPT-4o Vision (mime={detected_mime})")
+                    return _ocr_via_openai(image_bytes_for_api, vision_api_key, mime_type=detected_mime)
                 elif provider == "anthropic":
-                    _logger.info("[vision_ocr] Using Claude 3.5 Sonnet Vision")
-                    return _ocr_via_anthropic(image_bytes_for_api, vision_api_key)
+                    _logger.info(f"[vision_ocr] Using Claude 3.5 Sonnet Vision (mime={detected_mime})")
+                    return _ocr_via_anthropic(image_bytes_for_api, vision_api_key, mime_type=detected_mime)
                 else:
                     _logger.warning(f"[vision_ocr] Unknown provider '{provider}', falling back to Tesseract")
             except Exception as exc:
@@ -1735,13 +1779,22 @@ def ocr_file(
             "or paste the coordinate text directly."
         )
 
-    elif ext in (".jpg", ".jpeg", ".png", ".tiff", ".bmp"):
-        # Direct image — send straight to Gemini Vision
+    elif ext in (".jpg", ".jpeg", ".png", ".tiff", ".tif", ".bmp"):
+        # Direct image — send straight to Gemini Vision with correct MIME type
+        _ext_mime_fallback = {
+            ".jpg": "image/jpeg",
+            ".jpeg": "image/jpeg",
+            ".png": "image/png",
+            ".tiff": "image/tiff",
+            ".tif": "image/tiff",
+            ".bmp": "image/bmp",
+        }
+        _img_mime = _ext_mime_fallback.get(ext, "image/png")
         _key = os.getenv("GEMINI_API_KEY")
         if _key:
-            _logger.info("[vision_ocr] Gemini Vision for image file")
+            _logger.info(f"[vision_ocr] Gemini Vision for image file (mime={_img_mime})")
             try:
-                return _ocr_via_gemini(file_bytes, _key, stated_area_ha=stated_area_ha)
+                return _ocr_via_gemini(file_bytes, _key, stated_area_ha=stated_area_ha, mime_type=_img_mime)
             except Exception as exc:
                 _logger.warning(f"[vision_ocr] Gemini image OCR failed: {exc}")
         raise RuntimeError(

@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import logging
 import math
+import concurrent.futures
 from typing import Optional
 
 from core.schemas import (
@@ -232,52 +233,55 @@ def fetch_vegetation_indices_cascade(lat: float, lng: float) -> tuple[float | No
     Tier 2: Relaxed Sentinel-2 L2A (Older, higher cloud)
     Tier 3: Landsat 9 / Landsat 8
     """
-    import ee
-    import concurrent.futures
-    
-    # Buffer lat/lng to a 50m bbox for sampling
-    buffer_deg = 50.0 / 111000.0
-    bbox = ee.Geometry.Rectangle([
-        lng - buffer_deg, lat - buffer_deg,
-        lng + buffer_deg, lat + buffer_deg
-    ])
-    
-    sources = [
-        {"coll": "COPERNICUS/S2_SR_HARMONIZED", "filter": "CLOUDY_PIXEL_PERCENTAGE", "max_cloud": 10, "g": "B3", "n": "B8", "r": "B4", "scale": 10},
-        {"coll": "COPERNICUS/S2_SR_HARMONIZED", "filter": "CLOUDY_PIXEL_PERCENTAGE", "max_cloud": 30, "g": "B3", "n": "B8", "r": "B4", "scale": 10},
-        {"coll": "LANDSAT/LC09/C02/T1_L2", "filter": "CLOUD_COVER", "max_cloud": 10, "g": "SR_B3", "n": "SR_B5", "r": "SR_B4", "scale": 30},
-        {"coll": "LANDSAT/LC08/C02/T1_L2", "filter": "CLOUD_COVER", "max_cloud": 10, "g": "SR_B3", "n": "SR_B5", "r": "SR_B4", "scale": 30}
-    ]
-    
-    def fetch_source(src):
-        col = ee.ImageCollection(src["coll"]) \
-            .filterBounds(bbox) \
-            .filterMetadata(src["filter"], "less_than", src["max_cloud"]) \
-            .sort("system:time_start", False)
-            
-        first_img = col.first()
-        if not first_img:
-            return None
-            
-        ndwi_img = first_img.normalizedDifference([src["g"], src["n"]])
-        ndvi_img = first_img.normalizedDifference([src["n"], src["r"]])
+    try:
+        import ee
+        import concurrent.futures
         
-        ndwi_val = ndwi_img.reduceRegion(reducer=ee.Reducer.mean(), geometry=bbox, scale=src["scale"]).get('nd').getInfo()
-        ndvi_val = ndvi_img.reduceRegion(reducer=ee.Reducer.mean(), geometry=bbox, scale=src["scale"]).get('nd').getInfo()
+        # Buffer lat/lng to a 50m bbox for sampling
+        buffer_deg = 50.0 / 111000.0
+        bbox = ee.Geometry.Rectangle([
+            lng - buffer_deg, lat - buffer_deg,
+            lng + buffer_deg, lat + buffer_deg
+        ])
         
-        return {"ndwi": ndwi_val, "ndvi": ndvi_val}
-
-    for src in sources:
-        with concurrent.futures.ThreadPoolExecutor() as executor:
-            future = executor.submit(fetch_source, src)
-            try:
-                res = future.result(timeout=10)
-                if res and res["ndwi"] is not None and res["ndvi"] is not None:
-                    return float(res["ndwi"]), float(res["ndvi"])
-            except Exception as e:
-                logger.debug(f"[gis_analysis] Vegetation cascade source {src['coll']} failed: {e}")
-                continue
+        sources = [
+            {"coll": "COPERNICUS/S2_SR_HARMONIZED", "filter": "CLOUDY_PIXEL_PERCENTAGE", "max_cloud": 10, "g": "B3", "n": "B8", "r": "B4", "scale": 10},
+            {"coll": "COPERNICUS/S2_SR_HARMONIZED", "filter": "CLOUDY_PIXEL_PERCENTAGE", "max_cloud": 30, "g": "B3", "n": "B8", "r": "B4", "scale": 10},
+            {"coll": "LANDSAT/LC09/C02/T1_L2", "filter": "CLOUD_COVER", "max_cloud": 10, "g": "SR_B3", "n": "SR_B5", "r": "SR_B4", "scale": 30},
+            {"coll": "LANDSAT/LC08/C02/T1_L2", "filter": "CLOUD_COVER", "max_cloud": 10, "g": "SR_B3", "n": "SR_B5", "r": "SR_B4", "scale": 30}
+        ]
+        
+        def fetch_source(src):
+            col = ee.ImageCollection(src["coll"]) \
+                .filterBounds(bbox) \
+                .filterMetadata(src["filter"], "less_than", src["max_cloud"]) \
+                .sort("system:time_start", False)
                 
+            first_img = col.first()
+            if not first_img:
+                return None
+                
+            ndwi_img = first_img.normalizedDifference([src["g"], src["n"]])
+            ndvi_img = first_img.normalizedDifference([src["n"], src["r"]])
+            
+            ndwi_val = ndwi_img.reduceRegion(reducer=ee.Reducer.mean(), geometry=bbox, scale=src["scale"]).get('nd').getInfo()
+            ndvi_val = ndvi_img.reduceRegion(reducer=ee.Reducer.mean(), geometry=bbox, scale=src["scale"]).get('nd').getInfo()
+            
+            return {"ndwi": ndwi_val, "ndvi": ndvi_val}
+
+        for src in sources:
+            with concurrent.futures.ThreadPoolExecutor() as executor:
+                future = executor.submit(fetch_source, src)
+                try:
+                    res = future.result(timeout=10)
+                    if res and res["ndwi"] is not None and res["ndvi"] is not None:
+                        return float(res["ndwi"]), float(res["ndvi"])
+                except Exception as e:
+                    logger.debug(f"[gis_analysis] Vegetation cascade source {src['coll']} failed: {e}")
+                    continue
+    except Exception as exc:
+        logger.debug(f"[gis_analysis] Earth Engine cascade unavailable: {exc}")
+                    
     return None, None
 
 # =============================================================================
@@ -317,9 +321,25 @@ def run(
         or detect_state_from_centroid(lat, lng)
     )
 
+    # ── PARALLEL DATA FETCHING (A1) ──────────────────────────────────────────
+    with concurrent.futures.ThreadPoolExecutor(max_workers=6) as executor:
+        f_elev = executor.submit(data_loader.load_elevation, lat, lng)
+        f_slope = executor.submit(data_loader.load_slope, lat, lng)
+        f_soil = executor.submit(data_loader.fetch_isric_soil_properties, lat, lng)
+        f_river = executor.submit(data_loader.nearest_river_distance_and_order, lat, lng, state=state)
+        f_veg = executor.submit(fetch_vegetation_indices_cascade, lat, lng)
+        f_road = executor.submit(data_loader.nearest_road_distance, lat, lng, state=state)
+
+        elevation_m = f_elev.result()
+        slope_pct = f_slope.result()
+        soil_composition = f_soil.result()
+        river_res = f_river.result()
+        distance_to_river_m, river_strahler_order = river_res if river_res else (None, None)
+        veg_res = f_veg.result()
+        ndwi, ndvi = veg_res if veg_res else (None, None)
+        distance_to_road_m = f_road.result()
+
     # ── TERRAIN ───────────────────────────────────────────────────────────────
-    elevation_m = data_loader.load_elevation(lat, lng)
-    slope_pct = data_loader.load_slope(lat, lng)
     terrain_difficulty = classify_terrain_difficulty(slope_pct)
     data_sources_used.append("srtm_dem")
 
@@ -329,14 +349,10 @@ def run(
             "Regional elevation terrain data is currently unavailable for this specific coordinate block."
         )
 
-    soil_composition = data_loader.fetch_isric_soil_properties(lat, lng)
     if soil_composition:
         data_sources_used.append("isric_soilgrids_api")
 
     # ── HYDROLOGY ─────────────────────────────────────────────────────────────
-    distance_to_river_m, river_strahler_order = data_loader.nearest_river_distance_and_order(
-        lat, lng, state=state
-    )
     data_sources_used.append("hydrosheds")
 
     if distance_to_river_m is not None and distance_to_river_m > 80000:
@@ -351,9 +367,8 @@ def run(
         )
 
     # ── SENTINEL-2 NDWI / NDVI ────────────────────────────────────────────────
-    ndwi, ndvi = fetch_vegetation_indices_cascade(lat, lng)
-
-    if ndwi is None or ndvi is None:
+    out_of_sentinel_zone = (ndwi is None or ndvi is None)
+    if out_of_sentinel_zone:
         warnings.append(
             "Satellite water/vegetation data (Sentinel-2, Landsat) timed out or is unavailable "
             "due to extreme cloud cover. Flood proximity score computed using elevation and "
@@ -365,7 +380,6 @@ def run(
     encroachment_flag, encroachment_detail = detect_encroachment(ndvi)
 
     # ── ROADS (OSM) ───────────────────────────────────────────────────────────
-    distance_to_road_m = data_loader.nearest_road_distance(lat, lng, state=state)
     road_access_category = classify_road_access(distance_to_road_m)
     data_sources_used.append("osm_roads")
 

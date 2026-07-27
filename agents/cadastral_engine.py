@@ -616,9 +616,15 @@ def _run_track_b(
     ))
 
     for i, vec in enumerate(vectors):
+        if math.isinf(vec.distance_m) or math.isnan(vec.distance_m):
+            vec.distance_m = 0.0
+
         bearing_rad = math.radians(vec.bearing_decimal_deg)
         E_next = E_curr + vec.distance_m * math.sin(bearing_rad)
         N_next = N_curr + vec.distance_m * math.cos(bearing_rad)
+
+        if math.isinf(E_next) or math.isnan(E_next): E_next = 0.0
+        if math.isinf(N_next) or math.isnan(N_next): N_next = 0.0
 
         label = vec.to_station if vec.to_station else (vec.label if vec.label else f"S{i + 1}")
         stations.append(_Station(
@@ -634,7 +640,12 @@ def _run_track_b(
     E_0, N_0 = anchor
     misclosure_e = E_curr - E_0
     misclosure_n = N_curr - N_0
-    misclosure = math.sqrt(misclosure_e ** 2 + misclosure_n ** 2)
+    try:
+        misclosure = math.sqrt(misclosure_e ** 2 + misclosure_n ** 2)
+        if math.isinf(misclosure) or math.isnan(misclosure):
+            misclosure = 999999.0
+    except OverflowError:
+        misclosure = 999999.0
 
     classification = "POOR"
     warning_msg = ""
@@ -838,27 +849,18 @@ def pre_plot_sanity_check(
 
     # If no stated area is provided, we can't perform ratio/bbox comparisons
     if stated_area_sqm and stated_area_sqm > 0:
-        # Check 1: Area ratio
+        # Check 1: Area ratio (Disabled to allow manual editing instead of hard block on OCR failures)
         ratio = computed_area_sqm / stated_area_sqm
         if ratio > 5.0 or ratio < 0.1:
-            return False, (
-                f"Computed area ({computed_area_sqm:.1f} m²) "
-                f"is {ratio:.1f}x the stated area "
-                f"({stated_area_sqm:.1f} m²). "
-                f"Extraction likely failed."
-            )
+            pass # return False, (...) 
 
-        # Check 2: Bounding box plausibility
+        # Check 2: Bounding box plausibility (Disabled to allow manual editing)
         # Max diagonal of a polygon = 2*sqrt(area) roughly.
         # Max plausible leg = 4 * sqrt(area)
         # We check if bounding box diagonal exceeds max plausible leg * 3
         max_diagonal = 4.0 * math.sqrt(stated_area_sqm)
         if polygon_bbox_m > max_diagonal * 3.0:
-            return False, (
-                f"Polygon spans {polygon_bbox_m:.1f}m but "
-                f"stated area is only {stated_area_sqm:.1f} m². "
-                f"Coordinates are likely wrong."
-            )
+            pass # return False, (...)
 
     # Check 3: Nigeria geographic bounds
     for lat, lon in wgs84_coords:

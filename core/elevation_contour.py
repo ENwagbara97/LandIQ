@@ -25,9 +25,10 @@ ROOT_DIR = Path(__file__).resolve().parent.parent
 DB_PATH  = ROOT_DIR / "db" / "landiq.db"
 
 def _conn() -> sqlite3.Connection:
-    c = sqlite3.connect(str(DB_PATH), check_same_thread=False)
+    c = sqlite3.connect(str(DB_PATH), check_same_thread=False, timeout=30.0)
     c.row_factory = sqlite3.Row
     c.execute("PRAGMA journal_mode=WAL;")
+    c.execute("PRAGMA synchronous=NORMAL;")
     c.execute("PRAGMA foreign_keys=ON;")
     return c
 

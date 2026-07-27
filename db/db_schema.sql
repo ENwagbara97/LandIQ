@@ -50,6 +50,16 @@ CREATE TABLE IF NOT EXISTS reports (
     ollama_model_used   TEXT,                               -- which model ran
     llm_timeout_fired   INTEGER NOT NULL DEFAULT 0,        -- boolean: template fallback used
     total_generation_ms INTEGER,                            -- end-to-end ms
+    -- VIA (Visual Intelligence Advisor) columns (v1.2)
+    via_result_json     TEXT,                               -- VIAResult JSON
+    via_completed_at    TEXT,                               -- ISO8601
+    via_status          TEXT    DEFAULT 'pending',          -- pending|complete|failed|skipped
+    -- Navigation columns (v1.3)
+    arrived_at          TEXT,                               -- ISO8601 when user marked arrival
+    arrival_distance_m  REAL,                               -- metres from centroid at arrival
+    -- PDF generation columns (v1.4)
+    pdf_ready           BOOLEAN DEFAULT FALSE,              -- PDF file generated
+    pdf_path            TEXT,                               -- path to PDF file
     FOREIGN KEY (report_id) REFERENCES sessions(run_id)
 );
 

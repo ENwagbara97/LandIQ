@@ -769,7 +769,7 @@ class VIAUsageMeta(BaseModel):
     output_tokens_a   : int = 0
     input_tokens_b    : int = 0
     output_tokens_b   : int = 0
-    model             : str = "gemini-2.0-flash"
+    model             : str = "gemini-3.5-flash"
     call_duration_ms  : int = 0
 
 

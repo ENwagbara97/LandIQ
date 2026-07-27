@@ -22,9 +22,10 @@ DB_PATH     = ROOT_DIR / "db" / "landiq.db"
 
 def get_connection(db_path: Path = DB_PATH) -> sqlite3.Connection:
     """Return a SQLite connection with WAL mode and foreign keys enabled."""
-    conn = sqlite3.connect(str(db_path), check_same_thread=False)
+    conn = sqlite3.connect(str(db_path), check_same_thread=False, timeout=30.0)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA journal_mode=WAL;")
+    conn.execute("PRAGMA synchronous=NORMAL;")
     conn.execute("PRAGMA foreign_keys=ON;")
     return conn
 
@@ -41,6 +42,46 @@ def _apply_via_columns(conn: sqlite3.Connection) -> None:
         ("via_status",        "TEXT DEFAULT 'pending'"),
     ]
     for col_name, col_def in via_columns:
+        try:
+            conn.execute(f"ALTER TABLE reports ADD COLUMN {col_name} {col_def};")
+            conn.commit()
+            print(f"[migrate] [OK] Added column reports.{col_name}")
+        except sqlite3.OperationalError as exc:
+            if "duplicate column name" in str(exc).lower():
+                pass  # Column already exists — safe to ignore
+            else:
+                raise
+
+
+def _apply_nav_columns(conn: sqlite3.Connection) -> None:
+    """
+    Idempotently add Navigation columns to the existing reports table.
+    """
+    nav_columns = [
+        ("arrived_at",         "TEXT"),
+        ("arrival_distance_m", "REAL"),
+    ]
+    for col_name, col_def in nav_columns:
+        try:
+            conn.execute(f"ALTER TABLE reports ADD COLUMN {col_name} {col_def};")
+            conn.commit()
+            print(f"[migrate] [OK] Added column reports.{col_name}")
+        except sqlite3.OperationalError as exc:
+            if "duplicate column name" in str(exc).lower():
+                pass  # Column already exists — safe to ignore
+            else:
+                raise
+
+
+def _apply_pdf_columns(conn: sqlite3.Connection) -> None:
+    """
+    Idempotently add PDF generation columns to the existing reports table.
+    """
+    pdf_columns = [
+        ("pdf_ready", "BOOLEAN DEFAULT FALSE"),
+        ("pdf_path",  "TEXT"),
+    ]
+    for col_name, col_def in pdf_columns:
         try:
             conn.execute(f"ALTER TABLE reports ADD COLUMN {col_name} {col_def};")
             conn.commit()
@@ -77,6 +118,8 @@ def run_migrations(db_path: Path = DB_PATH) -> None:
         _print_table_list(conn)
         # Apply column-level migrations that can't be handled by executescript
         _apply_via_columns(conn)
+        _apply_nav_columns(conn)
+        _apply_pdf_columns(conn)
     except sqlite3.Error as exc:
         conn.rollback()
         print(f"[migrate] [ERROR] Migration failed: {exc}", file=sys.stderr)

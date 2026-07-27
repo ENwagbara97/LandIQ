@@ -115,14 +115,14 @@ class TestOcrViaGemini:
     def test_successful_extraction(self):
         with patch.dict("os.environ", _PROXY_ENV):
             with patch("requests.post", return_value=self._make_mock_response(SAMPLE_TYPE_A_JSON)):
-                result = _ocr_via_gemini(FAKE_PNG, "fake-api-key")
+                result = _ocr_via_gemini(FAKE_PNG, "AQ.fakekey")
         assert "387223.007mE" in result
 
     def test_no_coordinates_raises_runtime_error(self):
         with patch.dict("os.environ", _PROXY_ENV):
             with patch("requests.post", return_value=self._make_mock_response(NO_COORDS_JSON)):
                 with pytest.raises(RuntimeError, match="Gemini Vision"):
-                    _ocr_via_gemini(FAKE_PNG, "fake-api-key")
+                    _ocr_via_gemini(FAKE_PNG, "AQ.fakekey")
 
     def test_strips_markdown_fences(self):
         """Model sometimes wraps JSON in ```json ... ``` — should be stripped."""
@@ -133,7 +133,7 @@ class TestOcrViaGemini:
         }
         with patch.dict("os.environ", _PROXY_ENV):
             with patch("requests.post", return_value=mock_resp):
-                result = _ocr_via_gemini(FAKE_PNG, "fake-api-key")
+                result = _ocr_via_gemini(FAKE_PNG, "AQ.fakekey")
         assert "93° 02'" in result
 
 
@@ -196,7 +196,7 @@ class TestOcrFileRouting:
 
     def test_routes_to_gemini_when_provider_gemini(self):
         with patch("requests.post", return_value=self._gemini_success()) as mock_post:
-            result = ocr_file(FAKE_PNG, "survey.png", vision_provider="gemini", vision_api_key="key123")
+            result = ocr_file(FAKE_PNG, "survey.png", vision_provider="gemini", vision_api_key="AQ.key123")
         assert mock_post.called
         url_called = mock_post.call_args[0][0]
         assert "gemini" in url_called

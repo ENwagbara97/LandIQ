@@ -1,11 +1,11 @@
 {
-  "NLIR_FEED_ACTIVE": true,
+  "NLIR_FEED_ACTIVE": false,
   "STATE_LIS_ACTIVE": false,
   "WB_FEED_ACTIVE": false,
   "OFFLINE_RASTER_ACTIVE": false,
   "MOCK_REGISTRY_ACTIVE": false,
   "MOCK_SCENARIO": "clean_title",
-  "SELENIUM_SNAPSHOT_ACTIVE": true,
+  "SELENIUM_SNAPSHOT_ACTIVE": false,
   "SENTINEL_LIVE_FETCH": true,
   "FEED_TIMEOUT_SECONDS": 5,
   "FALLBACK_ON_TIMEOUT": true,
@@ -48,6 +48,24 @@
       "lat_max": 4.95,
       "ndwi_path": "data/sentinel/rivers_ndwi_2023.tif",
       "ndvi_path": "data/sentinel/rivers_ndvi_2023.tif"
+    },
+    {
+      "name": "FCT Abuja",
+      "lon_min": 7.20,
+      "lon_max": 7.80,
+      "lat_min": 8.80,
+      "lat_max": 9.20,
+      "ndwi_path": "data/sentinel/abuja_ndwi_2023.tif",
+      "ndvi_path": "data/sentinel/abuja_ndvi_2023.tif"
+    },
+    {
+      "name": "Akwa Ibom",
+      "lon_min": 7.50,
+      "lon_max": 8.30,
+      "lat_min": 4.50,
+      "lat_max": 5.40,
+      "ndwi_path": "data/sentinel/akwaibom_ndwi_2023.tif",
+      "ndvi_path": "data/sentinel/akwaibom_ndvi_2023.tif"
     }
   ],
   "REPORT_HISTORY_PAGE_SIZE": 50,

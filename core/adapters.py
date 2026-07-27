@@ -612,8 +612,9 @@ def _run_with_timeout(fn, args: tuple, timeout_s: int):
 
 
 def _iso_now() -> str:
-    from datetime import datetime, timezone
-    return datetime.now(timezone.utc).isoformat()
+    from datetime import datetime, timezone, timedelta
+    WAT = timezone(timedelta(hours=1))
+    return datetime.now(WAT).isoformat()
 
 
 def _safe_title_type(val: str | None) -> TitleType | None:

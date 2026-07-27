@@ -4,7 +4,7 @@
     "input_type": "manual_coordinates",
     "raw_text": "5.1100N 6.7300E; 5.1107N 6.7313E; 5.1093N 6.7318E; 5.1086N 6.7305E; 5.1100N 6.7300E",
     "stated_area_ha": 1.20,
-    "persona_mode": "INSTITUTIONAL_DEV"
+    "persona_mode": "DEVELOPER"
   },
   "expected": {
     "coord_extract": {

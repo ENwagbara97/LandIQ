@@ -173,7 +173,7 @@ def test_pre_plot_sanity_check():
     assert passed
     assert "Sanity checks passed" in msg
 
-    # 2. Area ratio fail (ratio > 5)
+    # 2. Area ratio fail (Disabled - now passes)
     passed, msg = pre_plot_sanity_check(
         computed_area_sqm=2500.0,
         stated_area_sqm=424.0,
@@ -181,10 +181,10 @@ def test_pre_plot_sanity_check():
         wgs84_coords=[(6.5, 3.5), (6.5, 3.6), (6.6, 3.6), (6.6, 3.5), (6.5, 3.5)],
         has_self_intersection=False
     )
-    assert not passed
-    assert "ratio" in msg.lower() or "area" in msg.lower()
+    assert passed
+    assert "Sanity checks passed" in msg
 
-    # 3. Area ratio fail (ratio < 0.1)
+    # 3. Area ratio fail (Disabled - now passes)
     passed, msg = pre_plot_sanity_check(
         computed_area_sqm=30.0,
         stated_area_sqm=424.0,
@@ -192,10 +192,10 @@ def test_pre_plot_sanity_check():
         wgs84_coords=[(6.5, 3.5), (6.5, 3.6), (6.6, 3.6), (6.6, 3.5), (6.5, 3.5)],
         has_self_intersection=False
     )
-    assert not passed
-    assert "ratio" in msg.lower() or "area" in msg.lower()
+    assert passed
+    assert "Sanity checks passed" in msg
 
-    # 4. Bounding box plausibility fail
+    # 4. Bounding box plausibility fail (Disabled - now passes)
     passed, msg = pre_plot_sanity_check(
         computed_area_sqm=424.0,
         stated_area_sqm=424.0,
@@ -203,8 +203,8 @@ def test_pre_plot_sanity_check():
         wgs84_coords=[(6.5, 3.5), (6.5, 3.6), (6.6, 3.6), (6.6, 3.5), (6.5, 3.5)],
         has_self_intersection=False
     )
-    assert not passed
-    assert "spans" in msg.lower() or "bounding box" in msg.lower() or "wrong" in msg.lower()
+    assert passed
+    assert "Sanity checks passed" in msg
 
     # 5. Outside Nigeria bounds
     passed, msg = pre_plot_sanity_check(
