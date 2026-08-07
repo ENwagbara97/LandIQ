@@ -58,14 +58,30 @@ def clear_history():
         c.execute("DELETE FROM sessions")
         c.commit()
 
+def log_diaspora_event(run_id: str, country: str | None = None) -> None:
+    """Record an overseas diaspora navigation event on a session and its associated report."""
+    with _conn() as c:
+        c.execute(
+            "UPDATE sessions SET is_diaspora = 1, diaspora_country = ? WHERE run_id = ?",
+            (country or "Overseas", run_id)
+        )
+        c.execute(
+            "UPDATE reports SET is_diaspora = 1, diaspora_country = ? WHERE report_id = ?",
+            (country or "Overseas", run_id)
+        )
+        c.commit()
+
+
 def get_admin_stats() -> dict:
-    """Returns total reports, total users, and recent reports list."""
+    """Returns total reports, total users, diaspora metrics, and recent reports list."""
     with _conn() as c:
         reports = c.execute("SELECT COUNT(*) FROM reports").fetchone()[0]
         failed  = c.execute(
             "SELECT COUNT(*) FROM sessions WHERE status IN ('error', 'failed')"
         ).fetchone()[0]
         users   = c.execute("SELECT COUNT(DISTINCT user_id) FROM sessions").fetchone()[0]
+        diaspora = c.execute("SELECT COUNT(*) FROM sessions WHERE is_diaspora = 1").fetchone()[0]
+        diaspora_pct = round((diaspora / max(reports, 1)) * 100, 1)
         
         recent_rows = c.execute(
             """
@@ -82,6 +98,8 @@ def get_admin_stats() -> dict:
             "total_reports": reports,
             "failed_reports": failed,
             "total_users": users,
+            "diaspora_inspections": diaspora,
+            "diaspora_percentage": diaspora_pct,
             "recent_reports": recent
         }
 
@@ -108,6 +126,11 @@ def save_report(
         "lng": report.parcel_geometry.centroid.lng,
     })
 
+    loc_ctx = report.parcel_geometry.location_context
+    loc_display = getattr(loc_ctx, "display_location", None) or f"{loc_ctx.lga or '—'}, {loc_ctx.state or '—'}"
+    loc_source = getattr(loc_ctx, "source", "pipeline")
+    loc_confidence = getattr(loc_ctx, "confidence", 90)
+
     conn = _conn()
     try:
         conn.execute(
@@ -119,16 +142,17 @@ def save_report(
                 report_json, snapshot_path, snapshot_thumb_path,
                 persona_mode, pipeline_version,
                 ollama_model_used, llm_timeout_fired,
-                total_generation_ms
-            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                total_generation_ms,
+                location_display, location_source, location_confidence
+            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
             """,
             (
                 report_id,
                 user_id,
                 report.meta.generated_at,
                 centroid_json,
-                report.parcel_geometry.location_context.state,
-                report.parcel_geometry.location_context.lga,
+                loc_ctx.state,
+                loc_ctx.lga,
                 report.summary.traffic_light.value,
                 report.summary.overall_risk_score,
                 report_json,
@@ -139,13 +163,73 @@ def save_report(
                 report.ollama_model_used,
                 1 if report.llm_timeout_fired else 0,
                 total_generation_ms,
+                loc_display,
+                loc_source,
+                loc_confidence,
             ),
         )
         # Save data sources
         _save_data_sources(conn, report_id, report)
         conn.commit()
-        logger.info(f"[history] Saved report {report_id[:8]}")
+        logger.info(f"[history] Saved report {report_id[:8]} with location: {loc_display}")
         return report_id
+    finally:
+        conn.close()
+
+
+def backfill_missing_locations() -> None:
+    """
+    Startup task: Backfill missing location_display/parcel_state/parcel_lga on historical reports.
+    Rate limited at 0.5s per request. Non-blocking.
+    """
+    import time
+    from core.reverse_geocode import reverse_geocode_centroid
+
+    conn = _conn()
+    try:
+        rows = conn.execute(
+            """
+            SELECT report_id, parcel_centroid
+            FROM reports
+            WHERE (location_display IS NULL OR parcel_state IS NULL OR parcel_state = '—' OR parcel_state = 'Unresolved')
+            LIMIT 50
+            """
+        ).fetchall()
+
+        if not rows:
+            return
+
+        logger.info(f"[location_backfill] Found {len(rows)} historical reports with missing location data")
+        for r in rows:
+            try:
+                cent = json.loads(r["parcel_centroid"])
+                lat = float(cent["lat"])
+                lng = float(cent["lng"])
+
+                geo_res = reverse_geocode_centroid(lat, lng)
+                conn.execute(
+                    """
+                    UPDATE reports SET
+                        parcel_state = COALESCE(parcel_state, ?),
+                        parcel_lga = COALESCE(parcel_lga, ?),
+                        location_display = ?,
+                        location_source = ?,
+                        location_confidence = ?
+                    WHERE report_id = ?
+                    """,
+                    (
+                        geo_res.get("state"),
+                        geo_res.get("lga"),
+                        geo_res.get("display_location"),
+                        geo_res.get("source"),
+                        geo_res.get("confidence"),
+                        r["report_id"]
+                    )
+                )
+                conn.commit()
+                time.sleep(0.3)
+            except Exception as exc:
+                logger.warning(f"[location_backfill] Failed for report {r['report_id']}: {exc}")
     finally:
         conn.close()
 

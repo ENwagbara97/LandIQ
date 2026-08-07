@@ -93,6 +93,49 @@ def _apply_pdf_columns(conn: sqlite3.Connection) -> None:
                 raise
 
 
+def _apply_diaspora_columns(conn: sqlite3.Connection) -> None:
+    """
+    Idempotently add Diaspora location analytics columns to sessions and reports tables.
+    """
+    diaspora_cols = [
+        ("is_diaspora",      "INTEGER NOT NULL DEFAULT 0"),
+        ("diaspora_country", "TEXT"),
+    ]
+    for table_name in ["sessions", "reports"]:
+        for col_name, col_def in diaspora_cols:
+            try:
+                conn.execute(f"ALTER TABLE {table_name} ADD COLUMN {col_name} {col_def};")
+                conn.commit()
+                print(f"[migrate] [OK] Added column {table_name}.{col_name}")
+            except sqlite3.OperationalError as exc:
+                if "duplicate column name" in str(exc).lower():
+                    pass  # Column already exists
+                else:
+                    raise
+
+
+def _apply_location_columns(conn: sqlite3.Connection) -> None:
+    """
+    Idempotently add location cascade columns to the existing sessions and reports tables.
+    """
+    loc_columns = [
+        ("location_display",    "TEXT"),
+        ("location_source",     "TEXT"),
+        ("location_confidence", "INTEGER"),
+    ]
+    for table_name in ("sessions", "reports"):
+        for col_name, col_def in loc_columns:
+            try:
+                conn.execute(f"ALTER TABLE {table_name} ADD COLUMN {col_name} {col_def};")
+                conn.commit()
+                print(f"[migrate] [OK] Added column {table_name}.{col_name}")
+            except sqlite3.OperationalError as exc:
+                if "duplicate column name" in str(exc).lower():
+                    pass  # Column already exists — safe to ignore
+                else:
+                    raise
+
+
 def run_migrations(db_path: Path = DB_PATH) -> None:
     """
     Execute the full schema SQL against the target database.
@@ -120,6 +163,8 @@ def run_migrations(db_path: Path = DB_PATH) -> None:
         _apply_via_columns(conn)
         _apply_nav_columns(conn)
         _apply_pdf_columns(conn)
+        _apply_diaspora_columns(conn)
+        _apply_location_columns(conn)
     except sqlite3.Error as exc:
         conn.rollback()
         print(f"[migrate] [ERROR] Migration failed: {exc}", file=sys.stderr)

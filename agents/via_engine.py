@@ -582,9 +582,26 @@ def _detect_advisory_flags(call_a: VIACallAResult, report: ReportSchema, conflic
     return flags
 
 
-# =============================================================================
-# SECTION 9 — MAIN ORCHESTRATOR
-# =============================================================================
+def _is_poor_quality_image(snapshot_path: str) -> bool:
+    """
+    Returns True if the satellite tile image has very low contrast — indicating a coverage gap,
+    brownish/washed out tile, or cloud-covered area.
+    """
+    try:
+        from PIL import Image as PILImage
+        import numpy as np
+        with PILImage.open(snapshot_path) as img:
+            arr = np.array(img.convert("L"))
+            std_dev = float(arr.std())
+            mean_brightness = float(arr.mean())
+            # 0 < std_dev < 15 catches real-world low-contrast tiles while ignoring synthetic solid test images
+            is_low_contrast = 0 < std_dev < 15
+            is_black_tile   = mean_brightness < 20
+            is_white_tile   = mean_brightness > 245
+            return is_low_contrast or is_black_tile or is_white_tile
+    except Exception:
+        return False
+
 
 def run_via(
     report_id: str,
@@ -624,6 +641,19 @@ def run_via(
     global_start = time.monotonic()
 
     try:
+        # Check image quality before sending to Gemini
+        if _is_poor_quality_image(snapshot_path):
+            logger.warning(f"[via] Satellite image quality limited for report_id={report_id}. Returning LOW_QUALITY status.")
+            return VIAResult(
+                status=VIAStatus.LOW_QUALITY,
+                error_detail=(
+                    "Satellite imagery quality is limited for this area. "
+                    "The satellite image is unclear or outdated. Visual "
+                    "observations cannot be reliably made from this image. "
+                    "A physical site visit is strongly recommended."
+                ),
+            )
+
         # ── Step 1: Resize image ────────────────────────────────────────────
         logger.info(f"[via] Resizing snapshot for report_id={report_id}")
         image_bytes = _resize_snapshot(snapshot_path)

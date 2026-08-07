@@ -545,6 +545,68 @@ def call_executive_summary(
 # SECTION 5 — SCHEMA ASSEMBLY (all structured fields — no LLM)
 # =============================================================================
 
+def get_location_display(report_data: Any) -> str:
+    """
+    Robust location display helper function for report generation.
+    Cascades through location context fields and reverse geocoding fallback.
+    NEVER returns 'Unknown', 'None', or '—'.
+    """
+    if report_data is None:
+        return "Nigeria"
+
+    if isinstance(report_data, dict):
+        pg = report_data.get("parcel_geometry", {})
+        lc = pg.get("location_context", {}) if isinstance(pg, dict) else {}
+        display = lc.get("display_location") or report_data.get("display_location")
+        lga = lc.get("lga") or report_data.get("lga")
+        state = lc.get("state") or report_data.get("state")
+        community = lc.get("community") or report_data.get("community")
+        centroid = pg.get("centroid") or report_data.get("centroid")
+    else:
+        pg = getattr(report_data, "parcel_geometry", None)
+        lc = getattr(pg, "location_context", None) if pg else None
+        display = getattr(lc, "display_location", None) or getattr(report_data, "display_location", None)
+        lga = getattr(lc, "lga", None) or getattr(report_data, "lga", None)
+        state = getattr(lc, "state", None) or getattr(report_data, "state", None)
+        community = getattr(lc, "community", None) or getattr(report_data, "community", None)
+        centroid = getattr(pg, "centroid", None) or getattr(report_data, "centroid", None)
+
+    def _is_valid(val: Any) -> bool:
+        if val is None:
+            return False
+        s = str(val).strip()
+        return s != "" and s.lower() not in ("unknown", "none", "—", "unresolved", "null")
+
+    if _is_valid(display):
+        return str(display).strip()
+
+    parts = []
+    if _is_valid(community) and community != lga:
+        parts.append(str(community).strip())
+    if _is_valid(lga):
+        lga_str = str(lga).strip()
+        parts.append(f"{lga_str} LGA" if "LGA" not in lga_str else lga_str)
+    if _is_valid(state):
+        parts.append(str(state).strip())
+
+    if parts:
+        return ", ".join(parts)
+
+    if centroid:
+        try:
+            lat = getattr(centroid, "lat", None) or (centroid.get("lat") if isinstance(centroid, dict) else None)
+            lng = getattr(centroid, "lng", None) or (centroid.get("lng") if isinstance(centroid, dict) else None)
+            if lat is not None and lng is not None:
+                from core.reverse_geocode import reverse_geocode_centroid
+                geo_res = reverse_geocode_centroid(float(lat), float(lng))
+                if _is_valid(geo_res.get("display_location")):
+                    return str(geo_res["display_location"]).strip()
+        except Exception:
+            pass
+
+    return "Nigeria"
+
+
 def assemble_report(
     coord: CoordExtractOutput,
     gis: GISAnalysisOutput,
@@ -570,11 +632,38 @@ def assemble_report(
     report_id = coord.run_id
     now = datetime.now(WAT).isoformat()
 
+
     # ── Location context ───────────────────────────────────────────────────────
+    lga_val = feed.supplemental_gis.lga_confirmed or getattr(coord, "lga", None)
+    state_val = feed.supplemental_gis.state_confirmed or getattr(coord, "state", None)
+    display_val = getattr(coord, "display_location", None)
+    source_val = getattr(coord, "location_source", None)
+    confidence_val = getattr(coord, "location_confidence", None)
+
+    # Always ensure location is reverse-geocoded from centroid if unpopulated
+    if not state_val or not lga_val or str(state_val) in ("Unresolved", "—", "None") or str(lga_val) in ("Unresolved", "—", "None"):
+        from core.reverse_geocode import reverse_geocode_centroid
+        geo_res = reverse_geocode_centroid(coord.centroid.lat, coord.centroid.lng)
+        lga_val = lga_val or geo_res.get("lga")
+        state_val = state_val or geo_res.get("state")
+        display_val = display_val or geo_res.get("display_location")
+        source_val = source_val or geo_res.get("source")
+        confidence_val = confidence_val or geo_res.get("confidence")
+
+    display_val = get_location_display({
+        "state": state_val,
+        "lga": lga_val,
+        "display_location": display_val,
+        "centroid": coord.centroid
+    })
+
     location = LocationContext(
-        lga=feed.supplemental_gis.lga_confirmed or coord.lga,
-        state=feed.supplemental_gis.state_confirmed or coord.state,
+        lga=lga_val,
+        state=state_val,
         community=None,
+        display_location=display_val,
+        source=source_val or "pipeline",
+        confidence=confidence_val or 90,
     )
 
     # ── Parcel geometry ────────────────────────────────────────────────────────

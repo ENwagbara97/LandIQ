@@ -89,22 +89,32 @@ _UTM_ZONE_RE = re.compile(r"\butm\s*zone\s*(\d+)\b", re.IGNORECASE)
 def _detect_datum(raw_text: str) -> tuple[str, Optional[int]]:
     """
     Scan raw text for datum and UTM zone labels.
-    Returns (datum_label, utm_zone_number).
-    Returns None for zone if not explicitly stated.
+    Reads explicit # CRS: header comments if present.
+    Defaults to modern WGS84 UTM (not legacy Minna Datum) unless Minna/Clarke is explicitly declared.
     """
     text = raw_text or ""
 
-    # UTM zone extraction
+    # Check for LandIQ # CRS: header comment
+    crs_match = re.search(r"#\s*CRS:\s*(?:UTM\s*Zone\s*(\d+)N?|EPSG:(\d+))", text, re.IGNORECASE)
+    if crs_match:
+        zone = crs_match.group(1) or crs_match.group(2)
+        if zone:
+            zone_num = int(zone)
+            if zone_num > 30000:  # e.g. EPSG:32632
+                zone_num = zone_num % 100
+            return f"UTM Zone {zone_num}N (WGS84)", zone_num
+
+    # General UTM zone extraction
     zone_match = _UTM_ZONE_RE.search(text)
     utm_zone = int(zone_match.group(1)) if zone_match else None
 
-    if _MINNA_RE.search(text):
+    if _MINNA_RE.search(text) or "CLARKE" in text.upper():
         return "MINNA", utm_zone
     if _WGS84_RE.search(text):
-        return "WGS84", utm_zone
+        return f"UTM Zone {utm_zone or 32}N (WGS84)", utm_zone
 
-    # Default: legacy Nigerian plan → Minna
-    return "MINNA", utm_zone
+    # Default to modern WGS84 (99% of modern Nigerian surveys)
+    return f"UTM Zone {utm_zone or 32}N (WGS84)", utm_zone
 
 
 # =============================================================================
@@ -740,16 +750,33 @@ def _reproject_stations(stations: list[_Station], datum_label: str, stated_zone:
     if first_easting is None:
         return
 
-    # Infer UTM Zone for Nigeria based on Easting range
+    # Infer UTM Zone for Nigeria based on spatial metrics if not explicitly passed
     utm_zone = stated_zone
     if not utm_zone:
-        loc = ((raw_text or "") + " " + (location_context or "")).lower()
-        if any(s in loc for s in ["lagos", "ogun", "oyo", "osun", "kwara", "ekiti", "sokoto", "kebbi", "niger state"]):
-            utm_zone = 31
-        elif any(s in loc for s in ["borno", "yobe", "taraba", "adamawa"]):
-            utm_zone = 33
-        else:
-            utm_zone = 32
+        first_e, first_n = None, None
+        for s in stations:
+            e = s.calculated_easting if s.calculated_easting is not None else s.stated_easting
+            n = s.calculated_northing if s.calculated_northing is not None else s.stated_northing
+            if e is not None and n is not None:
+                first_e, first_n = e, n
+                break
+        if first_e is not None and first_n is not None:
+            try:
+                from agents.coord_extract import discover_zone_from_raw_metrics, CRSName
+                disc_crs, conf = discover_zone_from_raw_metrics(first_e, first_n)
+                if disc_crs == CRSName.UTM_31N: utm_zone = 31
+                elif disc_crs == CRSName.UTM_33N: utm_zone = 33
+                elif disc_crs == CRSName.UTM_32N: utm_zone = 32
+            except Exception:
+                pass
+        if not utm_zone:
+            loc = ((raw_text or "") + " " + (location_context or "")).lower()
+            if any(s in loc for s in ["lagos", "ogun", "oyo", "osun", "kwara", "ekiti", "sokoto", "kebbi", "niger state"]):
+                utm_zone = 31
+            elif any(s in loc for s in ["borno", "yobe", "taraba", "adamawa"]):
+                utm_zone = 33
+            else:
+                utm_zone = 32
 
     is_minna = "MINNA" in datum_label.upper()
 
@@ -1000,11 +1027,11 @@ def run(
                 active_stations, misclosure_m, classification, closure_warning = _run_track_b(cogo_anchor, cogo_vecs_structured)
                 # Determine UTM zone from CRS string
                 crs_str = sp.get("crs", "EPSG:32632")
-                datum_label = "UTM"
                 try:
-                    utm_zone = int(crs_str.replace("EPSG:326", ""))
+                    utm_zone = int(crs_str.replace("EPSG:326", "").replace("EPSG:263", ""))
                 except Exception:
                     utm_zone = 32
+                datum_label = f"UTM Zone {utm_zone}N (WGS84)"
                 _reproject_stations(active_stations, datum_label, utm_zone, raw_text="", location_context=location_context or "")
                 active_stations, has_self_intersection = _enforce_simple_polygon_sequence(active_stations)
 

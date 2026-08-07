@@ -25,7 +25,9 @@ CREATE TABLE IF NOT EXISTS sessions (
     snapshot_path       TEXT,                               -- path to PNG snapshot
     error_detail        TEXT,                               -- structured error if failed
     persona_mode        TEXT    DEFAULT 'EVERYDAY_BUYER',   -- active persona
-    pipeline_stage      TEXT    DEFAULT 'INIT'              -- current stage name
+    pipeline_stage      TEXT    DEFAULT 'INIT',             -- current stage name
+    is_diaspora         INTEGER NOT NULL DEFAULT 0,        -- boolean: 1 if user overseas
+    diaspora_country    TEXT                               -- country label if overseas
 );
 
 -- =============================================================================
@@ -60,6 +62,13 @@ CREATE TABLE IF NOT EXISTS reports (
     -- PDF generation columns (v1.4)
     pdf_ready           BOOLEAN DEFAULT FALSE,              -- PDF file generated
     pdf_path            TEXT,                               -- path to PDF file
+    -- Diaspora location analytics (v1.5)
+    is_diaspora         INTEGER NOT NULL DEFAULT 0,        -- boolean: accessed outside Nigeria
+    diaspora_country    TEXT,                               -- country label if overseas
+    -- Reverse geocoding location cascade columns (v1.6)
+    location_display    TEXT,                               -- clean display location string
+    location_source     TEXT,                               -- nominatim|opencage|local_state_box
+    location_confidence INTEGER,                            -- 0-100 score
     FOREIGN KEY (report_id) REFERENCES sessions(run_id)
 );
 

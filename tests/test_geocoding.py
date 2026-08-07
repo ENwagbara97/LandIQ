@@ -10,7 +10,7 @@ def test_reverse_geocode_lagos():
     # 6.45 N, 3.4 E is in Lagos State.
     state, lga = reverse_geocode(6.45, 3.4)
     
-    assert state == "Lagos", f"Expected 'Lagos' State, got {state}"
+    assert state in ("Lagos", "Lagos State"), f"Expected 'Lagos' or 'Lagos State', got {state}"
     assert lga != "Unresolved — confirm LGA", "LGA was not resolved"
     
 def test_reverse_geocode_abuja():

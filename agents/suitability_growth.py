@@ -397,11 +397,15 @@ def run(
             "Verify that the intended use is compatible with surrounding land designations."
         )
 
+    # ── NEARBY LANDMARKS ENGINE ───────────────────────────────────────────────
+    nearby_landmarks = fetch_nearby_landmarks(lat, lng, radius_m=500)
+
     logger.info(
         f"[suitability_growth] run_id={run_id[:8]} "
         f"urban_score={urban_expansion_score} growth={growth_potential.value} "
         f"conflicts={land_use_conflicts} "
-        f"airport={infra.airport_km}km road={infra.road_km}km"
+        f"airport={infra.airport_km}km road={infra.road_km}km "
+        f"landmarks_count={len(nearby_landmarks.get('landmarks', []))}"
     )
 
     return SuitabilityGrowthOutput(
@@ -416,4 +420,154 @@ def run(
         lga_report_count=benchmarks["lga_report_count"],
         parcel_flood_percentile=parcel_flood_percentile,
         parcel_growth_percentile=parcel_growth_percentile,
+        nearby_landmarks=nearby_landmarks,
     )
+
+
+# =============================================================================
+# NEARBY LANDMARKS ENGINE
+# =============================================================================
+
+def _compass_direction(lat1: float, lng1: float, lat2: float, lng2: float) -> str:
+    """Calculate 8-point compass bearing from point 1 to point 2."""
+    from math import radians, atan2, sin, cos, degrees
+    dlng = radians(lng2 - lng1)
+    lat1r, lat2r = radians(lat1), radians(lat2)
+    y = sin(dlng) * cos(lat2r)
+    x = cos(lat1r) * sin(lat2r) - sin(lat1r) * cos(lat2r) * cos(dlng)
+    bearing = (degrees(atan2(y, x)) + 360) % 360
+    dirs = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"]
+    return dirs[round(bearing / 45) % 8]
+
+
+def fetch_nearby_landmarks(
+    centroid_lat: float,
+    centroid_lng: float,
+    radius_m: int = 500
+) -> dict:
+    """
+    Queries local spatial cache / Overpass cascade for POIs within radius_m of centroid.
+    Strict 3-second timeout guard. Returns structured dictionary for report & PDF.
+    """
+    import urllib.request
+    import json as _json
+    from math import sqrt, radians, cos, sin, atan2
+
+    overpass_query = f"""
+    [out:json][timeout:3];
+    (
+      node["amenity"~"school|university|hospital|clinic|fuel|marketplace|place_of_worship"]
+          (around:{radius_m},{centroid_lat},{centroid_lng});
+      node["shop"~"supermarket|convenience"]
+          (around:{radius_m},{centroid_lat},{centroid_lng});
+      way["highway"~"primary|secondary|trunk"]
+          (around:{radius_m},{centroid_lat},{centroid_lng});
+    );
+    out body 25;
+    """
+
+    landmarks = []
+    try:
+        url = "https://overpass-api.de/api/interpreter"
+        req = urllib.request.Request(
+            url,
+            data=f"data={urllib.parse.quote(overpass_query)}".encode('utf-8'),
+            headers={"User-Agent": "LandIQ-SpatialEngine/2.0"}
+        )
+        with urllib.request.urlopen(req, timeout=3.5) as r:
+            res_data = _json.loads(r.read().decode('utf-8'))
+
+        R = 6371000  # meters
+        for el in res_data.get("elements", []):
+            tags = el.get("tags", {})
+            name = tags.get("name", "")
+            amenity = tags.get("amenity", "")
+            highway = tags.get("highway", "")
+
+            poi_lat, poi_lng = None, None
+            if el.get("type") == "node":
+                poi_lat = el.get("lat")
+                poi_lng = el.get("lon")
+            elif "center" in el:
+                poi_lat = el["center"].get("lat")
+                poi_lng = el["center"].get("lon")
+
+            if poi_lat is None or poi_lng is None:
+                continue
+
+            # Haversine distance
+            dlat = radians(poi_lat - centroid_lat)
+            dlng = radians(poi_lng - centroid_lng)
+            a = sin(dlat/2)**2 + cos(radians(centroid_lat)) * cos(radians(poi_lat)) * sin(dlng/2)**2
+            dist_m = R * 2 * atan2(sqrt(a), sqrt(1-a))
+
+            if dist_m > radius_m:
+                continue
+
+            # Classify
+            category = None
+            if amenity in ["school", "university"]:
+                category = "School"
+            elif amenity in ["hospital", "clinic"]:
+                category = "Hospital"
+            elif amenity == "fuel":
+                category = "Petrol Station"
+            elif amenity == "marketplace":
+                category = "Market"
+            elif amenity == "place_of_worship":
+                category = "Place of Worship"
+            elif tags.get("shop") in ["supermarket", "convenience"]:
+                category = "Supermarket"
+            elif highway in ["primary", "secondary", "trunk"]:
+                category = f"Main Road ({name})" if name else "Main Road"
+
+            if not category:
+                continue
+
+            direction = _compass_direction(centroid_lat, centroid_lng, poi_lat, poi_lng)
+            landmarks.append({
+                "name": name or category,
+                "category": category,
+                "distance_m": int(round(dist_m)),
+                "direction": direction,
+            })
+
+    except Exception as exc:
+        logger.debug(f"[suitability_growth] Nearby landmarks cascade skipped: {exc}")
+
+    # Deduplicate by category, keep nearest
+    landmarks.sort(key=lambda x: x["distance_m"])
+    seen_cats = set()
+    top_landmarks = []
+    for lm in landmarks:
+        cat_key = lm["category"].split(" (")[0]
+        if cat_key not in seen_cats:
+            top_landmarks.append(lm)
+            seen_cats.add(cat_key)
+        if len(top_landmarks) >= 7:
+            break
+
+    # Build professional plain English summary (NO emojis)
+    summary_parts = []
+    road = next((l for l in top_landmarks if "Road" in l["category"]), None)
+    school = next((l for l in top_landmarks if l["category"] == "School"), None)
+    hospital = next((l for l in top_landmarks if l["category"] == "Hospital"), None)
+    fuel = next((l for l in top_landmarks if l["category"] == "Petrol Station"), None)
+
+    if road:
+        summary_parts.append(f"A main road is {road['distance_m']}m to the {road['direction']}")
+    if school:
+        summary_parts.append(f"{school['name']} is {school['distance_m']}m away ({school['direction']})")
+    if hospital:
+        summary_parts.append(f"Medical facilities are within {hospital['distance_m']}m")
+    if fuel and not hospital:
+        summary_parts.append(f"Fuel access is {fuel['distance_m']}m to the {fuel['direction']}")
+
+    plain_summary = ". ".join(summary_parts) + "." if summary_parts else None
+
+    return {
+        "available": len(top_landmarks) > 0,
+        "radius_m": radius_m,
+        "landmarks": top_landmarks,
+        "summary": plain_summary,
+    }

@@ -10,6 +10,7 @@ Runs the multi-agent pipeline in background tasks to prevent request timeouts.
 from __future__ import annotations
 
 import logging
+import time
 from pathlib import Path
 from typing import Any, Optional
 
@@ -41,6 +42,7 @@ class ViewportParams(BaseModel):
 class PrintAdjustmentPayload(BaseModel):
     map_viewport: Optional[ViewportParams] = None
     frontend_snapshot_b64: Optional[str] = None
+    tile_style: Optional[str] = "satellite"
 
 import core.gate as gate
 import core.history_manager as history_manager
@@ -75,9 +77,10 @@ def startup_event():
     """Run database migrations on server startup to ensure tables exist."""
     logger.info("[server] Starting up... applying database migrations.")
     run_migrations()
-    # Schedule background cleanup of orphaned temp snapshots
+    # Schedule background cleanup of orphaned temp snapshots and location backfill
     import asyncio
     asyncio.ensure_future(_cleanup_temp_snapshots())
+    asyncio.create_task(asyncio.to_thread(history_manager.backfill_missing_locations))
 
 
 async def _cleanup_temp_snapshots() -> None:
@@ -640,16 +643,18 @@ async def upload_coordinates(
             if "31" in cad_result.polygon.crs_input: epsg = 32631
             elif "33" in cad_result.polygon.crs_input: epsg = 32633
 
-            crs_name = CRSName.UNKNOWN
+            crs_name = CRSName.UTM_32N
             if "MINNA" in cad_result.polygon.crs_input.upper(): crs_name = CRSName.MINNA
             elif "31" in cad_result.polygon.crs_input: crs_name = CRSName.UTM_31N
             elif "32" in cad_result.polygon.crs_input: crs_name = CRSName.UTM_32N
             elif "33" in cad_result.polygon.crs_input: crs_name = CRSName.UTM_33N
-            elif "WGS84" in cad_result.polygon.crs_input.upper(): crs_name = CRSName.WGS84
 
             computed_ha = cad_result.polygon.computed_area_ha
             if computed_ha <= 0: computed_ha = 0.001
 
+            from core.reverse_geocode import reverse_geocode_centroid
+            geo_res = reverse_geocode_centroid(center_lat, center_lng)
+            
             c_out = CoordExtractOutput(
                 run_id=run_id,
                 coordinates=coords,
@@ -659,6 +664,11 @@ async def upload_coordinates(
                 metric_analysis_epsg=epsg,
                 is_inside_nigeria=True,
                 computed_area_ha=computed_ha,
+                state=geo_res.get("state"),
+                lga=geo_res.get("lga"),
+                display_location=geo_res.get("display_location"),
+                location_source=geo_res.get("source"),
+                location_confidence=geo_res.get("confidence"),
                 stated_area_ha=(cad_result.polygon.stated_area_sqm / 10000.0) if cad_result.polygon.stated_area_sqm else None,
                 area_discrepancy_pct=cad_result.polygon.area_discrepancy_pct,
                 discovery_method=cad_result.extraction_meta.extraction_method,
@@ -847,6 +857,21 @@ async def reject_gate(run_id: str):
     return result
 
 
+class DiasporaPingPayload(BaseModel):
+    country: Optional[str] = "Overseas"
+
+
+@app.post("/api/sessions/{run_id}/diaspora-ping")
+async def log_diaspora_ping(run_id: str, payload: DiasporaPingPayload = DiasporaPingPayload()):
+    """Records an overseas diaspora navigation inspection ping for admin analytics."""
+    try:
+        history_manager.log_diaspora_event(run_id, payload.country)
+        return {"status": "ok", "run_id": run_id, "is_diaspora": True}
+    except Exception as exc:
+        logger.warning(f"[server] Could not log diaspora ping: {exc}")
+        return {"status": "error", "detail": str(exc)}
+
+
 @app.get("/api/reports/{report_id}/stream")
 async def stream_report(report_id: str, request: Request = None):
     """
@@ -885,7 +910,7 @@ async def stream_report(report_id: str, request: Request = None):
                     
         except Exception as e:
             import json
-            yield f"event: error\ndata: {json.dumps({'message': str(e)})}\n\n"
+            yield f"event: error_detail\ndata: {json.dumps({'message': str(e)})}\n\n"
 
     return StreamingResponse(
         event_generator(),
@@ -900,6 +925,7 @@ async def _generate_pdf_background(report_id: str) -> None:
     """
     Runs WeasyPrint in a background executor.
     Updates reports table with pdf_ready status.
+    Always writes either pdf_ready=TRUE or pdf_path='ERROR' — never silently disappears.
     """
     try:
         import asyncio
@@ -941,18 +967,19 @@ async def _generate_pdf_background(report_id: str) -> None:
             conn.close()
             
     except Exception as e:
-        logger.error(f"[PDF] Background generation failed: {e}")
-        conn = history_manager._conn()
+        logger.error(f"[PDF] Background generation failed for {report_id}: {e}", exc_info=True)
         try:
-            conn.execute(
-                "UPDATE reports SET pdf_ready = FALSE, pdf_path = 'ERROR' WHERE report_id = ?",
-                (report_id,)
-            )
-            conn.commit()
-        except Exception:
-            pass
-        finally:
-            conn.close()
+            conn = history_manager._conn()
+            try:
+                conn.execute(
+                    "UPDATE reports SET pdf_ready = FALSE, pdf_path = 'ERROR' WHERE report_id = ?",
+                    (report_id,)
+                )
+                conn.commit()
+            finally:
+                conn.close()
+        except Exception as db_exc:
+            logger.error(f"[PDF] Also failed to write ERROR status to DB: {db_exc}")
 
 @app.get("/api/reports/{report_id}/pdf-status")
 async def get_pdf_status(report_id: str):
@@ -1085,6 +1112,7 @@ async def generate_adjusted_pdf(
             snapshot_path=snapshot_path,
             include_elevation_profile=include_elevation_profile,
             mode=mode,
+            tile_style=payload.tile_style or "satellite",
         )
 
         if payload.frontend_snapshot_b64 and snapshot_path and Path(snapshot_path).exists():
@@ -1181,7 +1209,7 @@ async def generate_adjusted_card(
             )
             history_manager.update_snapshot_path(report_id, str(snapshot_path))
 
-        png_path = generate_png_card(report, snapshot_path)
+        png_path = generate_png_card(report, snapshot_path, tile_style=payload.tile_style or "satellite")
 
         if payload.frontend_snapshot_b64 and snapshot_path and Path(snapshot_path).exists():
             try:

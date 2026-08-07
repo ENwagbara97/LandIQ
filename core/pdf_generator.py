@@ -154,6 +154,7 @@ def generate_pdf(
     persona_mode: PersonaMode | None = None,
     include_elevation_profile: bool = False,
     mode: str = "expert",
+    tile_style: str = "satellite",
 ) -> Path:
     """
     Render the ReportSchema to a PDF using WeasyPrint.
@@ -169,20 +170,30 @@ def generate_pdf(
     lga_val = getattr(loc, "lga", None) or "—"
     if (
         state_val in ("—", "", "None")
-        or "Unresolved" in state_val
+        or "Unresolved" in str(state_val)
         or lga_val in ("—", "", "None")
-        or "Unresolved" in lga_val
+        or "Unresolved" in str(lga_val)
+        or not getattr(loc, "display_location", None)
     ):
-        from agents.coord_extract import reverse_geocode
+        from core.reverse_geocode import reverse_geocode_centroid
         lat = geom.centroid.lat
         lng = geom.centroid.lng
-        state_fb, lga_fb = reverse_geocode(lat, lng)
+        geo_res = reverse_geocode_centroid(lat, lng)
+        state_fb = state_val if str(state_val) not in ("—", "", "None", "Unresolved") else geo_res.get("state")
+        lga_fb = lga_val if str(lga_val) not in ("—", "", "None", "Unresolved") else geo_res.get("lga")
+        display_fb = geo_res.get("display_location")
         report = report.model_copy(
             update={
                 "parcel_geometry": geom.model_copy(
                     update={
                         "location_context": loc.model_copy(
-                            update={"state": state_fb, "lga": lga_fb}
+                            update={
+                                "state": state_fb,
+                                "lga": lga_fb,
+                                "display_location": display_fb,
+                                "source": geo_res.get("source"),
+                                "confidence": geo_res.get("confidence"),
+                            }
                         )
                     }
                 )
@@ -260,6 +271,8 @@ def generate_pdf(
         "mode":           mode,
         "via_status":     via_status,
         "via_result":     via_result,
+        "nearby_landmarks": getattr(report.growth_potential, "nearby_landmarks", None),
+        "tile_style":     tile_style,
     }
 
     env = _get_jinja_env()
@@ -283,34 +296,53 @@ def generate_pdf(
     else:
         html = template.render(**ctx)
 
-    # Render HTML to PDF (WeasyPrint, with xhtml2pdf pure-Python fallback)
+
+    # Render HTML to PDF (WeasyPrint preferred; xhtml2pdf fallback on Windows or if WeasyPrint fails)
     out_path = REPORTS_DIR / f"{report.meta.report_id}_{pm.value.lower()}.pdf"
-    try:
-        from weasyprint import HTML as WP_HTML
-        WP_HTML(string=html, base_url=str(REPORTS_DIR)).write_pdf(str(out_path))
-        logger.info(f"[pdf] Generated PDF via WeasyPrint: {out_path.name}")
-        return out_path
-    except Exception as exc:
-        logger.warning(f"[pdf] WeasyPrint failed ({exc}). Falling back to xhtml2pdf compilation...")
+    import sys, re
+    _weasyprint_ok = sys.platform != "win32"  # WeasyPrint needs GTK (libgobject) — not available on bare Windows
+
+    if _weasyprint_ok:
         try:
-            import re
-            from xhtml2pdf import pisa
-            # Strip SVG charts/gauges since xhtml2pdf does not support raw SVG XML tags, preventing raw markup rendering as text in PDF
-            clean_html = re.sub(
-                r'<svg.*?</svg>', 
-                '', 
-                html, 
-                flags=re.DOTALL
-            )
-            with open(out_path, "wb") as f:
-                pisa_status = pisa.CreatePDF(clean_html, dest=f)
-            if pisa_status.err:
-                raise RuntimeError(f"xhtml2pdf failed with error: {pisa_status.err}")
-            logger.info(f"[pdf] Generated PDF via xhtml2pdf fallback: {out_path.name}")
+            from weasyprint import HTML as WP_HTML
+            WP_HTML(string=html, base_url=str(REPORTS_DIR)).write_pdf(str(out_path))
+            logger.info(f"[pdf] Generated PDF via WeasyPrint: {out_path.name}")
             return out_path
-        except Exception as fallback_exc:
-            logger.error(f"[pdf] All PDF compilation engines failed. WeasyPrint: {exc} | xhtml2pdf: {fallback_exc}")
-            raise
+        except Exception as exc:
+            logger.warning(f"[pdf] WeasyPrint failed ({exc}). Falling back to xhtml2pdf...")
+
+    # xhtml2pdf fallback (pure-Python, works on Windows without GTK)
+    try:
+        from xhtml2pdf import pisa
+        # Strip SVG elements — xhtml2pdf does not support raw SVG
+        clean_html = re.sub(r'<svg.*?</svg>', '', html, flags=re.DOTALL)
+        # xhtml2pdf does not support CSS var() — inline-resolve all custom properties
+        _css_vars = {
+            "var(--report-bg)":        "#FFFFFF",
+            "var(--report-surface)":   "#F8FAFC",
+            "var(--report-border)":    "#E2E8F0",
+            "var(--report-text)":      "#1E293B",
+            "var(--report-secondary)": "#64748B",
+            "var(--report-muted)":     "#94A3B8",
+            "var(--report-mono)":      "'DM Mono', monospace",
+            "var(--report-body)":      "'DM Sans', sans-serif",
+            "var(--report-radius)":    "12px",
+            "var(--green)":  "#22C55E",  "var(--green-bg)":  "#F0FDF4",  "var(--green-border)":  "#BBF7D0",
+            "var(--amber)":  "#F59E0B",  "var(--amber-bg)":  "#FFFBEB",  "var(--amber-border)":  "#FDE68A",
+            "var(--red)":    "#EF4444",  "var(--red-bg)":    "#FEF2F2",  "var(--red-border)":    "#FECACA",
+        }
+        for var_ref, val in _css_vars.items():
+            clean_html = clean_html.replace(var_ref, val)
+        with open(out_path, "wb") as f:
+            pisa_status = pisa.CreatePDF(clean_html, dest=f)
+        if pisa_status.err:
+            raise RuntimeError(f"xhtml2pdf returned error code: {pisa_status.err}")
+        logger.info(f"[pdf] Generated PDF via xhtml2pdf: {out_path.name}")
+        return out_path
+    except Exception as fallback_exc:
+        logger.error(f"[pdf] PDF generation failed: {fallback_exc}")
+        raise
+
 
 
 def _build_due_diligence(report: ReportSchema) -> list[dict]:
@@ -475,6 +507,35 @@ def _build_inline_html(ctx: dict) -> str:
         <section style="page-break-inside: avoid; border-left: 3px solid #3b82f6; padding-left: 15px; margin: 20px 0;">
           <h2>What We Observed Around This Land</h2>
           <p style="color: #64748b; font-style: italic;">Visual satellite scan was not available for this report. A physical site visit is recommended.</p>
+        </section>
+        """
+
+    nl_data = ctx.get("nearby_landmarks")
+    nl_html = ""
+    if nl_data and nl_data.get("available") and nl_data.get("landmarks"):
+        rows_html = ""
+        for lm in nl_data.get("landmarks", []):
+            rows_html += f"""
+            <tr style="border-bottom: 1px solid #e2e8f0;">
+                <td style="padding: 6px 0; font-weight: bold; color: #1e293b;">{lm.get('name')}</td>
+                <td style="padding: 6px 0; color: #64748b;">{lm.get('category')}</td>
+                <td style="padding: 6px 0; font-family: monospace; color: #0f172a; text-align: right;">{lm.get('distance_m')}m ({lm.get('direction')})</td>
+            </tr>"""
+        summary_p = f"<p style='font-size: 9pt; color: #64748b; font-style: italic; margin-top: 8px;'>{nl_data.get('summary')}</p>" if nl_data.get('summary') else ""
+        nl_html = f"""
+        <section style="page-break-inside: avoid; border-left: 3px solid #006a61; padding-left: 15px; margin: 20px 0;">
+          <h2>Nearby Context (Within 500m)</h2>
+          <table style="width: 100%; border-collapse: collapse; font-size: 9pt;">
+            <thead>
+              <tr style="border-bottom: 1px solid #cbd5e1; text-align: left; color: #64748b;">
+                <th style="padding-bottom: 4px;">Point of Interest</th>
+                <th style="padding-bottom: 4px;">Category</th>
+                <th style="padding-bottom: 4px; text-align: right;">Distance & Bearing</th>
+              </tr>
+            </thead>
+            <tbody>{rows_html}</tbody>
+          </table>
+          {summary_p}
         </section>
         """
 
@@ -720,7 +781,13 @@ def _build_inline_html(ctx: dict) -> str:
         "AMBER": {"rgb": "#F59E0B", "bg": "#FFFBEB", "border": "#FDE68A", "sub": "Proceed with Caution"},
         "RED":   {"rgb": "#EF4444", "bg": "#FEF2F2", "border": "#FECACA", "sub": "High Risk - Review Required"}
     }
-    t_pal = tl_palette.get(tl.value, tl_palette["AMBER"])
+    t_pal = tl_palette.get(tl if isinstance(tl, str) else tl.value, tl_palette["AMBER"])
+    tl_bg     = t_pal["bg"]
+    tl_border = t_pal["border"]
+    tl_rgb    = t_pal["rgb"]
+    tl_sub    = t_pal["sub"]
+    tl_upper  = (tl if isinstance(tl, str) else tl.value).upper()
+    risk_score_left = f"{r.summary.overall_risk_score:.0f}"
     
     # Key Findings Chips (max 4)
     findings = []
@@ -826,16 +893,16 @@ def _build_inline_html(ctx: dict) -> str:
   .map-overlay {{ position: absolute; bottom: 0; left: 0; right: 0; height: 32px; background: rgba(0,0,0,0.6); color: white; font-family: var(--report-mono); font-size: 10px; padding: 8px 12px; box-sizing: border-box; }}
   .map-source {{ text-align: right; font-size: 10px; color: var(--report-muted); margin-top: 4px; }}
   
-  .tl-card {{ background: {{t_pal['bg']}}; border: 1px solid {{t_pal['border']}}; border-radius: 10px; padding: 16px; display: flex; align-items: center; margin-top: 16px; }}
-  .tl-circle {{ width: 48px; height: 48px; border-radius: 50%; background: {{t_pal['rgb']}}; margin-right: 16px; flex-shrink: 0; }}
-  .tl-line1 {{ font-weight: 700; font-size: 18px; color: {{t_pal['rgb']}}; }}
+  .tl-card {{ background: {tl_bg}; border: 1px solid {tl_border}; border-radius: 10px; padding: 16px; display: flex; align-items: center; margin-top: 16px; }}
+  .tl-circle {{ width: 48px; height: 48px; border-radius: 50%; background: {tl_rgb}; margin-right: 16px; flex-shrink: 0; }}
+  .tl-line1 {{ font-weight: 700; font-size: 18px; color: {tl_rgb}; }}
   .tl-line2 {{ font-size: 13px; color: var(--report-text); margin: 4px 0; }}
   .tl-line3 {{ font-family: var(--report-mono); font-size: 13px; color: var(--report-secondary); }}
   
   .scale-bar-container {{ margin-top: 10px; }}
   .scale-bar {{ width: 180px; position: relative; height: 12px; }}
   .scale-line {{ width: 100%; height: 2px; background: var(--report-muted); position: absolute; top: 5px; }}
-  .scale-dot {{ width: 8px; height: 8px; border-radius: 50%; background: {{t_pal['rgb']}}; position: absolute; top: 2px; transform: translateX(-50%); left: {{r.summary.overall_risk_score}}%; }}
+  .scale-dot {{ width: 8px; height: 8px; border-radius: 50%; background: {tl_rgb}; position: absolute; top: 2px; transform: translateX(-50%); left: {risk_score_left}%; }}
   .scale-labels {{ display: flex; justify-content: space-between; width: 180px; font-size: 10px; color: var(--report-muted); margin-top: 4px; }}
   
   .findings-row {{ display: flex; gap: 8px; margin-top: 16px; flex-wrap: wrap; }}
@@ -887,8 +954,8 @@ def _build_inline_html(ctx: dict) -> str:
 <div class="tl-card">
   <div class="tl-circle"></div>
   <div>
-    <div class="tl-line1">{{tl.value.upper()}}</div>
-    <div class="tl-line2">{{t_pal["sub"]}}</div>
+    <div class="tl-line1">{tl_upper}</div>
+    <div class="tl-line2">{tl_sub}</div>
     <div class="tl-line3">Risk Score: {r.summary.overall_risk_score:.1f}/100</div>
     <div class="scale-bar-container">
       <div class="scale-bar">
@@ -904,10 +971,9 @@ def _build_inline_html(ctx: dict) -> str:
   {chips_html}
 </div>
 
-<!-- SECTION 2 - PARCEL IDENTITY -->
 <div class="section-label">PARCEL DETAILS</div>
 <table class="clean-table">
-  <tr><td>LOCATION</td><td>{r.parcel_geometry.location_context.lga or "-"}, {r.parcel_geometry.location_context.state or "-"}</td></tr>
+  <tr><td>LOCATION</td><td>{r.parcel_geometry.location_context.display_location or f"{r.parcel_geometry.location_context.lga or '—'}, {r.parcel_geometry.location_context.state or '—'}"}</td></tr>
   <tr><td>AREA</td><td>{r.parcel_geometry.computed_area_ha * 10000:.0f} sqm</td></tr>
   <tr><td>CENTROID</td><td>{r.parcel_geometry.centroid.lat:.5f} N, {r.parcel_geometry.centroid.lng:.5f} E</td></tr>
   <tr><td>SURVEY DATUM</td><td>{crs_display}</td></tr>
@@ -929,7 +995,7 @@ def _build_inline_html(ctx: dict) -> str:
 <div class="section-break"></div>
 <div class="section-label">RISK ASSESSMENT</div>
 
-<div class="metric-card" style="border-left: 4px solid {{t_pal['rgb']}};">
+<div class="metric-card" style="border-left: 4px solid {tl_rgb};">
   <div class="metric-card-grid">
     <div>
       <h3 style="margin:0; font-size:18px;">FLOOD RISK: {r.flood_risk_metrics.level.value}</h3>
@@ -964,6 +1030,7 @@ def _build_inline_html(ctx: dict) -> str:
 
 <!-- SECTION 4 - WHAT WE OBSERVED -->
 {via_html}
+{nl_html}
 
 <!-- SECTION 5 - DUE DILIGENCE CHECKLIST -->
 <div class="section-break"></div>
@@ -1039,9 +1106,11 @@ def export_json(report: ReportSchema) -> Path:
 def generate_png_card(
     report: ReportSchema,
     snapshot_path: str | None = None,
+    tile_style: str = "satellite",
 ) -> Path:
     """
     Generate a premium 900×640 summary card PNG — realtor sharing format.
+    tile_style is stored in report metadata for traceability (satellite/esri_hybrid/osm).
 
     Layout (top-down):
       - Hero: full-bleed satellite snapshot fills the top 420px

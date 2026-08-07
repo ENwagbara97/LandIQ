@@ -214,6 +214,9 @@ class CoordExtractOutput(BaseModel):
     computed_area_ha    : float
     state               : Optional[str] = None
     lga                 : Optional[str] = None
+    display_location    : Optional[str] = None
+    location_source     : Optional[str] = None
+    location_confidence : Optional[int] = None
     health_check_stats  : Optional[dict] = None
     stated_area_ha      : Optional[float] = None
     area_discrepancy_pct: Optional[float] = None    # null if stated_area_ha not provided
@@ -387,6 +390,7 @@ class SuitabilityGrowthOutput(BaseModel):
     lga_report_count       : Optional[int] = None
     parcel_flood_percentile: Optional[float] = None # e.g. 71 → "higher than 71% of parcels"
     parcel_growth_percentile: Optional[float] = None
+    nearby_landmarks       : Optional[dict[str, Any]] = None
 
 
 # =============================================================================
@@ -406,9 +410,12 @@ class ReportMeta(BaseModel):
 
 
 class LocationContext(BaseModel):
-    lga       : Optional[str] = None
-    state     : Optional[str] = None
-    community : Optional[str] = None
+    lga             : Optional[str] = None
+    state           : Optional[str] = None
+    community       : Optional[str] = None
+    display_location: Optional[str] = None
+    source          : Optional[str] = None
+    confidence      : Optional[int] = None
 
 
 class ParcelGeometry(BaseModel):
@@ -477,6 +484,7 @@ class GrowthPotentialRecord(BaseModel):
     urban_expansion_score: Optional[float] = None
     infrastructure_proximity: InfrastructureProximity
     summary_notes        : Optional[str] = None
+    nearby_landmarks     : Optional[dict[str, Any]] = None
 
 
 class TitleRecord(BaseModel):
@@ -684,10 +692,11 @@ class CadastralResult(BaseModel):
 # =============================================================================
 
 class VIAStatus(str, Enum):
-    PENDING  = "pending"
-    COMPLETE = "complete"
-    TIMEOUT  = "timeout"
-    ERROR    = "error"
+    PENDING     = "pending"
+    COMPLETE    = "complete"
+    TIMEOUT     = "timeout"
+    ERROR       = "error"
+    LOW_QUALITY = "low_quality"
 
 
 class VIAImageQuality(BaseModel):

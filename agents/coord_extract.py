@@ -236,6 +236,7 @@ def discover_zone_from_raw_metrics(easting: float, northing: float) -> tuple[CRS
     """
     Projects a single coordinate through all 3 Nigerian UTM zones to 
     discover which zone correctly positions the property within Nigeria's borders.
+    Uses Northing context to disambiguate overlapping Easting ranges (300k–500k).
     """
     test_zones = {
         CRSName.UTM_31N: 32631,
@@ -247,7 +248,7 @@ def discover_zone_from_raw_metrics(easting: float, northing: float) -> tuple[CRS
     # Sovereign bounding box envelope for mainland Nigeria
     for crs_name, epsg in test_zones.items():
         try:
-            transformer = pyproj.Transformer.from_crs(epsg, 4326, always_xy=True)
+            transformer = Transformer.from_crs(epsg, 4326, always_xy=True)
             lng, lat = transformer.transform(easting, northing)
             
             # Check if this specific zone projection places the coordinates inside Nigeria
@@ -257,16 +258,47 @@ def discover_zone_from_raw_metrics(easting: float, northing: float) -> tuple[CRS
             continue
             
     if len(valid_zones) == 1:
-        return valid_zones[0], 80.0
+        return valid_zones[0], 85.0
     elif len(valid_zones) > 1:
-        # Ambiguous (falls in Nigeria in multiple zones)
-        # Default to the most central zone (Zone 32N) if valid, else pick the first one.
+        # Disambiguate overlapping eastings [300k, 500k] using Northing context:
+        # In Nigeria, high northings (> 480,000 N) at easting 300k–500k correspond to Zone 32N (SE/Central Nigeria).
+        if 300_000 <= easting <= 500_000:
+            if northing > 480_000 and CRSName.UTM_32N in valid_zones:
+                return CRSName.UTM_32N, 85.0
+            elif northing <= 480_000 and CRSName.UTM_31N in valid_zones:
+                return CRSName.UTM_31N, 80.0
+
         if CRSName.UTM_32N in valid_zones:
-            return CRSName.UTM_32N, 60.0
+            return CRSName.UTM_32N, 70.0
         return valid_zones[0], 60.0
     
     # Outside all zones
     return CRSName.UNKNOWN, 50.0
+
+
+def validate_wgs84_result(wgs84_coords: list[tuple[float, float]]) -> dict:
+    """
+    Sanity check transformed WGS84 coordinates.
+    Catches CRS mismatch that slipped through inference.
+    """
+    if not wgs84_coords:
+        return {"valid": False, "error": "EMPTY_COORDINATES", "message": "No valid coordinates found."}
+
+    for lat, lon in wgs84_coords:
+        if not (NIGERIA_BBOX["lat_min"] <= lat <= NIGERIA_BBOX["lat_max"]):
+            return {
+                "valid": False,
+                "error": "CRS_MISMATCH_SUSPECTED",
+                "message": f"Transformed coordinates ({lat:.4f}°N, {lon:.4f}°E) fall outside Nigeria. This usually means the UTM zone was detected incorrectly."
+            }
+        if not (NIGERIA_BBOX["lon_min"] <= lon <= NIGERIA_BBOX["lon_max"]):
+            return {
+                "valid": False,
+                "error": "CRS_MISMATCH_SUSPECTED",
+                "message": f"Coordinate ({lat:.4f}°N, {lon:.4f}°E) is outside Nigeria's longitude range. Check the UTM zone."
+            }
+
+    return {"valid": True}
 
 def detect_crs(
     points: list[tuple[float, float]],
@@ -284,6 +316,23 @@ def detect_crs(
     if coordinate_hint == "UTM_SWAPPED":
         # Treat as UTM — caller handles swapped axes
         return CRSName.UTM_31N, 70.0, "Explicit Hint"
+
+    # Explicit header comment check (e.g. "# CRS: UTM Zone 32N (EPSG:32632)")
+    if raw_text:
+        crs_header_match = re.search(r"#\s*CRS:\s*(?:UTM\s*Zone\s*(\d+)|EPSG:\s*(\d+)|(MINNA|WGS84|31N|32N|33N))", raw_text, re.IGNORECASE)
+        if crs_header_match:
+            zone_num = crs_header_match.group(1) or crs_header_match.group(2)
+            lbl = crs_header_match.group(3) or ""
+            if zone_num == "31" or "31" in lbl:
+                return CRSName.UTM_31N, 99.0, "Header CRS Declared"
+            elif zone_num == "32" or "32" in lbl:
+                return CRSName.UTM_32N, 99.0, "Header CRS Declared"
+            elif zone_num == "33" or "33" in lbl:
+                return CRSName.UTM_33N, 99.0, "Header CRS Declared"
+            elif "MINNA" in lbl.upper():
+                return CRSName.MINNA, 99.0, "Header CRS Declared"
+            elif "WGS84" in lbl.upper():
+                return CRSName.WGS84, 99.0, "Header CRS Declared"
 
     # Check text labels for Minna Datum
     combined_text = f"{raw_text} {datum_label or ''}"
@@ -1810,51 +1859,66 @@ def ocr_file(
 # =============================================================================
 
 def reverse_geocode(lat: float, lng: float) -> tuple[str, str]:
-    import requests
-    import logging
-    state = "Unresolved — confirm State"
-    lga = "Unresolved — confirm LGA"
-    try:
-        url = f"https://nominatim.openstreetmap.org/reverse?lat={lat}&lon={lng}&format=json&zoom=10"
-        headers = {"User-Agent": "LandIQ-Pipeline-Agent"}
-        resp = requests.get(url, headers=headers, timeout=5)
-        if resp.status_code == 200:
-            data = resp.json()
-            addr = data.get("address", {})
-            if "state" in addr:
-                state = addr["state"].replace(" State", "")
-            if "county" in addr:
-                lga = addr["county"]
-            elif "city" in addr:
-                lga = addr["city"]
-    except Exception as e:
-        logging.getLogger("landiq.coord_extract").warning(f"Nominatim lookup failed: {e}")
-
-    # Fallback Chain if geocoding returns unresolved, dashes, or empty values
-    if "Unresolved" in state or not state or state == "—" or "Unresolved" in lga or not lga or lga == "—":
-        # Akwa Ibom / Uyo bounding box check
-        # Akwa Ibom bounds roughly: lat [4.4, 5.5], lon [7.4, 8.3]
-        if 4.4 <= lat <= 5.5 and 7.4 <= lng <= 8.3:
-            state = "Akwa Ibom"
-            # Uyo LGA bounds roughly: lat [4.95, 5.15], lon [7.85, 8.05]
-            if 4.95 <= lat <= 5.15 and 7.85 <= lng <= 8.05:
-                lga = "Uyo"
-            else:
-                lga = "Uyo area"
-        # Lagos bounds: lat [6.2, 6.8], lon [2.6, 4.5]
-        elif 6.2 <= lat <= 6.8 and 2.6 <= lng <= 4.5:
-            state = "Lagos"
-            # Lagos Island area: lat [6.4, 6.5], lon [3.35, 3.45]
-            if 6.4 <= lat <= 6.5 and 3.35 <= lng <= 3.45:
-                lga = "Lagos Island"
-            else:
-                lga = "Ikeja"
-        # Abuja FCT bounds: lat [8.2, 9.3], lon [6.7, 7.6]
-        elif 8.2 <= lat <= 9.3 and 6.7 <= lng <= 7.6:
-            state = "Federal Capital Territory"
-            lga = "Abuja Municipal"
-            
+    from core.reverse_geocode import reverse_geocode_centroid
+    res = reverse_geocode_centroid(lat, lng)
+    state = res.get("state")
+    lga = res.get("lga")
+    
+    if not state or state == "Outside Nigeria":
+        state = "Unresolved — confirm State"
+    if not lga or lga == "Outside Nigeria":
+        lga = "Unresolved — confirm LGA"
+        
     return state, lga
+
+
+def merge_location_context(doc_location: str | None, geo_res: dict) -> dict:
+    """
+    Merges OCR'd location (from title block / document) with 4-tier reverse geocoding result.
+    Prefers reverse geocode for State and LGA accuracy.
+    Prefers OCR title block for Community / local neighborhood specificity if present.
+    """
+    state = geo_res.get("state")
+    lga = geo_res.get("lga")
+    community = geo_res.get("community")
+    
+    ocr_community = None
+    if doc_location and isinstance(doc_location, str) and doc_location.strip():
+        cleaned_doc = doc_location.strip()
+        if cleaned_doc.lower() not in (str(state).lower(), str(lga).lower()):
+            ocr_community = cleaned_doc
+
+    final_community = ocr_community or community
+    final_state = state or "Unresolved — confirm State"
+    final_lga = lga or "Unresolved — confirm LGA"
+
+    parts = []
+    if final_community and final_community != final_lga:
+        parts.append(final_community)
+    if final_lga and final_lga != "Unresolved — confirm LGA":
+        parts.append(f"{final_lga} LGA" if "LGA" not in final_lga else final_lga)
+    if final_state and final_state != "Unresolved — confirm State":
+        parts.append(final_state)
+
+    display = geo_res.get("display_location")
+    if parts:
+        display = ", ".join(parts)
+    elif not display:
+        display = "Nigeria"
+
+    source = geo_res.get("source", "reverse_geocode")
+    if ocr_community:
+        source = f"merged_ocr_{source}"
+
+    return {
+        "state": final_state,
+        "lga": final_lga,
+        "community": final_community,
+        "display_location": display,
+        "location_source": source,
+        "location_confidence": geo_res.get("confidence", 80),
+    }
+
 
 
 def run(
@@ -2116,10 +2180,16 @@ def run(
     else:
         metric_analysis_epsg = 32632  # Default fallback to central Nigeria (Zone 32)
 
-    # ── REVERSE GEOCODE CENTROID (FIX 1.4) ────────────────────────────────────
-    # Calling module-level reverse_geocode
+    # ── REVERSE GEOCODE CENTROID & LOCATION MERGE ─────────────────────────────
+    from core.reverse_geocode import reverse_geocode_centroid
+    geo_res = reverse_geocode_centroid(centroid.lat, centroid.lng)
+    merged_loc = merge_location_context(datum_label, geo_res)
 
-    state, lga = reverse_geocode(centroid.lat, centroid.lng)
+    state = merged_loc["state"]
+    lga = merged_loc["lga"]
+    display_location = merged_loc["display_location"]
+    location_source = merged_loc["location_source"]
+    location_confidence = merged_loc["location_confidence"]
 
     # Project WGS84 back to UTM to populate beacons list
     from core.schemas import CadastralStationEntry
@@ -2154,6 +2224,9 @@ def run(
         computed_area_ha=computed_area_ha,
         state=state,
         lga=lga,
+        display_location=display_location,
+        location_source=location_source,
+        location_confidence=location_confidence,
         health_check_stats=health_check_stats,
         stated_area_ha=stated_area_ha,
         area_discrepancy_pct=area_discrepancy_pct,

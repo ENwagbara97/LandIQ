@@ -37,7 +37,7 @@ async def stream_pipeline(
 
     session = get_session(run_id)
     if not session or not session.coord_extract:
-        yield _sse_event("error", {"message": "Session or coordinate data not found."})
+        yield _sse_event("error_detail", {"message": "Session or coordinate data not found."})
         return
 
     coord_output = session.coord_extract
@@ -67,13 +67,13 @@ async def stream_pipeline(
     # This runs the newly parallelized GIS analysis (elevation, rivers, etc.)
     gis_result = await asyncio.to_thread(gis_run, coord_output=coord_output, feed_schema=feed_schema)
     if isinstance(gis_result, MCPErrorResponse):
-        yield _sse_event("error", {"message": f"GIS Analysis failed: {gis_result.instruction}"})
+        yield _sse_event("error_detail", {"message": f"GIS Analysis failed: {gis_result.instruction}"})
         return
         
     # We can stream sections directly now that GIS data is ready
     yield _sse_event("section_ready", {
         "section": "elevation",
-        "data": {"elevation_m": gis_result.terrain.elevation_m}
+        "data": {"elevation_m": gis_result.elevation_m}
     })
     
     # ── STAGE 2: RISK ASSESS ──────────────────────────────────────────────
@@ -88,7 +88,7 @@ async def stream_pipeline(
         risk_run, coord_output=coord_output, gis_output=gis_result, feed_schema=feed_schema, persona_mode=persona_mode
     )
     if isinstance(risk_result, MCPErrorResponse):
-        yield _sse_event("error", {"message": f"Risk Assessment failed: {risk_result.instruction}"})
+        yield _sse_event("error_detail", {"message": f"Risk Assessment failed: {risk_result.instruction}"})
         return
 
     yield _sse_event("section_ready", {
@@ -103,7 +103,7 @@ async def stream_pipeline(
         growth_run, coord_output=coord_output, gis_output=gis_result, risk_output=risk_result, feed_schema=feed_schema
     )
     if isinstance(growth_result, MCPErrorResponse):
-        yield _sse_event("error", {"message": f"Suitability Growth failed: {growth_result.instruction}"})
+        yield _sse_event("error_detail", {"message": f"Suitability Growth failed: {growth_result.instruction}"})
         return
         
     # ── STAGE 4: REPORT GEN (LLM) ──────────────────────────────────────────
@@ -118,7 +118,7 @@ async def stream_pipeline(
         report_run, coord=coord_output, gis=gis_result, risk=risk_result, growth=growth_result, feed=feed_schema, persona_mode=persona_mode, llm_provider=llm_provider, llm_api_key=llm_api_key, llm_grounding=llm_grounding
     )
     if isinstance(report_result, MCPErrorResponse):
-        yield _sse_event("error", {"message": f"Report Generation failed: {report_result.instruction}"})
+        yield _sse_event("error_detail", {"message": f"Report Generation failed: {report_result.instruction}"})
         return
 
     # ── SAVE & COMPLETE ──────────────────────────────────────────────────
