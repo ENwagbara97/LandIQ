@@ -1099,7 +1099,13 @@ async def generate_adjusted_pdf(
             _tmp_dir = Path(history_manager.ROOT_DIR) / "data" / "snapshots" / "temp"
             _tmp_dir.mkdir(parents=True, exist_ok=True)
             temp_snap = _tmp_dir / f"temp_snap_{uuid.uuid4().hex}.png"
-            temp_snap.write_bytes(img_bytes)
+            try:
+                from PIL import Image as _PILImage
+                import io as _io
+                _img = _PILImage.open(_io.BytesIO(img_bytes)).convert("RGB")
+                _img.save(str(temp_snap), "JPEG", quality=82, optimize=True)
+            except Exception:
+                temp_snap.write_bytes(img_bytes)
             snapshot_path = str(temp_snap)
             
         elif payload.map_viewport and session_state and session_state.coord_extract:
@@ -1205,7 +1211,13 @@ async def generate_adjusted_card(
             _tmp_dir = Path(history_manager.ROOT_DIR) / "data" / "snapshots" / "temp"
             _tmp_dir.mkdir(parents=True, exist_ok=True)
             temp_snap = _tmp_dir / f"temp_snap_{uuid.uuid4().hex}.png"
-            temp_snap.write_bytes(img_bytes)
+            try:
+                from PIL import Image as _PILImage
+                import io as _io
+                _img = _PILImage.open(_io.BytesIO(img_bytes)).convert("RGB")
+                _img.save(str(temp_snap), "JPEG", quality=82, optimize=True)
+            except Exception:
+                temp_snap.write_bytes(img_bytes)
             snapshot_path = str(temp_snap)
             
         elif payload.map_viewport and session_state and session_state.coord_extract:

@@ -1478,6 +1478,22 @@ def _ocr_via_gemini(
 
     _logger = logging.getLogger("landiq.vision_ocr")
 
+    # ── 4-TIER AI CLIENT (NVIDIA NIM → OpenRouter → Kaggle Proxy → Ollama) ──
+    try:
+        from core.ai_client import complete_ocr
+        img_b64_raw = base64.b64encode(image_bytes).decode()
+        sys_p = _SURVEYOR_INTELLIGENCE_PROMPT if plan_type == "TYPE_A" else (_COMPOSITE_PLAN_PROMPT if plan_type == "TYPE_B" else _ENGINEERING_PLAN_PROMPT)
+        messages = [
+            {"role": "system", "content": sys_p},
+            {"role": "user",   "content": "Extract all survey boundary beacon coordinates from this image as instructed."}
+        ]
+        res_text = complete_ocr(messages=messages, image_b64=img_b64_raw, timeout=45)
+        if res_text:
+            _logger.info("[vision_ocr] 4-Tier AI client OCR succeeded")
+            return res_text.strip()
+    except Exception as exc:
+        _logger.warning(f"[vision_ocr] 4-Tier AI client OCR failed: {exc}, cascading to Gemini")
+
     _VALID_GEMINI_PREFIXES = ("AIzaSy", "AQ.")
     # Always resolve the freshest key from .env
     _key = api_key if (api_key and api_key.startswith(_VALID_GEMINI_PREFIXES)) else os.getenv("GEMINI_API_KEY", "")

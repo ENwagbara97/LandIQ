@@ -110,6 +110,21 @@ def _gemini_vision_call(
 
     img_b64 = base64.b64encode(image_bytes).decode()
 
+    # ── 4-TIER AI CLIENT (NVIDIA NIM → OpenRouter → Kaggle Proxy → Ollama) ──
+    try:
+        from core.ai_client import complete_vision
+        img_b64_raw = base64.b64encode(image_bytes).decode()
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user",   "content": "Analyse the attached satellite image and return the structured JSON as instructed."}
+        ]
+        res_text = complete_vision(messages=messages, image_b64=img_b64_raw, timeout=timeout_s)
+        if res_text:
+            logger.info("[via] 4-Tier AI client vision call succeeded")
+            return res_text.strip(), {}
+    except Exception as exc:
+        logger.warning(f"[via] 4-Tier AI client vision call failed: {exc}, cascading to Gemini")
+
     models_to_try = [VIA_MODEL, VIA_MODEL_FALLBACK]
     last_error = None
 
@@ -178,6 +193,20 @@ def _gemini_text_call(
     Returns (text_response, usage_dict).
     """
     import requests
+
+    # ── 4-TIER AI CLIENT (NVIDIA NIM → OpenRouter → Kaggle Proxy → Ollama) ──
+    try:
+        from core.ai_client import complete_report
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user",   "content": prompt}
+        ]
+        res_text = complete_report(messages=messages, timeout=timeout_s)
+        if res_text:
+            logger.info("[via] 4-Tier AI client text call succeeded")
+            return res_text.strip(), {}
+    except Exception as exc:
+        logger.warning(f"[via] 4-Tier AI client text call failed: {exc}, cascading to Gemini")
 
     models_to_try = [VIA_MODEL, VIA_MODEL_FALLBACK]
     last_error = None

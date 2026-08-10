@@ -148,6 +148,24 @@ def _llm_call(
 
     start = time.monotonic()
     
+    # ── 4-TIER AI CLIENT (NVIDIA NIM → OpenRouter → Kaggle Proxy → Ollama) ──
+    try:
+        from core.ai_client import complete_report
+        messages = [
+            {"role": "system", "content": system},
+            {"role": "user",   "content": prompt},
+        ]
+        res_text = complete_report(
+            messages=messages,
+            max_tokens=max_tokens,
+            timeout=timeout_s,
+        )
+        if res_text:
+            logger.info(f"[report_gen] 4-Tier AI client completed call in {time.monotonic()-start:.2f}s")
+            return res_text.strip(), False
+    except Exception as exc:
+        logger.warning(f"[report_gen] AI client call failed: {exc}, attempting legacy fallbacks")
+
     # Auto-detect Gemini key from environment if not explicitly provided
     if not llm_provider and os.getenv("GEMINI_API_KEY"):
         llm_provider = "gemini"

@@ -139,8 +139,24 @@ def _coords_to_pixels(
     return pixels
 
 
+def _save_final_snapshot(final: Image.Image, output_path: Path, quality: int = 82) -> None:
+    """
+    Save map snapshot compressed as JPEG with quality=82.
+    Reduces static map snapshot file sizes from ~2.4MB PNG to ~200-250KB JPEG.
+    """
+    try:
+        if final.mode != "RGB":
+            rgb = final.convert("RGB")
+        else:
+            rgb = final
+        rgb.save(str(output_path), "JPEG", quality=quality, optimize=True)
+    except Exception as exc:
+        logger.warning(f"[snapshot] JPEG compression failed: {exc}, using PNG fallback")
+        final.save(str(output_path), "PNG", optimize=True)
+
+
 # =============================================================================
-# ENGINE 1 — staticmap (Primary)
+# ENGINE 1 — staticmap + Pillow (lite, fast, primary)
 # =============================================================================
 
 def _engine_staticmap(
@@ -230,7 +246,7 @@ def _engine_staticmap(
 
                 # Compose final image with metadata strip
                 final = _add_metadata_strip(image, coordinates, centroid, report_id)
-                final.save(str(output_path), "PNG", optimize=True)
+                _save_final_snapshot(final, output_path)
 
                 logger.info(f"[snapshot] staticmap engine succeeded with {src['name']} → {output_path.name}")
                 return True
@@ -327,7 +343,7 @@ def _engine_matplotlib_contextily(
         image = Image.open(buf).convert("RGBA")
         image = image.resize((SNAPSHOT_WIDTH, SNAPSHOT_HEIGHT), Image.LANCZOS)
         final = _add_metadata_strip(image, coordinates, centroid, report_id)
-        final.save(str(output_path), "PNG", optimize=True)
+        _save_final_snapshot(final, output_path)
 
         logger.info(f"[snapshot] matplotlib+contextily engine succeeded → {output_path.name}")
         return True
@@ -399,7 +415,7 @@ def _engine_matplotlib_only(
         image = Image.open(buf).convert("RGBA")
         image = image.resize((SNAPSHOT_WIDTH, SNAPSHOT_HEIGHT), Image.LANCZOS)
         final = _add_metadata_strip(image, coordinates, centroid, report_id)
-        final.save(str(output_path), "PNG", optimize=True)
+        _save_final_snapshot(final, output_path)
 
         logger.info(f"[snapshot] matplotlib-only engine succeeded → {output_path.name}")
         return True
@@ -530,7 +546,7 @@ def _engine_selenium_folium(
         image = Image.open(io.BytesIO(screenshot)).convert("RGBA")
         image = image.resize((SNAPSHOT_WIDTH, SNAPSHOT_HEIGHT), Image.LANCZOS)
         final = _add_metadata_strip(image, coordinates, centroid, report_id)
-        final.save(str(output_path), "PNG", optimize=True)
+        _save_final_snapshot(final, output_path)
 
         logger.info(f"[snapshot] Selenium+Folium engine succeeded → {output_path.name}")
         return True
