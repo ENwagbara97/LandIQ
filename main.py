@@ -10,7 +10,9 @@ Runs the multi-agent pipeline in background tasks to prevent request timeouts.
 from __future__ import annotations
 
 import logging
+import os
 import time
+from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any, Optional
 
@@ -56,33 +58,19 @@ logging.basicConfig(
 )
 logger = logging.getLogger("landiq.server")
 
-app = FastAPI(
-    title="LandIQ — Land Risk Intelligence Agent",
-    description="Local-First Land Risk Screening System for Nigeria",
-    version="2.0",
+# ── CORS — read allowed origins from environment (never use * in production) ──
+_raw_origins = os.getenv(
+    "ALLOWED_ORIGINS",
+    "http://localhost:5173,http://localhost:5174,"
+    "http://127.0.0.1:5173,http://127.0.0.1:8000",
 )
+ALLOWED_ORIGINS = [o.strip() for o in _raw_origins.split(",") if o.strip()]
 
-# CORS configuration
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# ── Admin API key (optional — guard /api/admin/stats) ─────────────────────────
+ADMIN_API_KEY = os.getenv("ADMIN_API_KEY", "")
 
 
-@app.on_event("startup")
-def startup_event():
-    """Run database migrations on server startup to ensure tables exist."""
-    logger.info("[server] Starting up... applying database migrations.")
-    run_migrations()
-    # Schedule background cleanup of orphaned temp snapshots and location backfill
-    import asyncio
-    asyncio.ensure_future(_cleanup_temp_snapshots())
-    asyncio.create_task(asyncio.to_thread(history_manager.backfill_missing_locations))
-
-
+# ── Lifespan (replaces deprecated @app.on_event("startup")) ──────────────────
 async def _cleanup_temp_snapshots() -> None:
     """Runs 30s after startup to purge orphaned temp snapshot PNGs older than 1 hour."""
     import asyncio as _asyncio
@@ -101,6 +89,34 @@ async def _cleanup_temp_snapshots() -> None:
             pass
     if cleaned:
         logger.info(f"[Cleanup] Removed {cleaned} orphaned temp snapshot file(s)")
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """FastAPI lifespan — runs startup logic then yields control to the app."""
+    import asyncio
+    logger.info("[server] Starting up... applying database migrations.")
+    run_migrations()
+    asyncio.create_task(_cleanup_temp_snapshots())
+    asyncio.create_task(asyncio.to_thread(history_manager.backfill_missing_locations))
+    yield
+    # Shutdown logic (if needed in future) goes here
+
+
+app = FastAPI(
+    title="LandIQ — Land Risk Intelligence Agent",
+    description="Local-First Land Risk Screening System for Nigeria",
+    version="2.0",
+    lifespan=lifespan,
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=ALLOWED_ORIGINS,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 import math
@@ -1411,8 +1427,12 @@ async def delete_single_report(report_id: str, user_id: str = "anonymous"):
     return {"status": "ok"}
 
 @app.get("/api/admin/stats")
-async def get_admin_stats():
-    """Return live dashboard metrics."""
+async def get_admin_stats(request: Request):
+    """Return live dashboard metrics. Protected by X-Admin-Key header."""
+    if ADMIN_API_KEY:
+        provided = request.headers.get("X-Admin-Key", "")
+        if provided != ADMIN_API_KEY:
+            raise HTTPException(status_code=403, detail="Forbidden")
     return history_manager.get_admin_stats()
 
 

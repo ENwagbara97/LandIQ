@@ -726,6 +726,66 @@ def _shoelace_area_m2(stations: list[_Station]) -> float:
     return abs(area) / 2.0
 
 
+def compute_perimeter_metres(
+    wgs84_coords: list[tuple[float, float]],
+    stations: list["_Station"] | None = None,
+) -> float:
+    """
+    Compute the perimeter of the parcel polygon in metres.
+
+    Strategy (user comment confirmed):
+      1. Shapely planar perimeter on projected UTM coords — most accurate for
+         Nigerian surveys in UTM zones 31N/32N/33N.  Sub-metre precision.
+      2. Haversine on WGS84 lat/lng — used when Shapely / projected coords
+         are unavailable.  Fine for small parcels (< 1km side).
+
+    For COGO traverses, the caller should use sum-of-leg-distances directly
+    (those ARE the measured perimeter) — this function is for XY-station input.
+
+    Args:
+        wgs84_coords : List of (lat, lng) pairs (WGS84 degrees).
+        stations     : Optional list of _Station objects that carry projected
+                       (E, N) metre coordinates for Shapely computation.
+
+    Returns:
+        Perimeter in metres, rounded to 2 decimal places.
+    """
+    # ── Tier 1: Shapely planar on projected coords ────────────────────────────
+    if stations:
+        try:
+            from shapely.geometry import Polygon as ShapelyPolygon  # type: ignore
+            proj_pts = []
+            for s in stations:
+                e = s.calculated_easting if s.calculated_easting is not None else s.stated_easting
+                n = s.calculated_northing if s.calculated_northing is not None else s.stated_northing
+                if e is not None and n is not None:
+                    proj_pts.append((e, n))
+            if len(proj_pts) >= 3:
+                poly = ShapelyPolygon(proj_pts)
+                return round(poly.length, 2)
+        except ImportError:
+            pass  # Fall through to haversine
+
+    # ── Tier 2: Haversine on WGS84 lat/lng ───────────────────────────────────
+    from math import radians, sin, cos, sqrt, atan2
+    R = 6_371_000.0  # Earth mean radius in metres
+    total = 0.0
+    n = len(wgs84_coords)
+    if n < 2:
+        return 0.0
+    for i in range(n):
+        lat1, lon1 = wgs84_coords[i]
+        lat2, lon2 = wgs84_coords[(i + 1) % n]
+        dlat = radians(lat2 - lat1)
+        dlon = radians(lon2 - lon1)
+        a = (
+            sin(dlat / 2) ** 2
+            + cos(radians(lat1)) * cos(radians(lat2)) * sin(dlon / 2) ** 2
+        )
+        total += R * 2 * atan2(sqrt(a), sqrt(1 - a))
+    return round(total, 2)
+
+
 # =============================================================================
 # § 9 · WGS84 REPROJECTION
 # =============================================================================
@@ -1084,6 +1144,10 @@ def run(
                 is_closed_poly = len(active_stations) >= 3
                 closure_status = "UNCLOSED" if misclosure_m > 2.0 else "CLOSED"
                 is_closed = is_closed_poly and closure_status == "CLOSED"
+                # COGO perimeter = sum of leg distances (these ARE the measured sides)
+                cogo_perimeter_m = round(
+                    sum(v.distance_m for v in cogo_vecs_structured), 2
+                )
                 polygon_data = PolygonData(
                     wgs84_coordinates=[[s.wgs84_lat or 0.0, s.wgs84_lng or 0.0] for s in active_stations],
                     utm_coordinates=[[s.calculated_easting or 0.0, s.calculated_northing or 0.0] for s in active_stations],
@@ -1099,6 +1163,8 @@ def run(
                     crs_input=datum_label,
                     closure_status=closure_status,
                     closure_error_meters=misclosure_m,
+                    perimeter_m=cogo_perimeter_m,
+                    perimeter_display=f"{cogo_perimeter_m:.1f}m",
                 )
                 return CadastralResult(
                     extraction_meta=extraction_meta,
@@ -1406,6 +1472,13 @@ def run(
     is_closed = False if closure_status == "UNCLOSED" else is_closed_poly
     is_valid = False if closure_status == "UNCLOSED" else is_closed_poly
 
+    # ── Perimeter computation ──────────────────────────────────────────────────
+    perimeter_m = compute_perimeter_metres(
+        wgs84_coords=[(s.wgs84_lat or 0.0, s.wgs84_lng or 0.0) for s in active_stations
+                      if s.wgs84_lat is not None],
+        stations=active_stations,
+    )
+
     polygon_data = PolygonData(
         wgs84_coordinates=[[s.wgs84_lat or 0.0, s.wgs84_lng or 0.0] for s in active_stations],
         utm_coordinates=[[s.calculated_easting or 0.0, s.calculated_northing or 0.0] for s in active_stations],
@@ -1421,6 +1494,8 @@ def run(
         crs_input=datum_label or "MINNA",
         closure_status=closure_status,
         closure_error_meters=misclosure_m,
+        perimeter_m=perimeter_m,
+        perimeter_display=f"{perimeter_m:.1f}m" if perimeter_m else None,
     )
 
     # ── Assemble output ────────────────────────────────────────────────────────

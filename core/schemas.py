@@ -220,6 +220,8 @@ class CoordExtractOutput(BaseModel):
     health_check_stats  : Optional[dict] = None
     stated_area_ha      : Optional[float] = None
     area_discrepancy_pct: Optional[float] = None    # null if stated_area_ha not provided
+    perimeter_m         : Optional[float] = None    # Polygon perimeter in metres
+    perimeter_display   : Optional[str]  = None    # Human-readable e.g. "142.5m"
     minna_datum_detected: bool = False
     dms_converted       : bool = False              # true if input was DMS → converted
     flip_tested         : bool = False              # true if auto-flip was attempted
@@ -663,6 +665,8 @@ class PolygonData(BaseModel):
     crs_output: str = "EPSG:4326"
     closure_status: Optional[str] = None
     closure_error_meters: Optional[float] = None
+    perimeter_m: Optional[float] = None         # Polygon perimeter in metres
+    perimeter_display: Optional[str] = None     # e.g. "142.5m"
 
 
 class ExtractionConfidence(BaseModel):
