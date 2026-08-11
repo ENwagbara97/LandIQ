@@ -1490,7 +1490,7 @@ def _ocr_via_gemini(
         res_text = complete_ocr(messages=messages, image_b64=img_b64_raw, timeout=45)
         if res_text:
             _logger.info("[vision_ocr] 4-Tier AI client OCR succeeded")
-            return res_text.strip()
+            return _normalize_ocr_response(res_text)
     except Exception as exc:
         _logger.warning(f"[vision_ocr] 4-Tier AI client OCR failed: {exc}, cascading to Gemini")
 
