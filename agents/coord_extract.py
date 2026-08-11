@@ -1365,8 +1365,16 @@ def _vision_result_to_text(vision_json: dict) -> str:
     if track:
         lines.append(f"TRACK: {track}")
 
-    # Datum / CRS hint
+    # State & LGA location hints
     plan_meta = vision_json.get("plan_metadata") or {}
+    state_val = plan_meta.get("state") or vision_json.get("state")
+    lga_val = plan_meta.get("lga") or vision_json.get("lga") or plan_meta.get("location") or vision_json.get("location")
+    if state_val:
+        lines.append(f"STATE: {state_val}")
+    if lga_val:
+        lines.append(f"LGA: {lga_val}")
+
+    # Datum / CRS hint
     datum = plan_meta.get("datum") or vision_json.get("datum") or vision_json.get("crs_hint", "")
     if datum:
         lines.append(f"DATUM: {datum}")

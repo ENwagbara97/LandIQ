@@ -812,47 +812,37 @@ def _reproject_stations(stations: list[_Station], datum_label: str, stated_zone:
     if first_easting is None:
         return
 
-    # Infer UTM Zone for Nigeria based on spatial metrics if not explicitly passed
-    utm_zone = stated_zone
-    if not utm_zone:
-        first_e, first_n = None, None
-        for s in stations:
-            e = s.calculated_easting if s.calculated_easting is not None else s.stated_easting
-            n = s.calculated_northing if s.calculated_northing is not None else s.stated_northing
-            if e is not None and n is not None:
-                first_e, first_n = e, n
-                break
-        if first_e is not None and first_n is not None:
-            try:
-                from agents.coord_extract import discover_zone_from_raw_metrics, CRSName
-                disc_crs, conf = discover_zone_from_raw_metrics(first_e, first_n)
-                if disc_crs == CRSName.UTM_31N: utm_zone = 31
-                elif disc_crs == CRSName.UTM_33N: utm_zone = 33
-                elif disc_crs == CRSName.UTM_32N: utm_zone = 32
-            except Exception:
-                pass
-        if not utm_zone:
-            loc = ((raw_text or "") + " " + (location_context or "")).lower()
-            if any(s in loc for s in ["lagos", "ogun", "oyo", "osun", "kwara", "ekiti", "sokoto", "kebbi", "niger state"]):
-                utm_zone = 31
-            elif any(s in loc for s in ["borno", "yobe", "taraba", "adamawa"]):
-                utm_zone = 33
-            else:
-                utm_zone = 32
+    # ── Resolve UTM Zone & Minna EPSG code using in-memory LGA Gazetteer ────
+    from core.lga_gazetteer import resolve_utm_zone_and_epsg
 
-    is_minna = "MINNA" in datum_label.upper()
+    extracted_state = None
+    extracted_lga = None
+    if raw_text:
+        for line in raw_text.splitlines():
+            line_u = line.strip().upper()
+            if line_u.startswith("STATE:"):
+                extracted_state = line.split(":", 1)[1].strip()
+            elif line_u.startswith("LGA:"):
+                extracted_lga = line.split(":", 1)[1].strip()
 
-    if is_minna:
-        proj_str = (
-            f"+proj=utm +zone={utm_zone} +ellps=clrk80 "
-            f"+towgs84=-92,-93,272,0,0,0,0 +units=m +no_defs"
-        )
-        transformer = Transformer.from_proj(proj_str, "EPSG:4326", always_xy=True)
-    else:
-        # WGS84 UTM
-        epsg_map = {31: 32631, 32: 32632, 33: 32633}
-        epsg = epsg_map.get(utm_zone, 32632)
-        transformer = Transformer.from_crs(epsg, 4326, always_xy=True)
+    loc_combined = f"{extracted_lga or ''} {extracted_state or ''} {location_context or ''} {raw_text or ''}"
+    resolved_zone, resolved_epsg = resolve_utm_zone_and_epsg(lga=extracted_lga or loc_combined, state=extracted_state or loc_combined)
+
+    utm_zone = stated_zone or resolved_zone
+    if not utm_zone: utm_zone = 32
+
+    # Always default Nigerian Cadastral Metric Plans to Minna EPSG (EPSG:26331, EPSG:26332, EPSG:26333)
+    minna_epsg_map = {31: "EPSG:26331", 32: "EPSG:26332", 33: "EPSG:26333"}
+    target_epsg = minna_epsg_map.get(utm_zone, "EPSG:26332")
+    if "WGS" in datum_label.upper() and "MINNA" not in datum_label.upper():
+        wgs_epsg_map = {31: "EPSG:32631", 32: "EPSG:32632", 33: "EPSG:32633"}
+        target_epsg = wgs_epsg_map.get(utm_zone, "EPSG:32632")
+
+    try:
+        transformer = Transformer.from_crs(target_epsg, "EPSG:4326", always_xy=True)
+    except Exception as _tr_err:
+        logger.warning(f"[cadastral] Transformer init failed for {target_epsg}: {_tr_err}, falling back to EPSG:26332")
+        transformer = Transformer.from_crs("EPSG:26332", "EPSG:4326", always_xy=True)
 
     for s in stations:
         e = s.calculated_easting if s.calculated_easting is not None else s.stated_easting
