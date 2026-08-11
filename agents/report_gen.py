@@ -479,8 +479,8 @@ def _parse_executive_summary_response(raw: str) -> tuple[str, str]:
         exec_summary = raw[:500].strip()
         
     # Bug 1 Fix: Aggressive prefix stripping
-    exec_summary = re.sub(r"^(?i)\*?\*?EXECUTIVE[_ ]SUMMARY:?\*?\*?\s*", "", exec_summary).strip()
-    ai_rec = re.sub(r"^(?i)\*?\*?(?:AI[_ ])?RECOMMENDATION:?\*?\*?\s*", "", ai_rec).strip()
+    exec_summary = re.sub(r"^\*?\*?EXECUTIVE[_ ]SUMMARY:?\*?\*?\s*", "", exec_summary, flags=re.IGNORECASE).strip()
+    ai_rec = re.sub(r"^\*?\*?(?:AI[_ ])?RECOMMENDATION:?\*?\*?\s*", "", ai_rec, flags=re.IGNORECASE).strip()
 
     # Bug 2 Fix & Bug 7 Fix: Remove inline disclaimers (belongs only in Section 7)
     ai_rec = re.sub(r"This report is advisory only.*?before committing funds\.?", "", ai_rec, flags=re.IGNORECASE).strip()
