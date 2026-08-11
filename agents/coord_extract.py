@@ -1761,8 +1761,8 @@ def ocr_file(
         if ext == ".pdf":
             # Native PyMuPDF rendering (fast, no external Poppler binary required)
             try:
-                import fitz
-                doc = fitz.open(stream=file_bytes, filetype="pdf")
+                import pymupdf
+                doc = pymupdf.open(stream=file_bytes, filetype="pdf")
                 if len(doc) > 0:
                     page = doc.load_page(0)
                     pix = page.get_pixmap(dpi=200)
@@ -1824,8 +1824,8 @@ def ocr_file(
         # Render PDF to PNG using PyMuPDF and send directly to Gemini Vision
         png_bytes = None
         try:
-            import fitz
-            doc = fitz.open(stream=file_bytes, filetype="pdf")
+            import pymupdf
+            doc = pymupdf.open(stream=file_bytes, filetype="pdf")
             if len(doc) > 0:
                 png_bytes = doc.load_page(0).get_pixmap(dpi=200).tobytes("png")
         except Exception:

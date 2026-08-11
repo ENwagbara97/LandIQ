@@ -539,17 +539,19 @@ async def upload_coordinates(
             from pathlib import Path
             ext = Path(filename).suffix.lower()
             if ext in (".pdf", ".jpg", ".jpeg", ".png", ".tiff", ".bmp"):
-                # Convert PDF to image bytes so Gemini Vision can read the scanned pixels directly
+                # Convert PDF to image bytes so Gemini/NVIDIA Vision can read the scanned pixels cleanly
                 if ext == ".pdf":
                     try:
-                        import fitz  # PyMuPDF
-                        pdf_doc = fitz.open(stream=file_bytes, filetype="pdf")
-                        page = pdf_doc.load_page(0)
-                        pix = page.get_pixmap(dpi=200)
-                        file_bytes = pix.tobytes("png")
-                        filename = filename.replace(".pdf", ".png")
-                    except ImportError:
-                        pass
+                        import pymupdf
+                        pdf_doc = pymupdf.open(stream=file_bytes, filetype="pdf")
+                        if len(pdf_doc) > 0:
+                            page = pdf_doc.load_page(0)
+                            pix = page.get_pixmap(dpi=200)
+                            file_bytes = pix.tobytes("png")
+                            filename = filename.replace(".pdf", ".png")
+                            logger.info(f"[server] Rendered PDF page 1 to PNG image ({len(file_bytes)} bytes)")
+                    except Exception as pdf_err:
+                        logger.warning(f"[server] PDF render failed: {pdf_err}")
 
                 from agents.coord_extract import ocr_file
                 try:
