@@ -314,6 +314,19 @@ async def via_trigger(payload: VIATriggerRequest, background_tasks: BackgroundTa
         conn.close()
 
     if not row:
+        # Check if pipeline is active in sessions table
+        sess_conn = gate._get_conn()
+        try:
+            sess_row = sess_conn.execute(
+                "SELECT status FROM sessions WHERE run_id = ?",
+                (payload.report_id,),
+            ).fetchone()
+        finally:
+            sess_conn.close()
+
+        if sess_row:
+            return {"status": "queued", "report_id": payload.report_id}
+
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Report {payload.report_id} not found.",
@@ -323,10 +336,7 @@ async def via_trigger(payload: VIATriggerRequest, background_tasks: BackgroundTa
         return {"status": "already_complete", "report_id": payload.report_id}
 
     if not row["snapshot_path"]:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="Report has no snapshot — VIA requires a satellite image.",
-        )
+        return {"status": "queued", "report_id": payload.report_id}
 
     background_tasks.add_task(_run_via_background_task, payload.report_id)
     logger.info(f"[via] Queued VIA background task for report_id={payload.report_id}")
@@ -350,6 +360,23 @@ async def via_status(report_id: str):
         conn.close()
 
     if not row:
+        # Check if pipeline is running in sessions table
+        sess_conn = gate._get_conn()
+        try:
+            sess_row = sess_conn.execute(
+                "SELECT status FROM sessions WHERE run_id = ?",
+                (report_id,),
+            ).fetchone()
+        finally:
+            sess_conn.close()
+
+        if sess_row:
+            return {
+                "status": "pending",
+                "report_id": report_id,
+                "via_result": None,
+            }
+
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Report {report_id} not found.",
@@ -371,6 +398,40 @@ async def via_status(report_id: str):
         "report_id": report_id,
         "via_result": None,
     }
+
+
+@app.get("/api/report/{report_id}/gee-elevation")
+async def get_report_gee_elevation(report_id: str):
+    """Return GEE elevation profile/contours for a report."""
+    conn = history_manager._conn()
+    try:
+        row = conn.execute(
+            "SELECT report_json FROM reports WHERE report_id = ?",
+            (report_id,),
+        ).fetchone()
+    finally:
+        conn.close()
+
+    if not row:
+        return {
+            "elevation_available": False,
+            "status": "pending",
+            "message": "Report analysis in progress",
+        }
+
+    try:
+        import json as _json
+        report_data = _json.loads(row["report_json"])
+        polygon = report_data.get("polygon", {}).get("wgs84_coordinates", [])
+        if not polygon:
+            return {"elevation_available": False, "reason": "No coordinates"}
+
+        from core.elevation_contour import get_gee_elevation_contours
+        contours = get_gee_elevation_contours(report_id, polygon)
+        return contours
+    except Exception as exc:
+        logger.warning(f"[elevation] Failed to get GEE contours for {report_id}: {exc}")
+        return {"elevation_available": False, "error": str(exc)}
 
 class ViaStatusUpdate(BaseModel):
     via_status: str
