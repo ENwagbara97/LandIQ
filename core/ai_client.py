@@ -26,32 +26,41 @@ import os
 import time
 from typing import Literal
 
+from dotenv import load_dotenv
+load_dotenv(override=True)
+
 logger = logging.getLogger("landiq.ai_client")
 
 # =============================================================================
 # TASK → MODEL ROUTING
 # Override any value in .env to swap models without code changes.
 # =============================================================================
-MODEL_ROUTING: dict[str, str] = {
-    # OCR: survey plan image extraction
-    "ocr":                os.getenv("LLM_OCR",               "nvidia/nemotron-ocr-v2"),
-    "ocr_fallback":       os.getenv("LLM_OCR_FALLBACK",      "nvidia/nemotron-nano-12b-v2-vl"),
-    "ocr_openrouter":     os.getenv("LLM_OCR_OPENROUTER",    "google/gemini-2.5-flash"),
-    # Vision: VIA satellite analysis
-    "vision":             os.getenv("LLM_VISION",            "meta/llama-3.2-90b-vision-instruct"),
-    "vision_fallback":    os.getenv("LLM_VISION_FALLBACK",   "meta/llama-3.2-11b-vision-instruct"),
-    "vision_openrouter":  os.getenv("LLM_VISION_OPENROUTER", "meta-llama/llama-3.2-11b-vision-instruct:free"),
-    # Reasoning: expert summary, plan classification
-    "reasoning":          os.getenv("LLM_REASONING",         "nvidia/nemotron-3-super-49b-a5b"),
-    "reasoning_fallback": os.getenv("LLM_REASONING_FALLBACK","nvidia/nemotron-3-super-49b-a5b"),
-    "reasoning_openrouter": os.getenv("LLM_REASONING_OPENROUTER", "nvidia/nemotron-3-ultra-550b-a55b:free"),
-    # Report: metric translation + executive summary
-    "report":             os.getenv("LLM_REPORT",            "meta/llama-3.3-70b-instruct"),
-    "report_openrouter":  os.getenv("LLM_REPORT_OPENROUTER", "meta-llama/llama-3.3-70b-instruct:free"),
-    # Fast: quick classification / routing tasks
-    "fast":               os.getenv("LLM_FAST",              "meta/llama-3.2-11b-vision-instruct"),
-    "fast_openrouter":    os.getenv("LLM_FAST_OPENROUTER",   "meta-llama/llama-3.2-11b-vision-instruct:free"),
-}
+def _get_model(key: str, default: str = "") -> str:
+    """Read latest model string from environment or defaults."""
+    defaults = {
+        "ocr": "nvidia/nemotron-ocr-v2",
+        "ocr_fallback": "nvidia/nemotron-nano-12b-v2-vl",
+        "ocr_openrouter": "google/gemini-2.5-flash",
+        "vision": "meta/llama-3.2-90b-vision-instruct",
+        "vision_fallback": "meta/llama-3.2-11b-vision-instruct",
+        "vision_openrouter": "meta-llama/llama-3.2-11b-vision-instruct:free",
+        "reasoning": "nvidia/nemotron-3-super-49b-a5b",
+        "reasoning_fallback": "nvidia/nemotron-3-super-49b-a5b",
+        "reasoning_openrouter": "nvidia/nemotron-3-ultra-550b-a5b:free",
+        "report": "meta/llama-3.3-70b-instruct",
+        "report_openrouter": "meta-llama/llama-3.3-70b-instruct",
+        "fast": "meta/llama-3.2-11b-vision-instruct",
+        "fast_openrouter": "meta-llama/llama-3.2-11b-vision-instruct:free",
+    }
+    env_name = f"LLM_{key.upper()}"
+    return os.getenv(env_name, defaults.get(key, default))
+
+MODEL_ROUTING = {k: _get_model(k) for k in [
+    "ocr", "ocr_fallback", "ocr_openrouter",
+    "vision", "vision_fallback", "vision_openrouter",
+    "reasoning", "reasoning_fallback", "reasoning_openrouter",
+    "report", "report_openrouter", "fast", "fast_openrouter"
+]}
 
 TaskType = Literal["ocr", "vision", "reasoning", "report", "fast"]
 
@@ -91,17 +100,15 @@ def _openrouter_client():
 def _kaggle_client():
     """
     Kaggle Model Proxy — existing free backup already wired in .env.
-    Uses a bearer token from MODEL_PROXY_API_KEY.
+    Uses full key from MODEL_PROXY_API_KEY.
     """
     from openai import OpenAI
     proxy_url = os.getenv("MODEL_PROXY_URL", "")
-    proxy_key  = os.getenv("MODEL_PROXY_API_KEY", "")
+    proxy_key = os.getenv("MODEL_PROXY_API_KEY", "")
     if not proxy_url or not proxy_key:
         return None, None
-    # Kaggle proxy uses a Kaggle-formatted key — strip non-standard prefix if present
-    bearer = proxy_key.split(":")[-1] if ":" in proxy_key else proxy_key
     client = OpenAI(
-        api_key=bearer,
+        api_key=proxy_key,
         base_url=proxy_url,
     )
     default_model = os.getenv("LLM_DEFAULT", "google/gemini-3-flash-preview")
@@ -169,12 +176,17 @@ def ai_complete(
         if result is not None:
             return result
 
+    # ── TIER 3.5: GEMINI DIRECT (Google AI Studio Key) ─────────────────────
+    gemini_result = _try_gemini_direct(messages, max_tokens, temperature, image_b64=image_b64)
+    if gemini_result is not None:
+        return gemini_result
+
     # ── TIER 4: OLLAMA LOCAL ─────────────────────────────────────────────────
     ollama_result = _try_ollama(messages, max_tokens, temperature, task)
     if ollama_result is not None:
         return ollama_result
 
-    logger.error(f"[ai_client] All 4 tiers failed for task='{task}'")
+    logger.error(f"[ai_client] All tiers failed for task='{task}'")
     return None
 
 
@@ -213,6 +225,53 @@ def _try_complete(
     except Exception as exc:
         logger.warning(f"[ai_client] {task} ✗ via {provider}/{model}: {exc}")
         return None
+
+
+def _try_gemini_direct(messages: list[dict], max_tokens: int, temperature: float, image_b64: str | None = None) -> str | None:
+    """Tier 3.5: Gemini Direct fallback using Google AI Studio GEMINI_API_KEY."""
+    api_key = os.getenv("GEMINI_API_KEY", "").strip()
+    if not api_key:
+        return None
+    import requests
+    system = ""
+    prompt = ""
+    for m in messages:
+        if m.get("role") == "system":
+            system = m.get("content", "")
+        elif m.get("role") == "user":
+            c = m.get("content", "")
+            if isinstance(c, str):
+                prompt = c
+            elif isinstance(c, list):
+                for part in c:
+                    if part.get("type") == "text":
+                        prompt = part.get("text", "")
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key={api_key}"
+    parts = []
+    if system:
+        parts.append({"text": f"System Instruction:\n{system}\n\nUser Prompt:\n{prompt}"})
+    else:
+        parts.append({"text": prompt or "Process this request."})
+    if image_b64:
+        parts.append({"inlineData": {"mimeType": "image/png", "data": image_b64}})
+    payload = {
+        "contents": [{"parts": parts}],
+        "generationConfig": {"temperature": temperature, "maxOutputTokens": max_tokens}
+    }
+    try:
+        resp = requests.post(url, json=payload, timeout=25)
+        if resp.ok:
+            data = resp.json()
+            candidates = data.get("candidates", [])
+            if candidates:
+                cand_parts = candidates[0].get("content", {}).get("parts", [])
+                if cand_parts and "text" in cand_parts[0]:
+                    text = cand_parts[0]["text"].strip()
+                    logger.info("[ai_client] Gemini Direct call succeeded")
+                    return text
+    except Exception as exc:
+        logger.warning(f"[ai_client] Gemini Direct call failed: {exc}")
+    return None
 
 
 def _try_ollama(
