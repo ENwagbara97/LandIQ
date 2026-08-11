@@ -310,12 +310,12 @@ def _scan_ocr_text_for_stations(raw_text: str) -> list[_Station]:
 # § 4 · COGO TEXT SCANNER (Track B — Traverse pathway from raw text)
 # =============================================================================
 
-# Anchor / tie-point extraction (first explicit easting/northing pair)
+# Anchor / tie-point extraction (supports E 377821.067 N 553948.531 AND 377821.067 m E 553948.531 m N)
 _ANCHOR_RE = re.compile(
     r"""
-    (?:tie[\-\s]*point|anchor|origin|start(?:ing)?\s*point|reference)[:\s]*
-    (?:E(?:asting)?[:\s]*)?(?P<e>\d{3,7}(?:\.\d+)?)\s*[mM]?\s*[,;\s]+\s*
-    (?:N(?:orthing)?[:\s]*)?(?P<n>\d{3,7}(?:\.\d+)?)
+    (?:tie[\-\s]*point|anchor|origin|start(?:ing)?\s*point|reference|grid[\-\s]*ref)?[:\s]*
+    (?:E(?:asting)?[:\s]*)?(?P<e>\d{5,7}(?:\.\d+)?)\s*[mM]?\s*(?:E(?:asting)?)?\s*[,;\s\n]+\s*
+    (?:N(?:orthing)?[:\s]*)?(?P<n>\d{5,7}(?:\.\d+)?)\s*[mM]?\s*(?:N(?:orthing)?)?
     """,
     re.VERBOSE | re.IGNORECASE,
 )
@@ -324,14 +324,14 @@ _ANCHOR_RE = re.compile(
 _BEARING_RE = re.compile(
     r"""
     (?:(?P<dir1>[NSns])\s*)?
-    (?P<deg>\d{1,3})[\u00b0\s]+(?P<min>\d{1,2})['\u2032\s]*(?:(?P<sec>[\d.]+)[\"″\s]*)?
-    (?:(?P<dir2>[EWew]))?
+    (?P<deg>\d{1,3})[\u00b0°](?:\s*(?P<min>\d{1,2})['\u2032])?(?:\s*(?P<sec>[\d.]+)[\"″])?
+    (?:\s*(?P<dir2>[EWew]))?
     """,
     re.VERBOSE,
 )
 
-# Distance: "250.50m" or "250.50 m" or "250.50"
-_DIST_RE = re.compile(r"(?P<dist>\d{1,6}(?:\.\d+)?)\s*[mM]?\b")
+# Distance: prefer explicitly m-suffixed numbers or decimals < 5000, reject 5-digit station IDs
+_DIST_RE = re.compile(r"\b(?P<dist>\d{1,4}(?:\.\d+)?)\s*[mM]\b|\b(?P<dist2>\d{1,4}\.\d{1,3})\b")
 
 # Line/leg label: "L1", "LINE 1", "LEG 1", "1."
 _LEG_LABEL_RE = re.compile(r"(?:line|leg|l)\s*(\d+)|^(\d+)[.):]", re.IGNORECASE)
@@ -368,7 +368,8 @@ def _scan_cogo_text(raw_text: str) -> tuple[Optional[tuple[float, float]], list[
     Safety guards:
       - Lines containing UTM-scale coordinates (≥100,000) are skipped for
         bearing extraction to avoid treating coordinate values as bearings.
-      - Plain decimal bearings must be in [0, 360] to be accepted.
+      - Station/beacon IDs (e.g. SC/AK/C 26946) are stripped from lines before
+        distance matching to prevent beacon numbers matching as leg lengths.
     """
     anchor: Optional[tuple[float, float]] = None
     vectors: list[_BearingDistance] = []
@@ -400,70 +401,71 @@ def _scan_cogo_text(raw_text: str) -> tuple[Optional[tuple[float, float]], list[
             continue
 
         # ⚠️ SAFETY GUARD: skip lines that contain UTM-scale coordinates.
-        # These are anchor/coordinate lines — not bearing lines.
         clean_for_check = _preprocess_line(line)
         utm_in_line = [float(v) for v in _UTM_SCALE_RE.findall(clean_for_check)
                        if float(v) >= 100_000]
         if utm_in_line:
             continue  # Coordinate line — skip for bearing extraction
 
-        # Try to find a bearing
-        b_match = _BEARING_RE.search(line)
-        if not b_match:
-            continue
-
-        if True:
-            # We accept both DMS quadrant and Whole Circle bearings
-            try:
-                matched_str = b_match.group(0)
-                d1 = b_match.group("dir1")
-                d2 = b_match.group("dir2")
-                if not d1 and not d2:
-                    # To prevent false positives on plain numbers, require degree or minute symbol
-                    if "°" not in matched_str and "'" not in matched_str and "″" not in matched_str:
-                        continue
-                        
-                deg  = float(b_match.group("deg"))
-                mins = float(b_match.group("min"))
-                sec  = float(b_match.group("sec")) if b_match.group("sec") else 0.0
-                bearing_dd = _bearing_dms_to_dd(d1, deg, mins, sec, d2)
-            except (TypeError, ValueError):
-                continue
-
-        # Find distance in the same line (search after the bearing match)
-        d_match = _DIST_RE.search(line[b_match.end():])
-        if not d_match:
-            d_match = _DIST_RE.search(line)  # Try full line as fallback
-        if not d_match:
-            continue
-
-        try:
-            distance = float(d_match.group("dist"))
-        except ValueError:
-            continue
-
-        if distance <= 0:
-            continue
-
-        # Leg label
-        lbl_match = _LEG_LABEL_RE.search(line)
-        label = lbl_match.group(0).strip() if lbl_match else ""
-
-        # Parse from/to stations
         from_st = ""
         to_st = ""
+        data_line = line
         if ":" in line:
             parts = line.split(":", 1)
             header = parts[0]
+            data_line = parts[1]
             to_match = re.search(r"\bto\b", header, re.IGNORECASE)
             if to_match:
                 start_to, end_to = to_match.span()
                 raw_from = header[:start_to].strip()
                 raw_to = header[end_to:].strip()
-                # Clean up leading numbers/dots
-                raw_from = re.sub(r"^\d+[\s.)\-:]+", "", raw_from).strip()
-                from_st = raw_from
+                from_st = re.sub(r"^\d+[\s.)\-:]+", "", raw_from).strip()
                 to_st = raw_to
+
+        # Strip station/beacon labels (e.g. SC/AK/C 26946 or S1, S2) from data_line before searching
+        cleaned_data_line = re.sub(
+            r"(?:SC|SG|SK|BP|TP|BM|NR)[/\-\s]*[A-Z0-9]+(?:[/\-\s]*[A-Z0-9]+)*|\bS\d+\b",
+            "",
+            data_line,
+            flags=re.IGNORECASE,
+        )
+
+        b_match = _BEARING_RE.search(cleaned_data_line)
+        if not b_match:
+            b_match = re.search(r"\b(?P<deg>\d{1,3})[\u00b0°\s]+(?P<min>\d{1,2})?['\u2032\s]*", cleaned_data_line)
+        if not b_match:
+            continue
+
+        try:
+            d1 = b_match.groupdict().get("dir1")
+            d2 = b_match.groupdict().get("dir2")
+            deg = float(b_match.group("deg"))
+            mins = float(b_match.group("min")) if b_match.groupdict().get("min") and b_match.group("min") else 0.0
+            sec = float(b_match.group("sec")) if b_match.groupdict().get("sec") and b_match.group("sec") else 0.0
+            bearing_dd = _bearing_dms_to_dd(d1, deg, mins, sec, d2)
+        except (TypeError, ValueError):
+            continue
+
+        after_b = cleaned_data_line[b_match.end():]
+        d_match = _DIST_RE.search(after_b)
+        if not d_match:
+            d_match = _DIST_RE.search(cleaned_data_line)
+        if not d_match:
+            continue
+
+        dist_raw = d_match.group("dist") or d_match.groupdict().get("dist2")
+        if not dist_raw:
+            continue
+        try:
+            distance = float(dist_raw)
+        except ValueError:
+            continue
+
+        if distance <= 0 or distance > 10000:
+            continue
+
+        lbl_match = _LEG_LABEL_RE.search(line)
+        label = lbl_match.group(0).strip() if lbl_match else ""
 
         vectors.append(_BearingDistance(
             bearing_decimal_deg=bearing_dd,
