@@ -1311,6 +1311,19 @@ def run(
         comp_track = ComputationTrack.COGO_TRAVERSE
         logger.info(f"[cadastral] Track B: {len(active_stations)} computed stations, misclosure={misclosure_m}m, class={classification}")
 
+        # ── Smart fallback: if COGO misclosure is POOR (>2m) and we have tabular OCR stations,
+        # downgrade to Track A rather than producing an unclosed polygon ──────────────
+        if misclosure_m > 2.0 and ocr_stations and len(ocr_stations) >= 3:
+            logger.warning(
+                f"[cadastral] Track B misclosure={misclosure_m:.1f}m is POOR — "
+                f"falling back to Track A ({len(ocr_stations)} OCR tabular stations)"
+            )
+            active_stations, closure_warning = _run_track_a(ocr_stations)
+            misclosure_m = 0.0
+            comp_track = ComputationTrack.TABULAR
+            closure_warning += " [COGO fallback to tabular OCR due to high misclosure]"
+
+
     if len(active_stations) < 3:
         # Partial extraction: do not throw error. Return partial data so UI can show the degraded mode.
         closure_warning += f" Only {len(active_stations)} valid station(s) resolved. Needs at least 3 to close."

@@ -38,15 +38,18 @@ logger = logging.getLogger("landiq.ai_client")
 def _get_model(key: str, default: str = "") -> str:
     """Read latest model string from environment or defaults."""
     defaults = {
-        "ocr": "nvidia/nemotron-ocr-v2",
-        "ocr_fallback": "nvidia/nemotron-nano-12b-v2-vl",
+        # OCR/Vision: nvidia/nemotron-nano-12b-v2-vl is the correct NIM vision model
+        "ocr": "nvidia/nemotron-nano-12b-v2-vl",
+        "ocr_fallback": "meta/llama-3.2-90b-vision-instruct",
         "ocr_openrouter": "google/gemini-2.5-flash",
         "vision": "meta/llama-3.2-90b-vision-instruct",
         "vision_fallback": "meta/llama-3.2-11b-vision-instruct",
         "vision_openrouter": "meta-llama/llama-3.2-11b-vision-instruct:free",
-        "reasoning": "nvidia/nemotron-3-super-49b-a5b",
-        "reasoning_fallback": "nvidia/nemotron-3-super-49b-a5b",
-        "reasoning_openrouter": "nvidia/nemotron-3-ultra-550b-a5b:free",
+        # Reasoning: nvidia/llama-3.3-nemotron-super-49b-v1 is the correct NIM name
+        "reasoning": "nvidia/llama-3.3-nemotron-super-49b-v1",
+        "reasoning_fallback": "nvidia/llama-3.1-nemotron-70b-instruct",
+        "reasoning_openrouter": "nvidia/llama-3.3-nemotron-super-49b-v1:free",
+        # Report: these are correct NIM model IDs
         "report": "meta/llama-3.3-70b-instruct",
         "report_openrouter": "meta-llama/llama-3.3-70b-instruct",
         "fast": "meta/llama-3.2-11b-vision-instruct",

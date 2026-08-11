@@ -644,11 +644,13 @@ async def upload_coordinates(
             data_dump = cad_result.model_dump()
             data_dump["run_id"] = run_id
 
-            # Only create a session if the polygon is closed and valid
-            if not cad_result.polygon or not cad_result.polygon.is_closed or len(cad_result.polygon.wgs84_coordinates) < 3:
+            # Accept polygons with ≥3 coordinate points even if not perfectly closed.
+            # is_closed=False is surfaced as a warning in the UI via polygon.closure_status.
+            # Only hard-reject if there is truly no usable coordinate data at all.
+            if not cad_result.polygon or len(cad_result.polygon.wgs84_coordinates) < 3:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
-                    detail={"error_code": "INVALID_POLYGON", "message": "Could not clearly extract a valid, closed boundary (at least 3 points) from this document. Please enter coordinates manually."}
+                    detail={"error_code": "INVALID_POLYGON", "message": "Could not extract enough boundary points (minimum 3) from this document. Please enter coordinates manually or try a higher-resolution scan."}
                 )
 
             coords = [[c[0], c[1]] for c in cad_result.polygon.wgs84_coordinates]
