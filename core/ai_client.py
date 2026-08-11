@@ -45,9 +45,9 @@ def _get_model(key: str, default: str = "") -> str:
         "vision": "meta/llama-3.2-90b-vision-instruct",
         "vision_fallback": "meta/llama-3.2-11b-vision-instruct",
         "vision_openrouter": "meta-llama/llama-3.2-11b-vision-instruct:free",
-        # Reasoning: nvidia/llama-3.3-nemotron-super-49b-v1 is the correct NIM name
-        "reasoning": "nvidia/llama-3.3-nemotron-super-49b-v1",
-        "reasoning_fallback": "nvidia/llama-3.1-nemotron-70b-instruct",
+        # Reasoning: nvidia/nemotron-3-nano-omni-30b-a3b-reasoning
+        "reasoning": "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning",
+        "reasoning_fallback": "nvidia/llama-3.3-nemotron-super-49b-v1",
         "reasoning_openrouter": "nvidia/llama-3.3-nemotron-super-49b-v1:free",
         # Report: these are correct NIM model IDs
         "report": "meta/llama-3.3-70b-instruct",
