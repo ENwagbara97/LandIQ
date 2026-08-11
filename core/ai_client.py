@@ -81,6 +81,7 @@ def _nvidia_client():
     return OpenAI(
         api_key=api_key,
         base_url=os.getenv("NVIDIA_BASE_URL", "https://integrate.api.nvidia.com/v1"),
+        max_retries=0,
     )
 
 
@@ -93,6 +94,7 @@ def _openrouter_client():
     return OpenAI(
         api_key=api_key,
         base_url=os.getenv("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1"),
+        max_retries=0,
         default_headers={
             "HTTP-Referer": "https://landiq.app",
             "X-Title": "LandIQ",
@@ -150,11 +152,13 @@ def ai_complete(
     # ── TIER 1: NVIDIA NIM ───────────────────────────────────────────────────
     client = _nvidia_client()
     if client:
+        # For heavy vision/OCR tasks, cap NVIDIA timeout at 10s to prevent long hanging delays
+        nv_timeout = 10 if (image_b64 or task in ("ocr", "vision")) else timeout
         primary_model   = MODEL_ROUTING.get(task, "")
         fallback_model  = MODEL_ROUTING.get(f"{task}_fallback", "")
         for model in filter(None, [primary_model, fallback_model]):
             result = _try_complete(client, model, messages,
-                                   max_tokens, temperature, timeout,
+                                   max_tokens, temperature, nv_timeout,
                                    "nvidia", task)
             if result is not None:
                 return result
