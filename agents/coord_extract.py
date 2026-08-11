@@ -1759,33 +1759,43 @@ def ocr_file(
     if vision_provider and vision_api_key:
         # For PDFs, convert first page to PNG bytes for the Vision API
         if ext == ".pdf":
+            # Native PyMuPDF rendering (fast, no external Poppler binary required)
             try:
-                from pdf2image import convert_from_bytes
-                pages = convert_from_bytes(file_bytes, dpi=200, first_page=1, last_page=1)
-                img_buf = io.BytesIO()
-                pages[0].save(img_buf, format="PNG")
-                image_bytes_for_api = img_buf.getvalue()
-            except Exception:
-                # If pdf2image fails, try pypdf text first
+                import fitz
+                doc = fitz.open(stream=file_bytes, filetype="pdf")
+                if len(doc) > 0:
+                    page = doc.load_page(0)
+                    pix = page.get_pixmap(dpi=200)
+                    image_bytes_for_api = pix.tobytes("png")
+            except Exception as _fz_err:
+                _logger.warning(f"[vision_ocr] PyMuPDF rendering failed ({_fz_err}); trying pdf2image")
+
+            if image_bytes_for_api is None:
                 try:
-                    import pypdf
-                    reader = pypdf.PdfReader(io.BytesIO(file_bytes))
-                    text = ""
-                    for page in reader.pages:
-                        text += page.extract_text() or ""
-                    text = text.strip()
-                    if len(text) > 50 and any(c.isdigit() for c in text):
-                        return text
+                    from pdf2image import convert_from_bytes
+                    pages = convert_from_bytes(file_bytes, dpi=200, first_page=1, last_page=1)
+                    img_buf = io.BytesIO()
+                    pages[0].save(img_buf, format="PNG")
+                    image_bytes_for_api = img_buf.getvalue()
                 except Exception:
-                    pass
-                # Fall through to local OCR
-                image_bytes_for_api = None
+                    # If PDF image rendering fails, try pypdf text first
+                    try:
+                        import pypdf
+                        reader = pypdf.PdfReader(io.BytesIO(file_bytes))
+                        text = ""
+                        for page in reader.pages:
+                            text += page.extract_text() or ""
+                        text = text.strip()
+                        if len(text) > 50 and any(c.isdigit() for c in text):
+                            return text
+                    except Exception:
+                        pass
+                    image_bytes_for_api = None
         else:
             image_bytes_for_api = file_bytes
 
         if image_bytes_for_api:
             provider = vision_provider.lower()
-            # Determine correct MIME type from file extension
             _ext_mime_map = {
                 ".jpg": "image/jpeg",
                 ".jpeg": "image/jpeg",
@@ -1793,7 +1803,7 @@ def ocr_file(
                 ".tiff": "image/tiff",
                 ".tif": "image/tiff",
                 ".bmp": "image/bmp",
-                ".pdf": "image/png",  # PDFs are always converted to PNG above
+                ".pdf": "image/png",  # Rendered PDF page is PNG
             }
             detected_mime = _ext_mime_map.get(ext, "image/png")
             try:
@@ -1806,43 +1816,30 @@ def ocr_file(
                 elif provider == "anthropic":
                     _logger.info(f"[vision_ocr] Using Claude 3.5 Sonnet Vision (mime={detected_mime})")
                     return _ocr_via_anthropic(image_bytes_for_api, vision_api_key, mime_type=detected_mime)
-                else:
-                    _logger.warning(f"[vision_ocr] Unknown provider '{provider}', falling back to Tesseract")
             except Exception as exc:
-                _logger.warning(f"[vision_ocr] Cloud Vision call failed ({exc}). Falling back to Tesseract.")
-                # Fall through to Tesseract below
+                _logger.warning(f"[vision_ocr] Cloud Vision call failed ({exc}).")
 
     # ── GEMINI FALLBACK (no explicit provider but key found) ─────────────────
-    # At this point, cloud vision routing above was attempted but image_bytes
-    # could not be produced (e.g. pdf2image/Poppler missing).  Try a last-resort
-    # Gemini call on raw PDF bytes OR direct image bytes.
     if ext == ".pdf":
-        # 1. Try direct text extraction via pypdf (for digital/vector PDFs)
+        # Render PDF to PNG using PyMuPDF and send directly to Gemini Vision
+        png_bytes = None
         try:
-            import pypdf
-            reader = pypdf.PdfReader(io.BytesIO(file_bytes))
-            text = ""
-            for page in reader.pages:
-                text += page.extract_text() or ""
-            text = text.strip()
-            if len(text) > 50 and any(char.isdigit() for char in text):
-                return text
+            import fitz
+            doc = fitz.open(stream=file_bytes, filetype="pdf")
+            if len(doc) > 0:
+                png_bytes = doc.load_page(0).get_pixmap(dpi=200).tobytes("png")
         except Exception:
             pass
 
-        # 2. Gemini Vision fallback for scanned PDFs
         _key = os.getenv("GEMINI_API_KEY")
         if _key:
-            _logger.info("[vision_ocr] Gemini Vision fallback for scanned PDF (via base64 inline)")
+            _logger.info("[vision_ocr] Gemini Vision fallback for PDF")
             try:
-                return _ocr_via_gemini(file_bytes, _key, stated_area_ha=stated_area_ha)
+                send_bytes = png_bytes if png_bytes else file_bytes
+                send_mime = "image/png" if png_bytes else "application/pdf"
+                return _ocr_via_gemini(send_bytes, _key, stated_area_ha=stated_area_ha, mime_type=send_mime)
             except Exception as exc:
-                _logger.warning(f"[vision_ocr] Gemini fallback failed: {exc}")
-
-        raise RuntimeError(
-            "This appears to be a scanned PDF. Please upload a digital PDF "
-            "or paste the coordinate text directly."
-        )
+                _logger.warning(f"[vision_ocr] Gemini PDF fallback failed: {exc}")
 
     elif ext in (".jpg", ".jpeg", ".png", ".tiff", ".tif", ".bmp"):
         # Direct image — send straight to Gemini Vision with correct MIME type
