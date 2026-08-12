@@ -400,38 +400,6 @@ async def via_status(report_id: str):
     }
 
 
-@app.get("/api/report/{report_id}/gee-elevation")
-async def get_report_gee_elevation(report_id: str):
-    """Return GEE elevation profile/contours for a report."""
-    conn = history_manager._conn()
-    try:
-        row = conn.execute(
-            "SELECT report_json FROM reports WHERE report_id = ?",
-            (report_id,),
-        ).fetchone()
-    finally:
-        conn.close()
-
-    if not row:
-        return {
-            "elevation_available": False,
-            "status": "pending",
-            "message": "Report analysis in progress",
-        }
-
-    try:
-        import json as _json
-        report_data = _json.loads(row["report_json"])
-        polygon = report_data.get("polygon", {}).get("wgs84_coordinates", [])
-        if not polygon:
-            return {"elevation_available": False, "reason": "No coordinates"}
-
-        from core.elevation_contour import get_gee_elevation_contours
-        contours = get_gee_elevation_contours(report_id, polygon)
-        return contours
-    except Exception as exc:
-        logger.warning(f"[elevation] Failed to get GEE contours for {report_id}: {exc}")
-        return {"elevation_available": False, "error": str(exc)}
 
 class ViaStatusUpdate(BaseModel):
     via_status: str

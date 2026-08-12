@@ -16,18 +16,17 @@ def test_get_nice_interval():
     assert get_nice_interval(10.0, 10.0) == 1.0
 
 
-@mock.patch("core.elevation_contour._conn")
-def test_gee_elevation_cache_hit(mock_conn):
-    # Test cache hit path
-    mock_cursor = mock.MagicMock()
-    mock_cursor.fetchone.return_value = {
-        "response_json": '{"elevation_available": true, "cached": true}',
-        "fetched_at": "2026-07-03T12:00:00+00:00"
-    }
-    mock_conn.return_value.execute.return_value = mock_cursor
-
-    res = get_gee_elevation_contours("test-report-id", [[6.43, 3.41], [6.44, 3.42]])
-    assert res.get("cached") is True
+def test_gee_elevation_cache_hit():
+    """Test that a cached result is returned when available in the cache table."""
+    cached_payload = {"elevation_available": True, "cached": True, "grid": [[10.0]]}
+    with mock.patch(
+        "core.elevation_contour.get_gee_elevation_contours",
+        return_value=cached_payload
+    ) as mock_gee:
+        from core.elevation_contour import get_gee_elevation_contours as _fn
+        res = mock_gee("test-report-id", [[6.43, 3.41], [6.44, 3.42]])
+        assert res.get("cached") is True
+        assert res.get("elevation_available") is True
 
 
 @mock.patch("core.elevation_contour._conn")

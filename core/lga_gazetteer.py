@@ -8,7 +8,7 @@ from typing import Dict, Any, Optional
 
 # State -> Primary UTM Zone mapping
 STATE_UTM_ZONE_MAP: Dict[str, int] = {
-    # Zone 31N (Western Nigeria)
+    # Zone 31N (Western Nigeria + far northwest states)
     "lagos": 31,
     "ogun": 31,
     "oyo": 31,
@@ -16,8 +16,10 @@ STATE_UTM_ZONE_MAP: Dict[str, int] = {
     "ondo": 31,
     "ekiti": 31,
     "kwara": 31,
-    
-    # Zone 32N (Central / South-East / South-South / Far North)
+    "sokoto": 31,   # Far northwest — Zone 31N
+    "kebbi": 31,    # Far northwest — Zone 31N
+
+    # Zone 32N (Central / South-East / South-South / Mid-North)
     "akwa ibom": 32,
     "cross river": 32,
     "rivers": 32,
@@ -42,8 +44,6 @@ STATE_UTM_ZONE_MAP: Dict[str, int] = {
     "jigawa": 32,
     "katsina": 32,
     "zamfara": 32,
-    "sokoto": 32,
-    "kebbi": 32,
     
     # Zone 33N (North-Eastern Nigeria)
     "borno": 33,
