@@ -823,6 +823,65 @@ async def get_session_status(run_id: str):
     }
 
 
+class ReprojectPayload(BaseModel):
+    epsg_code: str
+
+
+@app.post("/api/session/{run_id}/reproject")
+async def reproject_session(run_id: str, payload: ReprojectPayload):
+    """
+    1-Click Live Reprojection Endpoint for Non-Blocking Map Status Pill.
+    Reprojects session station coordinates using the chosen EPSG code (EPSG:26331, EPSG:26332, EPSG:26333, EPSG:32632).
+    """
+    session = gate.get_session(run_id)
+    if not session or not session.coord_extract:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Session with ID {run_id} or coordinate extract not found.",
+        )
+
+    epsg = payload.epsg_code
+    from pyproj import Transformer
+    try:
+        transformer = Transformer.from_crs(epsg, "EPSG:4326", always_xy=True)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Invalid EPSG code '{epsg}': {e}")
+
+    coord_output = session.coord_extract
+    new_wgs_coords = []
+
+    if coord_output.beacons:
+        for b in coord_output.beacons:
+            e = b.easting_utm
+            n = b.northing_utm
+            if e and n:
+                lng, lat = transformer.transform(e, n)
+                b.wgs84_lat = round(lat, 6)
+                b.wgs84_lng = round(lng, 6)
+                new_wgs_coords.append([round(lat, 6), round(lng, 6)])
+
+    if not new_wgs_coords and coord_output.coordinates:
+        for pt in coord_output.coordinates:
+            if len(pt) >= 2:
+                lng, lat = transformer.transform(pt[0], pt[1])
+                new_wgs_coords.append([round(lat, 6), round(lng, 6)])
+
+    if new_wgs_coords:
+        coord_output.coordinates = new_wgs_coords
+        coord_output.detected_crs = epsg
+        if coord_output.polygon:
+            coord_output.polygon.wgs84_coordinates = new_wgs_coords
+            coord_output.polygon.crs_input = epsg
+        gate.save_session(session)
+
+    return {
+        "status": "ok",
+        "epsg_code": epsg,
+        "wgs84_polygon": new_wgs_coords,
+        "coordinates_wgs84": new_wgs_coords,
+    }
+
+
 @app.get("/api/preview/{run_id}")
 async def get_map_preview_html(run_id: str):
     """Serve an interactive Folium Map preview for the confirmation screen."""

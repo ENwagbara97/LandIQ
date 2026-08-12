@@ -626,3 +626,7 @@ def generate_preview_map_html(coord_output: CoordExtractOutput) -> str:
           <pre style="font-size:11px;">{coords_json}</pre>
         </div>
         """
+
+get_session = _load_session
+save_session = _save_session
+
