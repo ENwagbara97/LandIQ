@@ -268,9 +268,10 @@ def discover_zone_from_raw_metrics(easting: float, northing: float) -> tuple[CRS
             elif northing <= 480_000 and CRSName.UTM_31N in valid_zones:
                 return CRSName.UTM_31N, 80.0
 
+        # G1b FIX: Ambiguous tie — downgrade confidence below new T1 threshold (70)
         if CRSName.UTM_32N in valid_zones:
-            return CRSName.UTM_32N, 70.0
-        return valid_zones[0], 60.0
+            return CRSName.UTM_32N, 62.0  # Below 70 → forces T1 dialog
+        return valid_zones[0], 58.0       # Below 70 → forces T1 dialog
     
     # Outside all zones
     return CRSName.UNKNOWN, 50.0
@@ -871,7 +872,9 @@ def evaluate_dialog_triggers(
     T6: Anchor is margin grid reference, not beacon
     """
     triggers = []
-    if crs_confidence < 60:
+    # G1 FIX: Ambiguous easting band (300k-500k) gets 60-70% confidence.
+    # Threshold raised to 70 so user always confirms zone on ambiguous tie.
+    if crs_confidence < 70:
         triggers.append("T1")
     if not inside_nigeria:
         triggers.append("T2")
@@ -1423,10 +1426,23 @@ def _vision_result_to_text(vision_json: dict) -> str:
             else:
                 lines.append(f"E: {easting:.3f}  N: {northing:.3f}")
 
+    # Auto-close perimeter ring for OCR ledger if first station is not repeated at the end
+    if ledger_stations and len(ledger_stations) >= 3:
+        first_s = ledger_stations[0]
+        last_s = ledger_stations[-1]
+        f_e, f_n = first_s.get("easting"), first_s.get("northing")
+        l_e, l_n = last_s.get("easting"), last_s.get("northing")
+        if (f_e != l_e or f_n != l_n) and f_e is not None and f_n is not None:
+            sid = first_s.get("station_id", "S1")
+            lines.append(f"{sid} E: {f_e:.3f}  N: {f_n:.3f}")
+
     # Explicit raw coordinate table fallback
-    for pair in vision_json.get("raw_coordinates", []):
+    raw_coords = vision_json.get("raw_coordinates", [])
+    for pair in raw_coords:
         if len(pair) == 2:
             lines.append(f"E: {pair[0]:.3f}  N: {pair[1]:.3f}")
+    if raw_coords and len(raw_coords) >= 3 and raw_coords[0] != raw_coords[-1]:
+        lines.append(f"E: {raw_coords[0][0]:.3f}  N: {raw_coords[0][1]:.3f}")
 
     # Traverse legs (Type B plans / TRACK_B_FORWARD_TRAVERSE)
     traverse_legs = parsed_data.get("traverse_legs") or []
@@ -1498,7 +1514,20 @@ def _ocr_via_gemini(
         res_text = complete_ocr(messages=messages, image_b64=img_b64_raw, timeout=45)
         if res_text:
             _logger.info("[vision_ocr] 4-Tier AI client OCR succeeded")
-            return _normalize_ocr_response(res_text)
+            raw_clean = res_text.strip()
+            if raw_clean.startswith("```json"):
+                raw_clean = raw_clean[7:]
+            elif raw_clean.startswith("```"):
+                raw_clean = raw_clean[3:]
+            if raw_clean.endswith("```"):
+                raw_clean = raw_clean[:-3]
+            raw_clean = raw_clean.strip()
+            try:
+                result = _json.loads(raw_clean)
+                return _vision_result_to_text(result)
+            except Exception as parse_err:
+                _logger.warning(f"[vision_ocr] 4-Tier OCR JSON parsing failed: {parse_err}, returning raw text")
+                return res_text.strip()
     except Exception as exc:
         _logger.warning(f"[vision_ocr] 4-Tier AI client OCR failed: {exc}, cascading to Gemini")
 
@@ -1552,9 +1581,10 @@ def _ocr_via_gemini(
     }
 
     fallback_models = [
-        "gemini-3.5-flash",
-        "gemini-3-flash-preview",
-        "gemini-flash-latest"
+        "gemini-3.5-flash",          # Confirmed working via AQ. key
+        "gemini-3-flash-preview",    # Confirmed available
+        "gemini-flash-latest",       # Alias for latest flash
+        "gemini-2.5-flash",          # Stable fallback
     ]
 
     raw = None
@@ -2057,9 +2087,10 @@ def run(
             error_code="NO_COORDINATES_DETECTED",
             instruction=(
                 "We could not find any coordinates in this document. "
-                "This may be a scanned plan — try uploading a "
-                "clearer scan. Or enter your coordinates manually "
-                "below."
+                "TIPS: (1) Scan at 300 DPI or higher for best results. "
+                "(2) Upload the original PDF rather than a photo. "
+                "(3) Use the manual coordinate entry form below. "
+                "(4) For composite plans, use the COGO entry tool."
             ),
             run_id=run_id,
             stage=PipelineStage.COORD_EXTRACT,
@@ -2168,6 +2199,26 @@ def run(
                 f"AREA_DISCREPANCY: Computed area ({computed_area_ha:.2f} ha) differs "
                 f"from stated area ({stated_area_ha:.2f} ha) by {area_discrepancy_pct:+.1f}%."
             )
+        # G2 FIX: Track B anchor sanity check — large area deviation suggests wrong anchor
+        if abs(area_discrepancy_pct) > 15 and "TRACK_B" in (discovery_method or ""):
+            warnings.append(
+                "TRAVERSE_ANCHOR_SUSPECT: Area deviates "
+                f"{area_discrepancy_pct:+.1f}% from stated plan area. "
+                "The traverse anchor beacon may have been misread. "
+                "Please verify the starting station on the plan."
+            )
+            if "T3" not in dialog_triggers:
+                dialog_triggers.append("T3")
+        # G2 FIX: Track B anchor sanity check — large area deviation suggests wrong anchor
+        if abs(area_discrepancy_pct) > 15 and "TRACK_B" in (discovery_method or ""):
+            warnings.append(
+                "TRAVERSE_ANCHOR_SUSPECT: Area deviates "
+                f"{area_discrepancy_pct:+.1f}% from stated plan area. "
+                "The traverse anchor beacon may have been misread. "
+                "Please verify the starting station on the plan."
+            )
+            if "T3" not in dialog_triggers:
+                dialog_triggers.append("T3")
 
     # ── STEP B-1: Check if raw_text contains GRID_REF: (which indicates grid ref margin anchor)
     anchor_is_grid_ref = False

@@ -744,7 +744,8 @@ async def upload_coordinates(
                 "cadastral_mode": True,
                 "data": data_dump,
                 "cad_result": data_dump,
-                "session_id": run_id,
+                "run_id": run_id,       # normalized field (matches gate path)
+                "session_id": run_id,   # kept for backward compatibility
             })
 
 
@@ -918,6 +919,24 @@ async def confirm_gate(
     and starts the full multi-agent pipeline in a background thread.
     """
     logger.info(f"[server] /api/confirm/{run_id} received. Triggering background pipeline.")
+
+    # G3 FIX: Enforce lot selection on composite plans before pipeline starts
+    _session_pre = gate.get_session(run_id)
+    if _session_pre and _session_pre.coord_extract:
+        _plan_type = getattr(_session_pre.coord_extract, "plan_type", None)
+        _plan_type_val = _plan_type.value if hasattr(_plan_type, "value") else str(_plan_type or "")
+        if "TYPE_B" in _plan_type_val and not (payload.selected_lot_id or "").strip():
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail={
+                    "error_code": "LOT_SELECTION_REQUIRED",
+                    "message": (
+                        "This is a composite subdivision plan with multiple lots. "
+                        "Please select the specific lot you want analysed before confirming."
+                    ),
+                    "available_lots": getattr(_session_pre.coord_extract, "composite_lots", []),
+                }
+            )
 
     # Call gate.confirm which handles database update + snapshot generation
     confirm_result = gate.confirm(
@@ -1653,69 +1672,24 @@ async def get_personas():
         {"id": "OTHERS", "label": "Others", "desc": ""}
     ]
 
-# ── Resilient frontend path resolution ──────────────────────────────────────
-_BASE_DIR = Path(history_manager.ROOT_DIR)
-_FRONTEND_CANDIDATES = [
-    _BASE_DIR / "frontend" / "Land-Intelligence" / "artifacts" / "landiq" / "dist" / "public" / "index.html",
-    _BASE_DIR / "frontend" / "dist" / "index.html",
-    _BASE_DIR / "dist" / "index.html",
-]
-_FRONTEND_INDEX: Path | None = next(
-    (p for p in _FRONTEND_CANDIDATES if p.exists()), None
-)
-if _FRONTEND_INDEX is None:
-    logger.warning(
-        "[server] Frontend build not found. Run: cd frontend/Land-Intelligence && pnpm build"
-    )
+# ── Root & Health Endpoints (Pure API Mode) ──────────────────────────────────
+@app.get("/")
+def api_root():
+    """Root endpoint describing service status and pointing developers to the UI and docs."""
+    return {
+        "service": "LandIQ Spatial Intelligence API",
+        "version": "2.0",
+        "status": "online",
+        "frontend_url": "http://localhost:5173",
+        "docs_url": "/docs",
+        "openapi_spec": "/openapi.json"
+    }
 
 
-@app.get("/", response_class=HTMLResponse)
-def serve_index():
-    """Serve the main frontend application file."""
-    if _FRONTEND_INDEX and _FRONTEND_INDEX.exists():
-        return HTMLResponse(content=_FRONTEND_INDEX.read_text(encoding="utf-8"))
-    return f"""
-    <html>
-      <head><title>LandIQ Server</title></head>
-      <body style="font-family:sans-serif;padding:40px;background:#1e293b;color:#f8fafc;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;">
-        <div style="text-align:center;background:#0f172a;padding:40px;border-radius:12px;border:1px solid #334155;max-width:600px;box-shadow:0 10px 15px -3px rgba(0,0,0,0.3)">
-          <h1 style="color:#3b82f6;margin-top:0;">LandIQ API Server is Running</h1>
-          <p>The backend server is up and listening. Frontend build not found.</p>
-          <p style="color:#94a3b8;font-size:14px;margin-bottom:0;">Please run <code>pnpm run build</code> in the frontend directory.</p>
-        </div>
-      </body>
-    </html>
-    """
-
-
-@app.get("/index_light.html", response_class=HTMLResponse)
-def serve_light_sandbox():
-    """Serve the main index.html with the light theme class pre-injected."""
-    main_path = Path(history_manager.ROOT_DIR) / "frontend" / "index.html"
-    if not main_path.exists():
-        return HTMLResponse(content="<h1>index.html not found</h1>", status_code=404)
-    # Inject the theme-light class so the page opens in light mode without a flash
-    html = main_path.read_text(encoding="utf-8")
-    html = html.replace(
-        "if (isLightPage || localStorage.getItem('landiq-theme') === 'light') {",
-        "if (true || isLightPage || localStorage.getItem('landiq-theme') === 'light') {",
-        1,
-    )
-    return HTMLResponse(content=html)
-
-
-# Serve other frontend assets if any
-app.mount("/assets", StaticFiles(directory=str(Path(history_manager.ROOT_DIR) / "frontend" / "Land-Intelligence" / "artifacts" / "landiq" / "dist" / "public" / "assets"), check_dir=False), name="assets")
-
-# Fallback for SPA Routing (React Wouter)
-@app.get("/{full_path:path}", response_class=HTMLResponse)
-def serve_spa_catchall(full_path: str):
-    # Ignore API calls that 404
-    if full_path.startswith("api/"):
-        raise HTTPException(status_code=404, detail="API route not found")
-    if _FRONTEND_INDEX and _FRONTEND_INDEX.exists():
-        return HTMLResponse(content=_FRONTEND_INDEX.read_text(encoding="utf-8"))
-    return HTMLResponse(content="<h1>Frontend build not found</h1>", status_code=404)
+@app.get("/api/health")
+def health_check():
+    """Lightweight health check for container orchestration and uptime monitors."""
+    return {"status": "ok", "service": "landiq-backend", "version": "2.0"}
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=True)

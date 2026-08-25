@@ -38,22 +38,25 @@ logger = logging.getLogger("landiq.ai_client")
 def _get_model(key: str, default: str = "") -> str:
     """Read latest model string from environment or defaults."""
     defaults = {
-        # OCR/Vision: nvidia/nemotron-nano-12b-v2-vl is the correct NIM vision model
-        "ocr": "nvidia/nemotron-nano-12b-v2-vl",
-        "ocr_fallback": "meta/llama-3.2-90b-vision-instruct",
-        "ocr_openrouter": "google/gemini-2.5-flash",
-        "vision": "meta/llama-3.2-90b-vision-instruct",
-        "vision_fallback": "meta/llama-3.2-11b-vision-instruct",
-        "vision_openrouter": "meta-llama/llama-3.2-11b-vision-instruct:free",
-        # Reasoning: nvidia/nemotron-3-nano-omni-30b-a3b-reasoning
-        "reasoning": "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning",
-        "reasoning_fallback": "nvidia/llama-3.3-nemotron-super-49b-v1",
-        "reasoning_openrouter": "nvidia/llama-3.3-nemotron-super-49b-v1:free",
-        # Report: these are correct NIM model IDs
-        "report": "meta/llama-3.3-70b-instruct",
-        "report_openrouter": "meta-llama/llama-3.3-70b-instruct",
-        "fast": "meta/llama-3.2-11b-vision-instruct",
-        "fast_openrouter": "meta-llama/llama-3.2-11b-vision-instruct:free",
+        # OCR/Vision: llama-3.2-11b confirmed working on NIM at 1.9s (2026-08-14 live test).
+        # nemotron-nano-12b-v2-vl and llama-3.2-90b are unresponsive (3+ min timeout, marked DEAD).
+        # Fast-path: Gemini Direct is tried FIRST for vision/OCR inside ai_complete().
+        # NIM llama-3.2-11b is Tier-1 backup; OpenRouter gemini-2.5-flash is Tier-2.
+        "ocr":              "meta/llama-3.2-11b-vision-instruct",  # NIM: confirmed 1.9s
+        "ocr_fallback":     "meta/llama-3.2-11b-vision-instruct",  # same — skip dead models
+        "ocr_openrouter":   "google/gemini-2.5-flash",              # OR: confirmed 1.2s
+        "vision":           "meta/llama-3.2-11b-vision-instruct",  # NIM: confirmed 1.9s
+        "vision_fallback":  "meta/llama-3.2-11b-vision-instruct",  # same — skip dead 90B
+        "vision_openrouter": "google/gemini-2.5-flash",             # OR: confirmed 1.2s
+        # Reasoning: both NIM models confirmed working (1.0s and 5.5s respectively)
+        "reasoning":            "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning",  # 1.0s OK
+        "reasoning_fallback":   "nvidia/llama-3.3-nemotron-super-49b-v1",         # 5.5s OK
+        "reasoning_openrouter": "google/gemini-2.5-pro",
+        # Report: llama-3.3-70b works but is slow (36s). OR gemini-2.5-flash wins (1.2s).
+        "report":            "meta/llama-3.3-70b-instruct",  # NIM fallback (slow)
+        "report_openrouter": "google/gemini-2.5-flash",       # OR primary (fast)
+        "fast":              "meta/llama-3.2-11b-vision-instruct",  # NIM: confirmed 1.9s
+        "fast_openrouter":   "google/gemini-2.5-flash",
     }
     env_name = f"LLM_{key.upper()}"
     return os.getenv(env_name, defaults.get(key, default))
@@ -116,7 +119,7 @@ def _kaggle_client():
         api_key=proxy_key,
         base_url=proxy_url,
     )
-    default_model = os.getenv("LLM_DEFAULT", "google/gemini-3-flash-preview")
+    default_model = os.getenv("LLM_DEFAULT", "google/gemini-2.5-flash")
     return client, default_model
 
 
@@ -148,15 +151,34 @@ def ai_complete(
     # Build the message list (inject image into last user message if provided)
     if image_b64 and task in ("ocr", "vision"):
         messages = _inject_image(messages, image_b64)
+        # Fast path for Vision/OCR: inject image into Gemini Direct payload
+        # (pass raw image_b64 — Gemini Direct builds its own payload independently)
+        gemini_fast = _try_gemini_direct([], max_tokens, temperature, image_b64=image_b64,
+                                         messages_raw=messages)
+        if gemini_fast is not None:
+            return gemini_fast
 
     # ── TIER 1: NVIDIA NIM ───────────────────────────────────────────────────
     client = _nvidia_client()
     if client:
-        # For heavy vision/OCR tasks, cap NVIDIA timeout at 10s to prevent long hanging delays
-        nv_timeout = 10 if (image_b64 or task in ("ocr", "vision")) else timeout
-        primary_model   = MODEL_ROUTING.get(task, "")
-        fallback_model  = MODEL_ROUTING.get(f"{task}_fallback", "")
-        for model in filter(None, [primary_model, fallback_model]):
+        # Per-task NIM timeouts (tuned from 2026-08-14 live test results):
+        #   ocr/vision: 15s  — llama-3.2-11b confirmed 1.9s; dead models already removed
+        #   reasoning:  20s  — nemotron-reasoning confirmed 1.0s; super-49b confirmed 5.5s
+        #   report:     42s  — llama-3.3-70b confirmed 36s (slow but works)
+        #   fast/other: 15s  — llama-3.2-11b confirmed 1.9s
+        if task in ("ocr", "vision"):
+            nv_timeout = 15
+        elif task == "reasoning":
+            nv_timeout = 20
+        elif task == "report":
+            nv_timeout = 42
+        else:
+            nv_timeout = max(15, timeout)
+        primary_model  = MODEL_ROUTING.get(task, "")
+        fallback_model = MODEL_ROUTING.get(f"{task}_fallback", "")
+        # Deduplicate — if primary == fallback (e.g. ocr), only call once
+        nim_models = list(dict.fromkeys(filter(None, [primary_model, fallback_model])))
+        for model in nim_models:
             result = _try_complete(client, model, messages,
                                    max_tokens, temperature, nv_timeout,
                                    "nvidia", task)
@@ -168,22 +190,25 @@ def ai_complete(
     if client:
         or_model = MODEL_ROUTING.get(f"{task}_openrouter", "")
         if or_model:
+            # Clip max_tokens to 1500 for OpenRouter to prevent 402 Payment Required on low credit accounts
+            or_max_tokens = min(max_tokens, 1500) if max_tokens else 1024
             result = _try_complete(client, or_model, messages,
-                                   max_tokens, temperature, timeout,
+                                   or_max_tokens, temperature, timeout,
                                    "openrouter", task)
             if result is not None:
                 return result
 
-    # ── TIER 3: KAGGLE PROXY ─────────────────────────────────────────────────
-    client, kaggle_model = _kaggle_client()
-    if client and kaggle_model:
-        result = _try_complete(client, kaggle_model, messages,
-                               max_tokens, temperature, timeout,
-                               "kaggle", task)
-        if result is not None:
-            return result
+    # ── TIER 3: KAGGLE PROXY (Text tasks only) ─────────────────────────────
+    if not image_b64:
+        client, kaggle_model = _kaggle_client()
+        if client and kaggle_model:
+            result = _try_complete(client, kaggle_model, messages,
+                                   max_tokens, temperature, timeout,
+                                   "kaggle", task)
+            if result is not None:
+                return result
 
-    # ── TIER 3.5: GEMINI DIRECT (Google AI Studio Key) ─────────────────────
+    # ── TIER 3.5: GEMINI DIRECT (Fallback for text tasks) ─────────────────
     gemini_result = _try_gemini_direct(messages, max_tokens, temperature, image_b64=image_b64)
     if gemini_result is not None:
         return gemini_result
@@ -234,50 +259,81 @@ def _try_complete(
         return None
 
 
-def _try_gemini_direct(messages: list[dict], max_tokens: int, temperature: float, image_b64: str | None = None) -> str | None:
-    """Tier 3.5: Gemini Direct fallback using Google AI Studio GEMINI_API_KEY."""
-    api_key = os.getenv("GEMINI_API_KEY", "").strip()
+def _try_gemini_direct(
+    messages: list[dict],
+    max_tokens: int,
+    temperature: float,
+    image_b64: str | None = None,
+    messages_raw: list[dict] | None = None,
+) -> str | None:
+    """Tier 3.5: Gemini Direct fallback using Google AI Studio GEMINI_API_KEY.
+    Uses gemini-3.5-flash (verified working via key starting with AQ.).
+    """
+    api_key = os.getenv("GEMINI_API_KEY", "").strip().strip('"')
     if not api_key:
         return None
     import requests
+
+    # Use messages_raw if provided (preserves original un-injected messages)
+    src = messages_raw if messages_raw else messages
     system = ""
     prompt = ""
-    for m in messages:
+    for m in src:
         if m.get("role") == "system":
-            system = m.get("content", "")
+            c = m.get("content", "")
+            system = c if isinstance(c, str) else ""
         elif m.get("role") == "user":
             c = m.get("content", "")
             if isinstance(c, str):
                 prompt = c
             elif isinstance(c, list):
                 for part in c:
-                    if part.get("type") == "text":
+                    if isinstance(part, dict) and part.get("type") == "text":
                         prompt = part.get("text", "")
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key={api_key}"
-    parts = []
+
+    # Model priority — gemini-3-flash-preview is fastest (1.2s), gemini-3.5-flash is secondary
+    gemini_models = [
+        ("gemini-3-flash-preview", 20),   # primary: avg 1.2s, very reliable
+        ("gemini-3.5-flash",       40),   # fallback: occasionally slow but available
+        ("gemini-flash-latest",    30),   # alias fallback
+    ]
+    parts_base = []
     if system:
-        parts.append({"text": f"System Instruction:\n{system}\n\nUser Prompt:\n{prompt}"})
+        parts_base.append({"text": f"System Instruction:\n{system}\n\nUser Prompt:\n{prompt}"})
     else:
-        parts.append({"text": prompt or "Process this request."})
+        parts_base.append({"text": prompt or "Process this request."})
     if image_b64:
-        parts.append({"inlineData": {"mimeType": "image/png", "data": image_b64}})
-    payload = {
-        "contents": [{"parts": parts}],
-        "generationConfig": {"temperature": temperature, "maxOutputTokens": max_tokens}
-    }
-    try:
-        resp = requests.post(url, json=payload, timeout=25)
-        if resp.ok:
-            data = resp.json()
-            candidates = data.get("candidates", [])
-            if candidates:
-                cand_parts = candidates[0].get("content", {}).get("parts", [])
-                if cand_parts and "text" in cand_parts[0]:
-                    text = cand_parts[0]["text"].strip()
-                    logger.info("[ai_client] Gemini Direct call succeeded")
-                    return text
-    except Exception as exc:
-        logger.warning(f"[ai_client] Gemini Direct call failed: {exc}")
+        parts_base.append({"inlineData": {"mimeType": "image/png", "data": image_b64}})
+
+    for model, model_timeout in gemini_models:
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
+        # Gemini thinking models: set thinkingBudget: 0 to eliminate token consumption on thought loops
+        # and ensure 100% of token budget (8192) is dedicated to output text (preventing JSON truncation).
+        gemini_max_tokens = max(max_tokens, 8192)
+        payload = {
+            "contents": [{"parts": list(parts_base)}],
+            "generationConfig": {
+                "temperature": temperature,
+                "maxOutputTokens": gemini_max_tokens,
+                "thinkingConfig": {"thinkingBudget": 0}
+            }
+        }
+        try:
+            resp = requests.post(url, json=payload, timeout=model_timeout)
+            if resp.ok:
+                data = resp.json()
+                candidates = data.get("candidates", [])
+                if candidates:
+                    cand_parts = candidates[0].get("content", {}).get("parts", [])
+                    text_parts = [p.get("text", "") for p in cand_parts if "text" in p]
+                    if text_parts:
+                        text = "".join(text_parts).strip()
+                        logger.info(f"[ai_client] Gemini Direct ({model}) call succeeded")
+                        return text
+            else:
+                logger.warning(f"[ai_client] Gemini Direct ({model}) HTTP {resp.status_code}: {resp.text[:200]}")
+        except Exception as exc:
+            logger.warning(f"[ai_client] Gemini Direct ({model}) failed: {exc}, trying next model")
     return None
 
 
@@ -288,6 +344,9 @@ def _try_ollama(
     task: str,
 ) -> str | None:
     """Tier 4: Ollama local fallback. Returns text or None."""
+    # Fast check: if Ollama isn't explicitly enabled or running, bypass instantly
+    if not os.getenv("OLLAMA_ENABLED", "").lower() in ("true", "1"):
+        return None
     try:
         import ollama  # type: ignore
         model = os.getenv("OLLAMA_MODEL", "mistral:7b-instruct-q4_K_M")
