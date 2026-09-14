@@ -95,6 +95,8 @@ async def _cleanup_temp_snapshots() -> None:
 async def lifespan(app: FastAPI):
     """FastAPI lifespan — runs startup logic then yields control to the app."""
     import asyncio
+    from core.scheduler import start_news_scheduler
+    start_news_scheduler()
     logger.info("[server] Starting up... applying database migrations.")
     run_migrations()
     asyncio.create_task(_cleanup_temp_snapshots())
@@ -1671,6 +1673,116 @@ async def get_personas():
         {"id": "ESTATE_VALUER", "label": "Estate valuer", "desc": ""},
         {"id": "OTHERS", "label": "Others", "desc": ""}
     ]
+
+
+
+# ── News Intelligence Feed API Routes ─────────────────────────────────────────
+
+@app.get("/api/news/alerts")
+def get_news_alerts(
+    lga:   str | None = None,
+    state: str | None = None,
+    days:  int = 90,
+    limit: int = 20,
+):
+    """
+    Return CONFIRMED news risk events for a given LGA/state in the last N days.
+    Used by the frontend NewsAlertsWidget to surface verified risk signals on reports.
+    """
+    from db.migrate import get_connection
+    conn = get_connection()
+    try:
+        params: list = []
+        where_clauses = [
+            "status IN ('CONFIRMED', 'PENDING')",
+            f"created_at >= datetime('now', '-{days} days')",
+        ]
+        if lga:
+            where_clauses.append("LOWER(ne.lga) LIKE LOWER(?)")
+            params.append(f"%{lga.strip()}%")
+        if state:
+            where_clauses.append("LOWER(ne.state) LIKE LOWER(?)")
+            params.append(f"%{state.strip()}%")
+
+        where_sql = " AND ".join(where_clauses)
+        rows = conn.execute(
+            f"""
+            SELECT ne.id, ne.event_type, ne.lga, ne.state, ne.source_quote,
+                   ne.date_mentioned, ne.confidence, ne.corroboration_count,
+                   ne.status, ne.created_at,
+                   nr.source AS newspaper, nr.url AS article_url, nr.title AS article_title
+            FROM news_events ne
+            LEFT JOIN news_raw nr ON ne.article_id = nr.id
+            WHERE {where_sql}
+            ORDER BY ne.created_at DESC
+            LIMIT ?
+            """,
+            (*params, limit),
+        ).fetchall()
+        return [dict(r) for r in rows]
+    finally:
+        conn.close()
+
+
+@app.get("/api/admin/news/queue")
+def get_news_audit_queue(status: str = "PENDING", limit: int = 50):
+    """Return news events pending human review."""
+    from db.migrate import get_connection
+    conn = get_connection()
+    try:
+        rows = conn.execute(
+            """
+            SELECT ne.*, nr.source AS newspaper, nr.url AS article_url, nr.title AS article_title
+            FROM news_events ne
+            LEFT JOIN news_raw nr ON ne.article_id = nr.id
+            WHERE ne.status = ?
+            ORDER BY ne.created_at DESC LIMIT ?
+            """,
+            (status.upper(), limit),
+        ).fetchall()
+        return [dict(r) for r in rows]
+    finally:
+        conn.close()
+
+
+@app.post("/api/admin/news/events/{event_id}/dismiss")
+def dismiss_news_event(event_id: int, reason: str = ""):
+    """Admin endpoint: dismiss a news event from the risk feed."""
+    from db.migrate import get_connection
+    conn = get_connection()
+    try:
+        conn.execute(
+            "UPDATE news_events SET status='DISMISSED', dismissed_reason=? WHERE id=?",
+            (reason, event_id),
+        )
+        conn.commit()
+        return {"status": "dismissed", "event_id": event_id}
+    finally:
+        conn.close()
+
+
+@app.post("/api/admin/news/events/{event_id}/confirm")
+def confirm_news_event(event_id: int):
+    """Admin endpoint: manually promote a PENDING event to CONFIRMED."""
+    from db.migrate import get_connection
+    conn = get_connection()
+    try:
+        conn.execute(
+            "UPDATE news_events SET status='CONFIRMED' WHERE id=?",
+            (event_id,),
+        )
+        conn.commit()
+        return {"status": "confirmed", "event_id": event_id}
+    finally:
+        conn.close()
+
+
+@app.post("/api/admin/news/trigger")
+def trigger_news_pipeline():
+    """Admin endpoint: manually trigger a news scrape + parse cycle."""
+    from core.scheduler import trigger_now
+    return trigger_now()
+
 
 # ── Root & Health Endpoints (Pure API Mode) ──────────────────────────────────
 @app.get("/")

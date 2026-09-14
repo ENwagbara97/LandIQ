@@ -1,0 +1,2456 @@
+[
+  {
+    "lga": "Aba North",
+    "state": "Abia",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Aba South",
+    "state": "Abia",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Arochukwu",
+    "state": "Abia",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Bende",
+    "state": "Abia",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Ikwuano",
+    "state": "Abia",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Isiala Ngwa North",
+    "state": "Abia",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Isiala Ngwa South",
+    "state": "Abia",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Isuikwuato",
+    "state": "Abia",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Obi Ngwa",
+    "state": "Abia",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Ohafia",
+    "state": "Abia",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Osisioma",
+    "state": "Abia",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Ugwunagbo",
+    "state": "Abia",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Ukwa East",
+    "state": "Abia",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Ukwa West",
+    "state": "Abia",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Umuahia North",
+    "state": "Abia",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Umuahia South",
+    "state": "Abia",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Umu Nneochi",
+    "state": "Abia",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Demsa",
+    "state": "Adamawa",
+    "zone": 33,
+    "epsg": "EPSG:26333"
+  },
+  {
+    "lga": "Fufure",
+    "state": "Adamawa",
+    "zone": 33,
+    "epsg": "EPSG:26333"
+  },
+  {
+    "lga": "Ganye",
+    "state": "Adamawa",
+    "zone": 33,
+    "epsg": "EPSG:26333"
+  },
+  {
+    "lga": "Gombi",
+    "state": "Adamawa",
+    "zone": 33,
+    "epsg": "EPSG:26333"
+  },
+  {
+    "lga": "Hong",
+    "state": "Adamawa",
+    "zone": 33,
+    "epsg": "EPSG:26333"
+  },
+  {
+    "lga": "Jada",
+    "state": "Adamawa",
+    "zone": 33,
+    "epsg": "EPSG:26333"
+  },
+  {
+    "lga": "Lamurde",
+    "state": "Adamawa",
+    "zone": 33,
+    "epsg": "EPSG:26333"
+  },
+  {
+    "lga": "Madagali",
+    "state": "Adamawa",
+    "zone": 33,
+    "epsg": "EPSG:26333"
+  },
+  {
+    "lga": "Maiha",
+    "state": "Adamawa",
+    "zone": 33,
+    "epsg": "EPSG:26333"
+  },
+  {
+    "lga": "Mayo Belwa",
+    "state": "Adamawa",
+    "zone": 33,
+    "epsg": "EPSG:26333"
+  },
+  {
+    "lga": "Michika",
+    "state": "Adamawa",
+    "zone": 33,
+    "epsg": "EPSG:26333"
+  },
+  {
+    "lga": "Mubi North",
+    "state": "Adamawa",
+    "zone": 33,
+    "epsg": "EPSG:26333"
+  },
+  {
+    "lga": "Mubi South",
+    "state": "Adamawa",
+    "zone": 33,
+    "epsg": "EPSG:26333"
+  },
+  {
+    "lga": "Numan",
+    "state": "Adamawa",
+    "zone": 33,
+    "epsg": "EPSG:26333"
+  },
+  {
+    "lga": "Shelleng",
+    "state": "Adamawa",
+    "zone": 33,
+    "epsg": "EPSG:26333"
+  },
+  {
+    "lga": "Song",
+    "state": "Adamawa",
+    "zone": 33,
+    "epsg": "EPSG:26333"
+  },
+  {
+    "lga": "Toungo",
+    "state": "Adamawa",
+    "zone": 33,
+    "epsg": "EPSG:26333"
+  },
+  {
+    "lga": "Yola North",
+    "state": "Adamawa",
+    "zone": 33,
+    "epsg": "EPSG:26333"
+  },
+  {
+    "lga": "Yola South",
+    "state": "Adamawa",
+    "zone": 33,
+    "epsg": "EPSG:26333"
+  },
+  {
+    "lga": "Abak",
+    "state": "Akwa Ibom",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Eastern Obolo",
+    "state": "Akwa Ibom",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Eket",
+    "state": "Akwa Ibom",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Esit Eket",
+    "state": "Akwa Ibom",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Essien Udim",
+    "state": "Akwa Ibom",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Etim Ekpo",
+    "state": "Akwa Ibom",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Etinan",
+    "state": "Akwa Ibom",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Ibeno",
+    "state": "Akwa Ibom",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Ibesikpo Asutan",
+    "state": "Akwa Ibom",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Ibiono Ibom",
+    "state": "Akwa Ibom",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Ika",
+    "state": "Akwa Ibom",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Ikono",
+    "state": "Akwa Ibom",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Ikot Abasi",
+    "state": "Akwa Ibom",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Ikot Ekpene",
+    "state": "Akwa Ibom",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Ini",
+    "state": "Akwa Ibom",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Itu",
+    "state": "Akwa Ibom",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Mbo",
+    "state": "Akwa Ibom",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Mkpat Enin",
+    "state": "Akwa Ibom",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Nsit Atai",
+    "state": "Akwa Ibom",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Nsit Ibom",
+    "state": "Akwa Ibom",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Nsit Ubium",
+    "state": "Akwa Ibom",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Obot Akara",
+    "state": "Akwa Ibom",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Okobo",
+    "state": "Akwa Ibom",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Onna",
+    "state": "Akwa Ibom",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Oron",
+    "state": "Akwa Ibom",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Oruk Anam",
+    "state": "Akwa Ibom",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Udung Uko",
+    "state": "Akwa Ibom",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Ukanafun",
+    "state": "Akwa Ibom",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Uruan",
+    "state": "Akwa Ibom",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Urue Offong/Oruko",
+    "state": "Akwa Ibom",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Uyo",
+    "state": "Akwa Ibom",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Aguata",
+    "state": "Anambra",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Awka North",
+    "state": "Anambra",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Awka South",
+    "state": "Anambra",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Ayamelum",
+    "state": "Anambra",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Dunukofia",
+    "state": "Anambra",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Ekwusigo",
+    "state": "Anambra",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Idemili North",
+    "state": "Anambra",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Idemili South",
+    "state": "Anambra",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Ihiala",
+    "state": "Anambra",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Njikoka",
+    "state": "Anambra",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Nnewi North",
+    "state": "Anambra",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Nnewi South",
+    "state": "Anambra",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Ogbaru",
+    "state": "Anambra",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Onitsha North",
+    "state": "Anambra",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Onitsha South",
+    "state": "Anambra",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Orumba North",
+    "state": "Anambra",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Orumba South",
+    "state": "Anambra",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Oyi",
+    "state": "Anambra",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Alkaleri",
+    "state": "Bauchi",
+    "zone": 33,
+    "epsg": "EPSG:26333"
+  },
+  {
+    "lga": "Bauchi",
+    "state": "Bauchi",
+    "zone": 33,
+    "epsg": "EPSG:26333"
+  },
+  {
+    "lga": "Bogoro",
+    "state": "Bauchi",
+    "zone": 33,
+    "epsg": "EPSG:26333"
+  },
+  {
+    "lga": "Damban",
+    "state": "Bauchi",
+    "zone": 33,
+    "epsg": "EPSG:26333"
+  },
+  {
+    "lga": "Darazo",
+    "state": "Bauchi",
+    "zone": 33,
+    "epsg": "EPSG:26333"
+  },
+  {
+    "lga": "Dass",
+    "state": "Bauchi",
+    "zone": 33,
+    "epsg": "EPSG:26333"
+  },
+  {
+    "lga": "Gamawa",
+    "state": "Bauchi",
+    "zone": 33,
+    "epsg": "EPSG:26333"
+  },
+  {
+    "lga": "Ganjuwa",
+    "state": "Bauchi",
+    "zone": 33,
+    "epsg": "EPSG:26333"
+  },
+  {
+    "lga": "Giade",
+    "state": "Bauchi",
+    "zone": 33,
+    "epsg": "EPSG:26333"
+  },
+  {
+    "lga": "Katagum",
+    "state": "Bauchi",
+    "zone": 33,
+    "epsg": "EPSG:26333"
+  },
+  {
+    "lga": "Kirfi",
+    "state": "Bauchi",
+    "zone": 33,
+    "epsg": "EPSG:26333"
+  },
+  {
+    "lga": "Misau",
+    "state": "Bauchi",
+    "zone": 33,
+    "epsg": "EPSG:26333"
+  },
+  {
+    "lga": "Ningi",
+    "state": "Bauchi",
+    "zone": 33,
+    "epsg": "EPSG:26333"
+  },
+  {
+    "lga": "Shira",
+    "state": "Bauchi",
+    "zone": 33,
+    "epsg": "EPSG:26333"
+  },
+  {
+    "lga": "Tafawa Balewa",
+    "state": "Bauchi",
+    "zone": 33,
+    "epsg": "EPSG:26333"
+  },
+  {
+    "lga": "Toro",
+    "state": "Bauchi",
+    "zone": 33,
+    "epsg": "EPSG:26333"
+  },
+  {
+    "lga": "Warji",
+    "state": "Bauchi",
+    "zone": 33,
+    "epsg": "EPSG:26333"
+  },
+  {
+    "lga": "Zaki",
+    "state": "Bauchi",
+    "zone": 33,
+    "epsg": "EPSG:26333"
+  },
+  {
+    "lga": "Brass",
+    "state": "Bayelsa",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Ekeremor",
+    "state": "Bayelsa",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Kolokuma/Opokuma",
+    "state": "Bayelsa",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Nembe",
+    "state": "Bayelsa",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Ogbia",
+    "state": "Bayelsa",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Sagbama",
+    "state": "Bayelsa",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Southern Ijaw",
+    "state": "Bayelsa",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Yenagoa",
+    "state": "Bayelsa",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Ado",
+    "state": "Benue",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Agatu",
+    "state": "Benue",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Apa",
+    "state": "Benue",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Buruku",
+    "state": "Benue",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Gboko",
+    "state": "Benue",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Guma",
+    "state": "Benue",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Gwer East",
+    "state": "Benue",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Gwer West",
+    "state": "Benue",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Katsina-Ala",
+    "state": "Benue",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Konshisha",
+    "state": "Benue",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Kwande",
+    "state": "Benue",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Logo",
+    "state": "Benue",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Makurdi",
+    "state": "Benue",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Obi",
+    "state": "Benue",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Ogbadibo",
+    "state": "Benue",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Ohimini",
+    "state": "Benue",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Oju",
+    "state": "Benue",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Okpokwu",
+    "state": "Benue",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Oturkpo",
+    "state": "Benue",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Tarka",
+    "state": "Benue",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Ukum",
+    "state": "Benue",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Ushongo",
+    "state": "Benue",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Vandeikya",
+    "state": "Benue",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Abadam",
+    "state": "Borno",
+    "zone": 33,
+    "epsg": "EPSG:26333"
+  },
+  {
+    "lga": "Askira/Uba",
+    "state": "Borno",
+    "zone": 33,
+    "epsg": "EPSG:26333"
+  },
+  {
+    "lga": "Bama",
+    "state": "Borno",
+    "zone": 33,
+    "epsg": "EPSG:26333"
+  },
+  {
+    "lga": "Bayo",
+    "state": "Borno",
+    "zone": 33,
+    "epsg": "EPSG:26333"
+  },
+  {
+    "lga": "Biu",
+    "state": "Borno",
+    "zone": 33,
+    "epsg": "EPSG:26333"
+  },
+  {
+    "lga": "Chibok",
+    "state": "Borno",
+    "zone": 33,
+    "epsg": "EPSG:26333"
+  },
+  {
+    "lga": "Damboa",
+    "state": "Borno",
+    "zone": 33,
+    "epsg": "EPSG:26333"
+  },
+  {
+    "lga": "Dikwa",
+    "state": "Borno",
+    "zone": 33,
+    "epsg": "EPSG:26333"
+  },
+  {
+    "lga": "Gubio",
+    "state": "Borno",
+    "zone": 33,
+    "epsg": "EPSG:26333"
+  },
+  {
+    "lga": "Guzamala",
+    "state": "Borno",
+    "zone": 33,
+    "epsg": "EPSG:26333"
+  },
+  {
+    "lga": "Gwoza",
+    "state": "Borno",
+    "zone": 33,
+    "epsg": "EPSG:26333"
+  },
+  {
+    "lga": "Hawul",
+    "state": "Borno",
+    "zone": 33,
+    "epsg": "EPSG:26333"
+  },
+  {
+    "lga": "Jere",
+    "state": "Borno",
+    "zone": 33,
+    "epsg": "EPSG:26333"
+  },
+  {
+    "lga": "Kaga",
+    "state": "Borno",
+    "zone": 33,
+    "epsg": "EPSG:26333"
+  },
+  {
+    "lga": "Konduga",
+    "state": "Borno",
+    "zone": 33,
+    "epsg": "EPSG:26333"
+  },
+  {
+    "lga": "Kukawa",
+    "state": "Borno",
+    "zone": 33,
+    "epsg": "EPSG:26333"
+  },
+  {
+    "lga": "Kwaya Kusar",
+    "state": "Borno",
+    "zone": 33,
+    "epsg": "EPSG:26333"
+  },
+  {
+    "lga": "Mafa",
+    "state": "Borno",
+    "zone": 33,
+    "epsg": "EPSG:26333"
+  },
+  {
+    "lga": "Magumeri",
+    "state": "Borno",
+    "zone": 33,
+    "epsg": "EPSG:26333"
+  },
+  {
+    "lga": "Maiduguri",
+    "state": "Borno",
+    "zone": 33,
+    "epsg": "EPSG:26333"
+  },
+  {
+    "lga": "Marte",
+    "state": "Borno",
+    "zone": 33,
+    "epsg": "EPSG:26333"
+  },
+  {
+    "lga": "Mobbar",
+    "state": "Borno",
+    "zone": 33,
+    "epsg": "EPSG:26333"
+  },
+  {
+    "lga": "Monguno",
+    "state": "Borno",
+    "zone": 33,
+    "epsg": "EPSG:26333"
+  },
+  {
+    "lga": "Ngala",
+    "state": "Borno",
+    "zone": 33,
+    "epsg": "EPSG:26333"
+  },
+  {
+    "lga": "Nganzai",
+    "state": "Borno",
+    "zone": 33,
+    "epsg": "EPSG:26333"
+  },
+  {
+    "lga": "Shani",
+    "state": "Borno",
+    "zone": 33,
+    "epsg": "EPSG:26333"
+  },
+  {
+    "lga": "Abi",
+    "state": "Cross River",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Akamkpa",
+    "state": "Cross River",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Akpabuyo",
+    "state": "Cross River",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Bakassi",
+    "state": "Cross River",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Bekwarra",
+    "state": "Cross River",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Biase",
+    "state": "Cross River",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Boki",
+    "state": "Cross River",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Calabar Municipal",
+    "state": "Cross River",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Calabar South",
+    "state": "Cross River",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Etung",
+    "state": "Cross River",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Ikom",
+    "state": "Cross River",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Obanliku",
+    "state": "Cross River",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Obubra",
+    "state": "Cross River",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Obudu",
+    "state": "Cross River",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Odukpani",
+    "state": "Cross River",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Ogoja",
+    "state": "Cross River",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Yakuur",
+    "state": "Cross River",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Yala",
+    "state": "Cross River",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Aniocha North",
+    "state": "Delta",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Aniocha South",
+    "state": "Delta",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Bomadi",
+    "state": "Delta",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Burutu",
+    "state": "Delta",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Ethiope East",
+    "state": "Delta",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Ethiope West",
+    "state": "Delta",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Ika North East",
+    "state": "Delta",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Ika South",
+    "state": "Delta",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Isoko North",
+    "state": "Delta",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Isoko South",
+    "state": "Delta",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Ndokwa East",
+    "state": "Delta",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Ndokwa West",
+    "state": "Delta",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Okpe",
+    "state": "Delta",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Oshimili North",
+    "state": "Delta",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Oshimili South",
+    "state": "Delta",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Patani",
+    "state": "Delta",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Sapele",
+    "state": "Delta",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Udu",
+    "state": "Delta",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Ughelli North",
+    "state": "Delta",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Ughelli South",
+    "state": "Delta",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Ukwuani",
+    "state": "Delta",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Uvwie",
+    "state": "Delta",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Warri North",
+    "state": "Delta",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Warri South",
+    "state": "Delta",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Warri South West",
+    "state": "Delta",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Afikpo North",
+    "state": "Ebonyi",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Afikpo South",
+    "state": "Ebonyi",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Ebonyi",
+    "state": "Ebonyi",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Ezza North",
+    "state": "Ebonyi",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Ezza South",
+    "state": "Ebonyi",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Ikwo",
+    "state": "Ebonyi",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Ishielu",
+    "state": "Ebonyi",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Ivo",
+    "state": "Ebonyi",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Izzi",
+    "state": "Ebonyi",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Ohaozara",
+    "state": "Ebonyi",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Ohaukwu",
+    "state": "Ebonyi",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Onicha",
+    "state": "Ebonyi",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Akoko-Edo",
+    "state": "Edo",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Egor",
+    "state": "Edo",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Esan Central",
+    "state": "Edo",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Esan North East",
+    "state": "Edo",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Esan South East",
+    "state": "Edo",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Esan West",
+    "state": "Edo",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Etsako Central",
+    "state": "Edo",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Etsako East",
+    "state": "Edo",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Etsako West",
+    "state": "Edo",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Igueben",
+    "state": "Edo",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Ikpoba Okha",
+    "state": "Edo",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Oredo",
+    "state": "Edo",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Orhionmwon",
+    "state": "Edo",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Ovia North East",
+    "state": "Edo",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Ovia South West",
+    "state": "Edo",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Owan East",
+    "state": "Edo",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Owan West",
+    "state": "Edo",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Uhunmwonde",
+    "state": "Edo",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Ado Ekiti",
+    "state": "Ekiti",
+    "zone": 31,
+    "epsg": "EPSG:26331"
+  },
+  {
+    "lga": "Efon",
+    "state": "Ekiti",
+    "zone": 31,
+    "epsg": "EPSG:26331"
+  },
+  {
+    "lga": "Ekiti East",
+    "state": "Ekiti",
+    "zone": 31,
+    "epsg": "EPSG:26331"
+  },
+  {
+    "lga": "Ekiti South West",
+    "state": "Ekiti",
+    "zone": 31,
+    "epsg": "EPSG:26331"
+  },
+  {
+    "lga": "Ekiti West",
+    "state": "Ekiti",
+    "zone": 31,
+    "epsg": "EPSG:26331"
+  },
+  {
+    "lga": "Emure",
+    "state": "Ekiti",
+    "zone": 31,
+    "epsg": "EPSG:26331"
+  },
+  {
+    "lga": "Gbonyin",
+    "state": "Ekiti",
+    "zone": 31,
+    "epsg": "EPSG:26331"
+  },
+  {
+    "lga": "Ido Osi",
+    "state": "Ekiti",
+    "zone": 31,
+    "epsg": "EPSG:26331"
+  },
+  {
+    "lga": "Ijero",
+    "state": "Ekiti",
+    "zone": 31,
+    "epsg": "EPSG:26331"
+  },
+  {
+    "lga": "Ikere",
+    "state": "Ekiti",
+    "zone": 31,
+    "epsg": "EPSG:26331"
+  },
+  {
+    "lga": "Ikole",
+    "state": "Ekiti",
+    "zone": 31,
+    "epsg": "EPSG:26331"
+  },
+  {
+    "lga": "Ilejemeje",
+    "state": "Ekiti",
+    "zone": 31,
+    "epsg": "EPSG:26331"
+  },
+  {
+    "lga": "Irepodun/Ifelodun",
+    "state": "Ekiti",
+    "zone": 31,
+    "epsg": "EPSG:26331"
+  },
+  {
+    "lga": "Ise/Orun",
+    "state": "Ekiti",
+    "zone": 31,
+    "epsg": "EPSG:26331"
+  },
+  {
+    "lga": "Moba",
+    "state": "Ekiti",
+    "zone": 31,
+    "epsg": "EPSG:26331"
+  },
+  {
+    "lga": "Oye",
+    "state": "Ekiti",
+    "zone": 31,
+    "epsg": "EPSG:26331"
+  },
+  {
+    "lga": "Aninri",
+    "state": "Enugu",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Awgu",
+    "state": "Enugu",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Enugu East",
+    "state": "Enugu",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Enugu North",
+    "state": "Enugu",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Enugu South",
+    "state": "Enugu",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Ezeagu",
+    "state": "Enugu",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Igbo Etiti",
+    "state": "Enugu",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Igbo Eze North",
+    "state": "Enugu",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Igbo Eze South",
+    "state": "Enugu",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Isi Uzo",
+    "state": "Enugu",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Nkanu East",
+    "state": "Enugu",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Nkanu West",
+    "state": "Enugu",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Nsukka",
+    "state": "Enugu",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Oji River",
+    "state": "Enugu",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Udenu",
+    "state": "Enugu",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Udi",
+    "state": "Enugu",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Uzo Uwani",
+    "state": "Enugu",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Abuja Municipal",
+    "state": "FCT",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Abaji",
+    "state": "FCT",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Bwari",
+    "state": "FCT",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Gwagwalada",
+    "state": "FCT",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Kuje",
+    "state": "FCT",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Kwali",
+    "state": "FCT",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Akko",
+    "state": "Gombe",
+    "zone": 33,
+    "epsg": "EPSG:26333"
+  },
+  {
+    "lga": "Balanga",
+    "state": "Gombe",
+    "zone": 33,
+    "epsg": "EPSG:26333"
+  },
+  {
+    "lga": "Billiri",
+    "state": "Gombe",
+    "zone": 33,
+    "epsg": "EPSG:26333"
+  },
+  {
+    "lga": "Dukku",
+    "state": "Gombe",
+    "zone": 33,
+    "epsg": "EPSG:26333"
+  },
+  {
+    "lga": "Funakaye",
+    "state": "Gombe",
+    "zone": 33,
+    "epsg": "EPSG:26333"
+  },
+  {
+    "lga": "Gombe",
+    "state": "Gombe",
+    "zone": 33,
+    "epsg": "EPSG:26333"
+  },
+  {
+    "lga": "Kaltungo",
+    "state": "Gombe",
+    "zone": 33,
+    "epsg": "EPSG:26333"
+  },
+  {
+    "lga": "Kwami",
+    "state": "Gombe",
+    "zone": 33,
+    "epsg": "EPSG:26333"
+  },
+  {
+    "lga": "Nafada",
+    "state": "Gombe",
+    "zone": 33,
+    "epsg": "EPSG:26333"
+  },
+  {
+    "lga": "Shongom",
+    "state": "Gombe",
+    "zone": 33,
+    "epsg": "EPSG:26333"
+  },
+  {
+    "lga": "Yamaltu/Deba",
+    "state": "Gombe",
+    "zone": 33,
+    "epsg": "EPSG:26333"
+  },
+  {
+    "lga": "Aboh Mbaise",
+    "state": "Imo",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Ahiazu Mbaise",
+    "state": "Imo",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Ehime Mbano",
+    "state": "Imo",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Ezinihitte",
+    "state": "Imo",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Ideato North",
+    "state": "Imo",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Ideato South",
+    "state": "Imo",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Ihitte/Uboma",
+    "state": "Imo",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Ikeduru",
+    "state": "Imo",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Isiala Mbano",
+    "state": "Imo",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Isu",
+    "state": "Imo",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Mbaitoli",
+    "state": "Imo",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Ngor Okpala",
+    "state": "Imo",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Njaba",
+    "state": "Imo",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Nkwerre",
+    "state": "Imo",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Nwangele",
+    "state": "Imo",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Obowo",
+    "state": "Imo",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Oguta",
+    "state": "Imo",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Ohaji/Egbema",
+    "state": "Imo",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Okigwe",
+    "state": "Imo",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Orlu",
+    "state": "Imo",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Orsu",
+    "state": "Imo",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Oru East",
+    "state": "Imo",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Oru West",
+    "state": "Imo",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Owerri Municipal",
+    "state": "Imo",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Owerri North",
+    "state": "Imo",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Owerri West",
+    "state": "Imo",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Unuimo",
+    "state": "Imo",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Dutse",
+    "state": "Jigawa",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Hadejia",
+    "state": "Jigawa",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Kazaure",
+    "state": "Jigawa",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Gumel",
+    "state": "Jigawa",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Birnin Kudu",
+    "state": "Jigawa",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Ringim",
+    "state": "Jigawa",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Zaria",
+    "state": "Kaduna",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Kaduna North",
+    "state": "Kaduna",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Kaduna South",
+    "state": "Kaduna",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Zangon Kataf",
+    "state": "Kaduna",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Kano Municipal",
+    "state": "Kano",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Dala",
+    "state": "Kano",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Fagge",
+    "state": "Kano",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Gwale",
+    "state": "Kano",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Nasarawa",
+    "state": "Kano",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Tarauni",
+    "state": "Kano",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Ungogo",
+    "state": "Kano",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Katsina",
+    "state": "Katsina",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Daura",
+    "state": "Katsina",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Funtua",
+    "state": "Katsina",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Birnin Kebbi",
+    "state": "Kebbi",
+    "zone": 31,
+    "epsg": "EPSG:26331"
+  },
+  {
+    "lga": "Argungu",
+    "state": "Kebbi",
+    "zone": 31,
+    "epsg": "EPSG:26331"
+  },
+  {
+    "lga": "Yauri",
+    "state": "Kebbi",
+    "zone": 31,
+    "epsg": "EPSG:26331"
+  },
+  {
+    "lga": "Lokoja",
+    "state": "Kogi",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Okene",
+    "state": "Kogi",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Ankpa",
+    "state": "Kogi",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Idah",
+    "state": "Kogi",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Ilorin East",
+    "state": "Kwara",
+    "zone": 31,
+    "epsg": "EPSG:26331"
+  },
+  {
+    "lga": "Ilorin South",
+    "state": "Kwara",
+    "zone": 31,
+    "epsg": "EPSG:26331"
+  },
+  {
+    "lga": "Ilorin West",
+    "state": "Kwara",
+    "zone": 31,
+    "epsg": "EPSG:26331"
+  },
+  {
+    "lga": "Offa",
+    "state": "Kwara",
+    "zone": 31,
+    "epsg": "EPSG:26331"
+  },
+  {
+    "lga": "Agege",
+    "state": "Lagos",
+    "zone": 31,
+    "epsg": "EPSG:26331"
+  },
+  {
+    "lga": "Ajeromi-Ifelodun",
+    "state": "Lagos",
+    "zone": 31,
+    "epsg": "EPSG:26331"
+  },
+  {
+    "lga": "Alimosho",
+    "state": "Lagos",
+    "zone": 31,
+    "epsg": "EPSG:26331"
+  },
+  {
+    "lga": "Amuwo-Odofin",
+    "state": "Lagos",
+    "zone": 31,
+    "epsg": "EPSG:26331"
+  },
+  {
+    "lga": "Apapa",
+    "state": "Lagos",
+    "zone": 31,
+    "epsg": "EPSG:26331"
+  },
+  {
+    "lga": "Badagry",
+    "state": "Lagos",
+    "zone": 31,
+    "epsg": "EPSG:26331"
+  },
+  {
+    "lga": "Epe",
+    "state": "Lagos",
+    "zone": 31,
+    "epsg": "EPSG:26331"
+  },
+  {
+    "lga": "Eti-Osa",
+    "state": "Lagos",
+    "zone": 31,
+    "epsg": "EPSG:26331"
+  },
+  {
+    "lga": "Ibeju-Lekki",
+    "state": "Lagos",
+    "zone": 31,
+    "epsg": "EPSG:26331"
+  },
+  {
+    "lga": "Ifako-Ijaiye",
+    "state": "Lagos",
+    "zone": 31,
+    "epsg": "EPSG:26331"
+  },
+  {
+    "lga": "Ikeja",
+    "state": "Lagos",
+    "zone": 31,
+    "epsg": "EPSG:26331"
+  },
+  {
+    "lga": "Ikorodu",
+    "state": "Lagos",
+    "zone": 31,
+    "epsg": "EPSG:26331"
+  },
+  {
+    "lga": "Kosofe",
+    "state": "Lagos",
+    "zone": 31,
+    "epsg": "EPSG:26331"
+  },
+  {
+    "lga": "Lagos Island",
+    "state": "Lagos",
+    "zone": 31,
+    "epsg": "EPSG:26331"
+  },
+  {
+    "lga": "Lagos Mainland",
+    "state": "Lagos",
+    "zone": 31,
+    "epsg": "EPSG:26331"
+  },
+  {
+    "lga": "Mushin",
+    "state": "Lagos",
+    "zone": 31,
+    "epsg": "EPSG:26331"
+  },
+  {
+    "lga": "Ojo",
+    "state": "Lagos",
+    "zone": 31,
+    "epsg": "EPSG:26331"
+  },
+  {
+    "lga": "Oshodi-Isolo",
+    "state": "Lagos",
+    "zone": 31,
+    "epsg": "EPSG:26331"
+  },
+  {
+    "lga": "Shomolu",
+    "state": "Lagos",
+    "zone": 31,
+    "epsg": "EPSG:26331"
+  },
+  {
+    "lga": "Surulere",
+    "state": "Lagos",
+    "zone": 31,
+    "epsg": "EPSG:26331"
+  },
+  {
+    "lga": "Lafia",
+    "state": "Nasarawa",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Keffi",
+    "state": "Nasarawa",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Akwanga",
+    "state": "Nasarawa",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Minna",
+    "state": "Niger",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Bida",
+    "state": "Niger",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Kontagora",
+    "state": "Niger",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Suleja",
+    "state": "Niger",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Abeokuta North",
+    "state": "Ogun",
+    "zone": 31,
+    "epsg": "EPSG:26331"
+  },
+  {
+    "lga": "Abeokuta South",
+    "state": "Ogun",
+    "zone": 31,
+    "epsg": "EPSG:26331"
+  },
+  {
+    "lga": "Ado-Odo/Ota",
+    "state": "Ogun",
+    "zone": 31,
+    "epsg": "EPSG:26331"
+  },
+  {
+    "lga": "Ijebu Ode",
+    "state": "Ogun",
+    "zone": 31,
+    "epsg": "EPSG:26331"
+  },
+  {
+    "lga": "Shagamu",
+    "state": "Ogun",
+    "zone": 31,
+    "epsg": "EPSG:26331"
+  },
+  {
+    "lga": "Sagamu",
+    "state": "Ogun",
+    "zone": 31,
+    "epsg": "EPSG:26331"
+  },
+  {
+    "lga": "Akure North",
+    "state": "Ondo",
+    "zone": 31,
+    "epsg": "EPSG:26331"
+  },
+  {
+    "lga": "Akure South",
+    "state": "Ondo",
+    "zone": 31,
+    "epsg": "EPSG:26331"
+  },
+  {
+    "lga": "Owo",
+    "state": "Ondo",
+    "zone": 31,
+    "epsg": "EPSG:26331"
+  },
+  {
+    "lga": "Okitipupa",
+    "state": "Ondo",
+    "zone": 31,
+    "epsg": "EPSG:26331"
+  },
+  {
+    "lga": "Osogbo",
+    "state": "Osun",
+    "zone": 31,
+    "epsg": "EPSG:26331"
+  },
+  {
+    "lga": "Ile-Ife",
+    "state": "Osun",
+    "zone": 31,
+    "epsg": "EPSG:26331"
+  },
+  {
+    "lga": "Ife Central",
+    "state": "Osun",
+    "zone": 31,
+    "epsg": "EPSG:26331"
+  },
+  {
+    "lga": "Ilesa East",
+    "state": "Osun",
+    "zone": 31,
+    "epsg": "EPSG:26331"
+  },
+  {
+    "lga": "Ibadan North",
+    "state": "Oyo",
+    "zone": 31,
+    "epsg": "EPSG:26331"
+  },
+  {
+    "lga": "Ibadan South West",
+    "state": "Oyo",
+    "zone": 31,
+    "epsg": "EPSG:26331"
+  },
+  {
+    "lga": "Ogbomosho North",
+    "state": "Oyo",
+    "zone": 31,
+    "epsg": "EPSG:26331"
+  },
+  {
+    "lga": "Oyo East",
+    "state": "Oyo",
+    "zone": 31,
+    "epsg": "EPSG:26331"
+  },
+  {
+    "lga": "Oyo West",
+    "state": "Oyo",
+    "zone": 31,
+    "epsg": "EPSG:26331"
+  },
+  {
+    "lga": "Jos North",
+    "state": "Plateau",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Jos South",
+    "state": "Plateau",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Barkin Ladi",
+    "state": "Plateau",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Pankshin",
+    "state": "Plateau",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Port Harcourt",
+    "state": "Rivers",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Obio/Akpor",
+    "state": "Rivers",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Ikwerre",
+    "state": "Rivers",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Eleme",
+    "state": "Rivers",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Bonny",
+    "state": "Rivers",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Ahoada East",
+    "state": "Rivers",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Ahoada West",
+    "state": "Rivers",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Sokoto North",
+    "state": "Sokoto",
+    "zone": 31,
+    "epsg": "EPSG:26331"
+  },
+  {
+    "lga": "Sokoto South",
+    "state": "Sokoto",
+    "zone": 31,
+    "epsg": "EPSG:26331"
+  },
+  {
+    "lga": "Jalingo",
+    "state": "Taraba",
+    "zone": 33,
+    "epsg": "EPSG:26333"
+  },
+  {
+    "lga": "Wukari",
+    "state": "Taraba",
+    "zone": 33,
+    "epsg": "EPSG:26333"
+  },
+  {
+    "lga": "Bali",
+    "state": "Taraba",
+    "zone": 33,
+    "epsg": "EPSG:26333"
+  },
+  {
+    "lga": "Damaturu",
+    "state": "Yobe",
+    "zone": 33,
+    "epsg": "EPSG:26333"
+  },
+  {
+    "lga": "Potiskum",
+    "state": "Yobe",
+    "zone": 33,
+    "epsg": "EPSG:26333"
+  },
+  {
+    "lga": "Nguru",
+    "state": "Yobe",
+    "zone": 33,
+    "epsg": "EPSG:26333"
+  },
+  {
+    "lga": "Gusau",
+    "state": "Zamfara",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Kaura Namoda",
+    "state": "Zamfara",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  },
+  {
+    "lga": "Talata Mafara",
+    "state": "Zamfara",
+    "zone": 32,
+    "epsg": "EPSG:26332"
+  }
+]

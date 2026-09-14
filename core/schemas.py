@@ -425,8 +425,12 @@ class ParcelGeometry(BaseModel):
     coordinates     : list[list[float]]
     computed_area_ha: float
     stated_area_ha  : Optional[float] = None
+    perimeter_m     : Optional[float] = None
+    perimeter_display: Optional[str] = None
     location_context: LocationContext
     health_check_stats: Optional[dict] = None
+    is_composite    : Optional[bool] = False
+    lots            : Optional[list] = []
 
 
 class CoordinateValidation(BaseModel):

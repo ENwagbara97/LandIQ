@@ -2174,6 +2174,8 @@ def run(
         variance = sum((d - mean_dist)**2 for d in segment_lengths) / len(segment_lengths) if segment_lengths else 0
         std_dev = math.sqrt(variance)
         
+        perimeter_m = round(sum(segment_lengths), 1) if segment_lengths else None
+        perimeter_display = f"{perimeter_m:,.1f}m" if perimeter_m is not None else None
         health_check_stats = {
             "mean_segment_m": round(mean_dist, 2),
             "max_segment_m": round(max(segment_lengths), 2) if segment_lengths else 0,
@@ -2294,6 +2296,8 @@ def run(
         metric_analysis_epsg=metric_analysis_epsg,
         is_inside_nigeria=inside_nigeria,
         computed_area_ha=computed_area_ha,
+        perimeter_m=perimeter_m if 'perimeter_m' in locals() else None,
+        perimeter_display=perimeter_display if 'perimeter_display' in locals() else None,
         state=state,
         lga=lga,
         display_location=display_location,

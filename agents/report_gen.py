@@ -690,8 +690,12 @@ def assemble_report(
         coordinates=coord.coordinates,
         computed_area_ha=coord.computed_area_ha,
         stated_area_ha=coord.stated_area_ha,
+        perimeter_m=coord.perimeter_m,
+        perimeter_display=coord.perimeter_display,
         location_context=location,
         health_check_stats=coord.health_check_stats,
+        is_composite=getattr(coord, "is_composite", False),
+        lots=getattr(coord, "lots", []),
     )
 
     # ── Coordinate validation ──────────────────────────────────────────────────

@@ -975,17 +975,23 @@ def _build_inline_html(ctx: dict) -> str:
 <table class="clean-table">
   <tr><td>LOCATION</td><td>{r.parcel_geometry.location_context.display_location or f"{r.parcel_geometry.location_context.lga or '—'}, {r.parcel_geometry.location_context.state or '—'}"}</td></tr>
   <tr><td>AREA</td><td>{r.parcel_geometry.computed_area_ha * 10000:.0f} sqm</td></tr>
+  {f"<tr><td>PERIMETER</td><td>{r.parcel_geometry.perimeter_display or f'{r.parcel_geometry.perimeter_m:.1f}m'}</td></tr>" if (r.parcel_geometry.perimeter_display or r.parcel_geometry.perimeter_m) else ""}
   <tr><td>CENTROID</td><td>{r.parcel_geometry.centroid.lat:.5f} N, {r.parcel_geometry.centroid.lng:.5f} E</td></tr>
   <tr><td>SURVEY DATUM</td><td>{crs_display}</td></tr>
 </table>
 
 <div class="metric-card" style="margin-top: 16px;">
-  <h3 style="margin-top:0; font-size:12px; color:var(--report-muted); text-transform:uppercase;">AREA VERIFICATION</h3>
+  <h3 style="margin-top:0; font-size:12px; color:var(--report-muted); text-transform:uppercase;">AREA & PERIMETER VERIFICATION</h3>
   <table class="clean-table">
-    <tr><th>Stated on Survey Plan</th><th>Computed by LandIQ</th></tr>
+    <tr>
+      <th>Stated on Survey Plan</th>
+      <th>Computed by LandIQ</th>
+      {f"<th>Perimeter</th>" if (r.parcel_geometry.perimeter_display or r.parcel_geometry.perimeter_m) else ""}
+    </tr>
     <tr>
       <td>{{f"{{stated_area_sqm:,.0f}} sqm" if stated_area_sqm else "Not stated"}}</td>
       <td>{{computed_area_sqm:,.0f}} sqm</td>
+      {f"<td><strong>{r.parcel_geometry.perimeter_display or f'{r.parcel_geometry.perimeter_m:.1f}m'}</strong></td>" if (r.parcel_geometry.perimeter_display or r.parcel_geometry.perimeter_m) else ""}
     </tr>
   </table>
   <div style="margin-top:8px;">{diff_html}</div>

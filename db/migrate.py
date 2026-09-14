@@ -12,6 +12,7 @@ Usage:
 
 import sqlite3
 import sys
+from db.news_migration import apply_news_tables
 from pathlib import Path
 
 # ── Paths ─────────────────────────────────────────────────────────────────────
@@ -165,6 +166,7 @@ def run_migrations(db_path: Path = DB_PATH) -> None:
         _apply_pdf_columns(conn)
         _apply_diaspora_columns(conn)
         _apply_location_columns(conn)
+        apply_news_tables(conn)
     except sqlite3.Error as exc:
         conn.rollback()
         print(f"[migrate] [ERROR] Migration failed: {exc}", file=sys.stderr)

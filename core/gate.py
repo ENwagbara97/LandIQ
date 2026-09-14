@@ -380,6 +380,8 @@ def initiate(
                 "lng": coord_result.centroid.lng,
             },
             "computed_area_ha": coord_result.computed_area_ha,
+            "perimeter_m": getattr(coord_result, "perimeter_m", None),
+            "perimeter_display": getattr(coord_result, "perimeter_display", None),
             "detected_crs": coord_result.detected_crs.value,
             "crs_confidence": coord_result.crs_confidence,
             "is_inside_nigeria": coord_result.is_inside_nigeria,
