@@ -21,6 +21,7 @@ Computes:
 """
 
 from __future__ import annotations
+import os
 
 import logging
 import math
@@ -59,6 +60,78 @@ def calculate_true_metric_distance(plot_geom, infrastructure_geom, metric_epsg: 
 
     # Calculate absolute linear spatial gap in true meters
     return projected_plot.distance(projected_infra)
+
+
+def check_utility_corridor_proximity(
+    plot_geom,
+    metric_epsg: int = 32631,
+) -> dict:
+    """
+    Evaluates proximity of a plot geometry (Polygon or Point) to high-voltage
+    transmission lines (NERC statutory RoW) and high-pressure oil/gas pipelines.
+
+    Alert Thresholds:
+      <= 15m:  WITHIN_ROW (High risk, building restriction statutory violation)
+      16-100m: PROXIMATE  (Medium risk, requires municipal setback clearance)
+      > 100m:  NONE       (No utility corridor encumbrance)
+    """
+    tx_file = "data/infrastructure/ng_transmission_lines.geojson"
+    pl_file = "data/infrastructure/ng_pipelines.geojson"
+
+    min_tx_dist: float | None = None
+    min_pl_dist: float | None = None
+
+    try:
+        if os.path.exists(tx_file):
+            gdf_tx = gpd.read_file(tx_file)
+            if not gdf_tx.empty:
+                dists = [
+                    calculate_true_metric_distance(plot_geom, geom, metric_epsg=metric_epsg)
+                    for geom in gdf_tx.geometry
+                    if geom is not None
+                ]
+                if dists:
+                    min_tx_dist = min(dists)
+    except Exception as e:
+        logger.warning(f"Error checking transmission line proximity: {e}")
+
+    try:
+        if os.path.exists(pl_file):
+            gdf_pl = gpd.read_file(pl_file)
+            if not gdf_pl.empty:
+                dists = [
+                    calculate_true_metric_distance(plot_geom, geom, metric_epsg=metric_epsg)
+                    for geom in gdf_pl.geometry
+                    if geom is not None
+                ]
+                if dists:
+                    min_pl_dist = min(dists)
+    except Exception as e:
+        logger.warning(f"Error checking pipeline proximity: {e}")
+
+    tx_alert = (min_tx_dist is not None and min_tx_dist <= 100.0)
+    pl_alert = (min_pl_dist is not None and min_pl_dist <= 100.0)
+
+    min_dist = float("inf")
+    if min_tx_dist is not None:
+        min_dist = min(min_dist, min_tx_dist)
+    if min_pl_dist is not None:
+        min_dist = min(min_dist, min_pl_dist)
+
+    if min_dist <= 15.0:
+        row_risk = "WITHIN_ROW"
+    elif min_dist <= 100.0:
+        row_risk = "PROXIMATE"
+    else:
+        row_risk = "NONE"
+
+    return {
+        "distance_to_transmission_m": round(min_tx_dist, 1) if min_tx_dist is not None else None,
+        "transmission_corridor_alert": tx_alert,
+        "distance_to_pipeline_m": round(min_pl_dist, 1) if min_pl_dist is not None else None,
+        "pipeline_corridor_alert": pl_alert,
+        "utility_row_risk": row_risk,
+    }
 
 
 # =============================================================================
@@ -619,6 +692,22 @@ def run(
         outfall_profile_points=outfall_profile_points
     )
 
+    # ── UTILITY CORRIDOR ANALYSIS (NERC / NNPC) ──────────────────────────────
+    plot_geom = poly_wgs84 if (poly_wgs84 is not None and poly_wgs84.is_valid and not poly_wgs84.is_empty) else Point(lng, lat)
+    utility_info = check_utility_corridor_proximity(plot_geom, metric_epsg=utm_epsg)
+    data_sources_used.append("nerc_tcn_infrastructure")
+
+    if utility_info["utility_row_risk"] == "WITHIN_ROW":
+        warnings.append(
+            "CRITICAL: Parcel boundary or perimeter intersects a statutory utility Right-of-Way (RoW) "
+            "(high-voltage transmission line or high-pressure pipeline). Building construction is statutorily prohibited."
+        )
+    elif utility_info["utility_row_risk"] == "PROXIMATE":
+        warnings.append(
+            "WARNING: Parcel is within 100 meters of a high-voltage transmission line or pipeline corridor. "
+            "Statutory setback clearance must be verified with municipal authorities."
+        )
+
     # ── DATA CONFIDENCE ───────────────────────────────────────────────────────
     data_confidence = compute_data_confidence(
         elevation_available=(elevation_m is not None),
@@ -663,4 +752,9 @@ def run(
         outfall_distance_m=outfall_distance_m,
         outfall_asset_type=outfall_asset_type,
         premium_elevation_profile=premium_elevation_profile,
+        distance_to_transmission_m=utility_info["distance_to_transmission_m"],
+        transmission_corridor_alert=utility_info["transmission_corridor_alert"],
+        distance_to_pipeline_m=utility_info["distance_to_pipeline_m"],
+        pipeline_corridor_alert=utility_info["pipeline_corridor_alert"],
+        utility_row_risk=utility_info["utility_row_risk"],
     )

@@ -1682,27 +1682,51 @@ async def get_personas():
 def get_news_alerts(
     lga:   str | None = None,
     state: str | None = None,
-    days:  int = 90,
+    days:  int = 180,
     limit: int = 20,
+    exact: bool = False,
 ):
     """
-    Return CONFIRMED news risk events for a given LGA/state in the last N days.
-    Used by the frontend NewsAlertsWidget to surface verified risk signals on reports.
+    Return CONFIRMED/PENDING news risk events geo-filtered to a parcel's LGA/State.
+
+    Query params:
+      lga   — LGA name of the subject parcel (e.g. "Ikeja")
+      state — State name (e.g. "Lagos")
+      days  — look-back window in days (default 180 = 6 months)
+      limit — max events to return (default 20)
+      exact — if True, use exact case-insensitive match; if False, use LIKE fuzzy match.
+              Always pass exact=true when you have a resolved LGA name to prevent
+              cross-LGA bleed (e.g. "Lagos" matching "Lagos Island" AND "Lagos Mainland").
+
+    Returns an empty list (not an error) when no parcel context is provided so the
+    frontend can show a "No alerts for this area" state rather than a loading spinner.
     """
+    # Guard: require at least one location filter — never return a global dump
+    if not lga and not state:
+        return []
+
     from db.migrate import get_connection
     conn = get_connection()
     try:
         params: list = []
         where_clauses = [
-            "status IN ('CONFIRMED', 'PENDING')",
-            f"created_at >= datetime('now', '-{days} days')",
+            "ne.status IN ('CONFIRMED', 'PENDING')",
+            f"ne.created_at >= datetime('now', '-{days} days')",
         ]
         if lga:
-            where_clauses.append("LOWER(ne.lga) LIKE LOWER(?)")
-            params.append(f"%{lga.strip()}%")
+            if exact:
+                where_clauses.append("LOWER(ne.lga) = LOWER(?)")
+                params.append(lga.strip())
+            else:
+                where_clauses.append("LOWER(ne.lga) LIKE LOWER(?)")
+                params.append(f"%{lga.strip()}%")
         if state:
-            where_clauses.append("LOWER(ne.state) LIKE LOWER(?)")
-            params.append(f"%{state.strip()}%")
+            if exact:
+                where_clauses.append("LOWER(ne.state) = LOWER(?)")
+                params.append(state.strip())
+            else:
+                where_clauses.append("LOWER(ne.state) LIKE LOWER(?)")
+                params.append(f"%{state.strip()}%")
 
         where_sql = " AND ".join(where_clauses)
         rows = conn.execute(
@@ -1710,11 +1734,12 @@ def get_news_alerts(
             SELECT ne.id, ne.event_type, ne.lga, ne.state, ne.source_quote,
                    ne.date_mentioned, ne.confidence, ne.corroboration_count,
                    ne.status, ne.created_at,
-                   nr.source AS newspaper, nr.url AS article_url, nr.title AS article_title
+                   nr.source AS newspaper, nr.url AS article_url, nr.title AS article_title,
+                   nr.published_at AS article_date
             FROM news_events ne
             LEFT JOIN news_raw nr ON ne.article_id = nr.id
             WHERE {where_sql}
-            ORDER BY ne.created_at DESC
+            ORDER BY ne.corroboration_count DESC, ne.created_at DESC
             LIMIT ?
             """,
             (*params, limit),

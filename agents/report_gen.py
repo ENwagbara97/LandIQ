@@ -739,6 +739,11 @@ def assemble_report(
         distance_to_road_m=gis.distance_to_road_m,
         road_category=gis.road_access_category.value if gis.road_access_category else None,
         suitability_matrix=risk.development_suitability,
+        distance_to_transmission_m=getattr(gis, "distance_to_transmission_m", None),
+        transmission_corridor_alert=getattr(gis, "transmission_corridor_alert", False),
+        distance_to_pipeline_m=getattr(gis, "distance_to_pipeline_m", None),
+        pipeline_corridor_alert=getattr(gis, "pipeline_corridor_alert", False),
+        utility_row_risk=getattr(gis, "utility_row_risk", "NONE"),
     )
 
     # ── Encroachment ──────────────────────────────────────────────────────────

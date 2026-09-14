@@ -539,6 +539,104 @@ def _build_inline_html(ctx: dict) -> str:
         </section>
         """
 
+    # News Intelligence section for PDF
+    news_html = ""
+    try:
+        from db.migrate import get_connection
+        _loc = getattr(r.parcel_geometry, "location_context", None)
+        _lga = getattr(_loc, "lga", None) if _loc else None
+        _state = getattr(_loc, "state", None) if _loc else None
+
+        if _lga in ("—", "", "None", None) or "Unresolved" in str(_lga):
+            _lga = None
+        if _state in ("—", "", "None", None) or "Unresolved" in str(_state):
+            _state = None
+
+        if _lga or _state:
+            _conn = get_connection()
+            _where = [
+                "ne.status IN ('CONFIRMED', 'PENDING')",
+                "ne.created_at >= datetime('now', '-180 days')"
+            ]
+            _params = []
+            if _lga:
+                _where.append("LOWER(ne.lga) = LOWER(?)")
+                _params.append(_lga.strip())
+            if _state:
+                _where.append("LOWER(ne.state) = LOWER(?)")
+                _params.append(_state.strip())
+
+            _sql = f"""
+                SELECT ne.id, ne.event_type, ne.lga, ne.state, ne.source_quote,
+                       ne.date_mentioned, ne.confidence, ne.corroboration_count,
+                       ne.status, nr.source AS newspaper, nr.url AS article_url,
+                       nr.title AS article_title, nr.published_at AS article_date
+                FROM news_events ne
+                LEFT JOIN news_raw nr ON ne.article_id = nr.id
+                WHERE {' AND '.join(_where)}
+                ORDER BY ne.corroboration_count DESC, ne.created_at DESC
+                LIMIT 4
+            """
+            _rows = _conn.execute(_sql, _params).fetchall()
+            _conn.close()
+
+            loc_label = f"{_lga}, {_state}" if (_lga and _state) else (_lga or _state)
+
+            if _rows:
+                items_html = ""
+                for row in _rows:
+                    row_dict = dict(row)
+                    evt_type = (row_dict.get("event_type") or "NEWS_ALERT").replace("_", " ").upper()
+                    status = row_dict.get("status") or "PENDING"
+                    corrob = row_dict.get("corroboration_count") or 1
+                    status_badge = (
+                        f"<span style='background:#dcfce7; color:#15803d; padding:2px 7px; border-radius:4px; font-weight:700; font-size:9px;'>✓ Corroborated ({corrob} sources)</span>"
+                        if status == "CONFIRMED"
+                        else "<span style='background:#fef3c7; color:#b45309; padding:2px 7px; border-radius:4px; font-weight:700; font-size:9px;'>Single source</span>"
+                    )
+                    paper = row_dict.get("newspaper") or "Regional Press"
+                    pub_date = row_dict.get("article_date") or row_dict.get("date_mentioned") or ""
+                    date_badge = f" • {pub_date}" if pub_date else ""
+                    quote = row_dict.get("source_quote") or ""
+                    quote_html = f"<blockquote style='margin:4px 0 6px 0; padding-left:8px; border-left:2px solid #6366f1; color:#334155; font-style:italic; font-size:9pt;'>&ldquo;{quote}&rdquo;</blockquote>" if quote else ""
+                    title = row_dict.get("article_title") or "Source report"
+                    url = row_dict.get("article_url") or ""
+                    link_html = f"<a href='{url}' style='color:#4f46e5; text-decoration:none; font-size:8.5pt;'>{title} &rarr;</a>" if url else f"<span style='color:#64748b; font-size:8.5pt;'>{title}</span>"
+
+                    items_html += f"""
+                    <div style='padding:8px 10px; border:1px solid #e2e8f0; border-radius:6px; background:#f8fafc; margin-bottom:6px;'>
+                      <div style='display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;'>
+                        <span style='font-size:9pt; font-weight:700; color:#0f172a;'>{evt_type}</span>
+                        {status_badge}
+                      </div>
+                      <div style='font-size:8.5pt; color:#64748b; margin-bottom:4px;'>{paper}{date_badge}</div>
+                      {quote_html}
+                      <div>{link_html}</div>
+                    </div>"""
+
+                news_html = f"""
+                <section style="page-break-inside: avoid; border-left: 3px solid #6366f1; padding-left: 15px; margin: 20px 0;">
+                  <h2>Regional Press & Ground Intelligence ({loc_label})</h2>
+                  <p style="font-size:9pt; color:#64748b; margin-top:2px; margin-bottom:8px;">
+                    Verified media reports, community dispute signals, and hazard events monitored for this jurisdiction (past 180 days):
+                  </p>
+                  {items_html}
+                </section>
+                """
+            else:
+                news_html = f"""
+                <section style="page-break-inside: avoid; border-left: 3px solid #22c55e; padding-left: 15px; margin: 20px 0;">
+                  <h2>Regional Press & Ground Intelligence ({loc_label})</h2>
+                  <div style="padding:8px 12px; border:1px solid #bbf7d0; border-radius:6px; background:#f0fdf4; font-size:9pt; color:#166534;">
+                    <strong>Zero active land disputes or flood hazard events</strong> recorded in monitored Nigerian press archives for {loc_label} over the last 180 days.
+                  </div>
+                </section>
+                """
+    except Exception as _news_err:
+        import logging
+        logging.getLogger("core.pdf_generator").warning(f"Could not load news intelligence for PDF: {_news_err}")
+        news_html = ""
+
     profile_html = ""
     if r.premium_elevation_profile:
         # Build internal points rows
@@ -751,6 +849,19 @@ def _build_inline_html(ctx: dict) -> str:
     slope_display = f"{r.terrain_assessment.steepness_of_land:.1f}%" if r.terrain_assessment.steepness_of_land is not None else "Not available for this area"
     road_display = f"{r.accessibility_development.distance_to_road_m:.0f}m" if r.accessibility_development.distance_to_road_m is not None else "Not available for this area"
 
+    # Utility corridor display variables
+    u_acc = getattr(r, "accessibility_development", None)
+    u_risk = getattr(u_acc, "utility_row_risk", "NONE") if u_acc else "NONE"
+    tx_dist = getattr(u_acc, "distance_to_transmission_m", None) if u_acc else None
+    pl_dist = getattr(u_acc, "distance_to_pipeline_m", None) if u_acc else None
+
+    if u_risk == "WITHIN_ROW":
+        corridor_badge_html = '<span style="color:#ef4444; font-weight:bold;">WITHIN RoW (CRITICAL)</span>'
+    elif u_risk == "PROXIMATE":
+        corridor_badge_html = '<span style="color:#f59e0b; font-weight:bold;">Proximate (&lt; 100m)</span>'
+    else:
+        corridor_badge_html = '<span style="color:#22c55e; font-weight:bold;">Clear (&gt; 100m)</span>'
+
     # Bug 5 Fix (Data confidence variable)
     # The plain English reason might contain "data_confidence". We sanitize it here.
     flood_reason = r.flood_risk_metrics.reason_in_plain_english or ""
@@ -856,6 +967,50 @@ def _build_inline_html(ctx: dict) -> str:
           <td>{src.get('data_vintage','-')}</td>
           <td>{conf:.0f}%</td>
         </tr>"""
+
+    # Utility Appendix HTML
+    tx_dist_str = f"{tx_dist:.1f} m" if tx_dist is not None else "Clear (&gt; 100m)"
+    pl_dist_str = f"{pl_dist:.1f} m" if pl_dist is not None else "Clear (&gt; 100m)"
+
+    tx_status = (
+        '<span style="color:#ef4444; font-weight:bold;">● WITHIN ROW (Statutory Violation)</span>'
+        if tx_dist is not None and tx_dist <= 15
+        else (
+            '<span style="color:#f59e0b; font-weight:bold;">● PROXIMATE (&lt; 100m)</span>'
+            if tx_dist is not None and tx_dist <= 100
+            else '<span style="color:#22c55e; font-weight:bold;">● Clear (&gt; 100m)</span>'
+        )
+    )
+
+    pl_status = (
+        '<span style="color:#ef4444; font-weight:bold;">● WITHIN ROW (Statutory Violation)</span>'
+        if pl_dist is not None and pl_dist <= 15
+        else (
+            '<span style="color:#f59e0b; font-weight:bold;">● PROXIMATE (&lt; 100m)</span>'
+            if pl_dist is not None and pl_dist <= 100
+            else '<span style="color:#22c55e; font-weight:bold;">● Clear (&gt; 100m)</span>'
+        )
+    )
+
+    utility_appendix_html = f"""
+  <h3 style="font-size:12px; color:var(--report-muted); text-transform:uppercase; margin-top:16px;">C. Statutory Utility Corridors (NERC / NNPC)</h3>
+  <table class="clean-table">
+    <tr><th>Infrastructure Asset</th><th>Nearest Distance</th><th>Statutory Right-of-Way</th><th>Status</th></tr>
+    <tr>
+      <td>High-Voltage Electricity Transmission Line (330kV / 132kV)</td>
+      <td>{tx_dist_str}</td>
+      <td>15m centerline clearance (NERC)</td>
+      <td>{tx_status}</td>
+    </tr>
+    <tr>
+      <td>Hydrocarbon Trunk Pipeline Network</td>
+      <td>{pl_dist_str}</td>
+      <td>15m easement clearance (NNPC/NGMC)</td>
+      <td>{pl_status}</td>
+    </tr>
+  </table>
+  <p style="font-size:11px; color:var(--report-muted); margin-top:6px;">Screened against statutory high-voltage electricity transmission alignments (TCN) and national hydrocarbon trunkline corridors. Permanent structure erection within statutory Right-of-Way is prohibited under Nigerian Urban and Regional Planning laws.</p>
+    """
 
     return f"""<!DOCTYPE html>
 <html>
@@ -1025,6 +1180,7 @@ def _build_inline_html(ctx: dict) -> str:
       <div>Slope: <strong>{slope_display}</strong></div>
       <div style="margin-top:4px;">Road Access: <strong>{road_display}</strong></div>
       <div style="margin-top:4px;">Suitability: <strong>{r.terrain_assessment.suitability or "-"}</strong></div>
+      <div style="margin-top:4px;">Utility Corridor: <strong>{corridor_badge_html}</strong></div>
     </div>
   </div>
 </div>
@@ -1037,6 +1193,7 @@ def _build_inline_html(ctx: dict) -> str:
 <!-- SECTION 4 - WHAT WE OBSERVED -->
 {via_html}
 {nl_html}
+{news_html}
 
 <!-- SECTION 5 - DUE DILIGENCE CHECKLIST -->
 <div class="section-break"></div>
@@ -1071,10 +1228,11 @@ def _build_inline_html(ctx: dict) -> str:
     <tr><th>What We Measured</th><th>Status</th><th>Source</th><th>Data Age</th><th>Confidence</th></tr>
     {{sources_html_v2}}
   </table>
-  <p style="font-size:11px; color:var(--report-muted); margin-top:8px;">Risk Score Calculation: Flood Risk (40%), Terrain (20%), Road Access (20%), Growth Potential (20%). When a data source is unavailable, its weight is redistributed.</p>
+  <p style="font-size:11px; color:var(--report-muted); margin-top:8px;">Risk Score Calculation: Flood Risk Level (40%) + Terrain Suitability (25%) + Flood Proximity Score (20%) + Acquisition Flag (10%) + Encroachment Flag (5%) = 100 pts maximum. Road access quality informs terrain suitability but is not a direct scoring dimension. When a GIS data source is unavailable, confidence is docked and the score is moderated toward neutral.</p>
 
   {{topo_html}}
   {{profile_html}}
+  {{utility_appendix_html}}
 </div>
 """}
 

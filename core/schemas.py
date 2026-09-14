@@ -338,6 +338,11 @@ class GISAnalysisOutput(BaseModel):
     outfall_distance_m      : Optional[float] = None
     outfall_asset_type      : Optional[str] = None
     premium_elevation_profile: Optional[PremiumElevationProfile] = None
+    distance_to_transmission_m: Optional[float] = None
+    transmission_corridor_alert: bool = False
+    distance_to_pipeline_m    : Optional[float] = None
+    pipeline_corridor_alert   : bool = False
+    utility_row_risk          : str = "NONE"  # "NONE" | "PROXIMATE" | "WITHIN_ROW"
 
 
 # =============================================================================
@@ -376,6 +381,9 @@ class InfrastructureProximity(BaseModel):
     airport_km: Optional[float] = None
     rail_km   : Optional[float] = None
     port_km   : Optional[float] = None
+    transmission_m: Optional[float] = None
+    pipeline_m    : Optional[float] = None
+    utility_row_risk: Optional[str] = "NONE"
 
 
 class SuitabilityGrowthOutput(BaseModel):
@@ -477,6 +485,11 @@ class AccessibilityDevelopment(BaseModel):
     distance_to_road_m: Optional[float] = None
     road_category     : Optional[str] = None
     suitability_matrix: DevelopmentSuitability
+    distance_to_transmission_m: Optional[float] = None
+    transmission_corridor_alert: bool = False
+    distance_to_pipeline_m: Optional[float] = None
+    pipeline_corridor_alert: bool = False
+    utility_row_risk: str = "NONE"
 
 
 class EncroachmentRecord(BaseModel):
