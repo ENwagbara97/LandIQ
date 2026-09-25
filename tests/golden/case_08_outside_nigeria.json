@@ -1,0 +1,21 @@
+{
+  "_description": "GOLDEN CASE 08 — Parcel outside Nigeria bounding box (Cameroon coordinates). Expected: Dialog T2 fires. Auto-flip test runs. Pipeline halts for user resolution.",
+  "input": {
+    "input_type": "manual_coordinates",
+    "raw_text": "3.8667N 11.5167E; 3.8674N 11.5180E; 3.8660N 11.5185E; 3.8653N 11.5172E; 3.8667N 11.5167E",
+    "_note": "Cameroon coordinates — clearly outside Nigeria bbox [2.67-14.68 lon, 4.24-13.88 lat]. Latitude 3.86 is below Nigeria minimum.",
+    "stated_area_ha": null,
+    "persona_mode": "EVERYDAY_BUYER"
+  },
+  "expected": {
+    "coord_extract": {
+      "is_inside_nigeria": false,
+      "warnings_contain": ["OUTSIDE_NIGERIA"]
+    },
+    "crs_dialogs_fired": ["T2"],
+    "gate": {
+      "must_halt": true,
+      "dialog_message_contains": "outside Nigeria"
+    }
+  }
+}

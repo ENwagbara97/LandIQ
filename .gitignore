@@ -1,5 +1,8 @@
-# See https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files for more about ignoring files.
+# ============================================================
+# LandIQ — Combined .gitignore (Frontend + Backend)
+# ============================================================
 
+# --- Node / Frontend ---
 # compiled output
 dist
 tmp
@@ -47,3 +50,36 @@ Thumbs.db
 # Replit
 .cache/
 .local/
+
+# --- Python / Backend ---
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*.class
+
+# Database
+*.db
+*.sqlite3
+
+# Output folders & Caches
+reports/
+scratch/
+.pytest_cache/
+.gemini/
+data/snapshots/
+tests/eval_logs/
+
+# Temp / scratch prompt files (never commit these)
+temp_prompt*.txt
+final_prompt*.txt
+*_prompt_content.txt
+*.tmp

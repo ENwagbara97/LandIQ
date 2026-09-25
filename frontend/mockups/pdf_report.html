@@ -1,0 +1,418 @@
+<!DOCTYPE html><html class="light" lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>LandIQ | Assessment Report</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+<style>
+        @media print {
+            .no-print { display: none !important; }
+            .page-break { page-break-before: always; }
+            body { background: white !important; }
+            .report-container { box-shadow: none !important; border: none !important; width: 100% !important; margin: 0 !important; padding: 0 !important; }
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .handle-bar {
+            width: 32px;
+            height: 4px;
+            background-color: #c2c6d5;
+            border-radius: 2px;
+            margin: 0 auto 16px;
+        }
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(194, 198, 213, 0.3);
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface-container-low": "#f4f3f7",
+                        "on-tertiary-fixed-variant": "#004493",
+                        "on-error": "#ffffff",
+                        "primary": "#0058bd",
+                        "on-surface": "#1a1b1e",
+                        "on-secondary-container": "#006f65",
+                        "outline": "#727785",
+                        "outline-variant": "#c2c6d5",
+                        "on-secondary-fixed": "#00201c",
+                        "primary-fixed-dim": "#adc6ff",
+                        "on-tertiary": "#ffffff",
+                        "inverse-on-surface": "#f1f0f4",
+                        "primary-container": "#2771df",
+                        "tertiary": "#0058bb",
+                        "inverse-primary": "#adc6ff",
+                        "tertiary-container": "#1471e6",
+                        "tertiary-fixed": "#d8e2ff",
+                        "on-primary-fixed": "#001a41",
+                        "on-secondary-fixed-variant": "#005049",
+                        "on-error-container": "#93000a",
+                        "secondary": "#006a61",
+                        "surface-dim": "#dbd9dd",
+                        "on-primary": "#ffffff",
+                        "surface-container-high": "#e9e7eb",
+                        "on-surface-variant": "#424753",
+                        "secondary-container": "#7af4e3",
+                        "error-container": "#ffdad6",
+                        "background": "#faf9fd",
+                        "on-background": "#1a1b1e",
+                        "surface-container-highest": "#e3e2e6",
+                        "on-tertiary-fixed": "#001a41",
+                        "primary-fixed": "#d8e2ff",
+                        "error": "#ba1a1a",
+                        "surface": "#faf9fd",
+                        "surface-tint": "#005ac1",
+                        "surface-bright": "#faf9fd",
+                        "secondary-fixed-dim": "#5edaca",
+                        "on-primary-container": "#fefcff",
+                        "secondary-fixed": "#7df6e6",
+                        "inverse-surface": "#2f3033",
+                        "tertiary-fixed-dim": "#adc7ff",
+                        "on-tertiary-container": "#fefcff",
+                        "on-secondary": "#ffffff",
+                        "on-primary-fixed-variant": "#004494",
+                        "surface-container": "#efedf1",
+                        "surface-variant": "#e3e2e6",
+                        "surface-container-lowest": "#ffffff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "gutter": "12px",
+                        "sheet-top-padding": "24px",
+                        "bottom-nav-height": "80px",
+                        "element-gap-sm": "8px",
+                        "container-margin": "16px",
+                        "element-gap-md": "16px"
+                    },
+                    "fontFamily": {
+                        "title-lg": ["DM Sans"],
+                        "label-sm": ["DM Sans"],
+                        "body-lg": ["DM Sans"],
+                        "display-lg": ["DM Sans"],
+                        "label-md": ["DM Sans"],
+                        "body-md": ["DM Sans"],
+                        "headline-md": ["DM Sans"]
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-surface font-body-md text-on-surface p-0 md:p-8">
+<div class="report-container max-w-5xl mx-auto bg-surface-container-lowest shadow-2xl rounded-2xl overflow-hidden border border-outline-variant">
+<!-- Header & Meta -->
+<header class="p-8 border-b border-outline-variant flex flex-col md:flex-row justify-between items-start gap-4 bg-surface-container-low">
+<div class="flex flex-col gap-1">
+<div class="flex items-center gap-2">
+<span class="text-primary font-display-lg text-display-lg font-bold tracking-tight">LandIQ</span>
+<span class="bg-primary-container text-on-primary-container px-3 py-0.5 rounded-full text-label-md font-label-md">PRO</span>
+</div>
+<h1 class="font-headline-md text-headline-md text-on-surface mt-2">Land Buyer and Investor Assessment</h1>
+<p class="text-on-surface-variant font-body-md">South-South Regional Intelligence Report</p>
+</div>
+<div class="text-right flex flex-col items-end gap-1">
+<span class="font-mono text-label-md bg-surface-container-highest px-3 py-1 rounded-md text-on-surface-variant">ID: cad-cd03278b</span>
+<span class="text-label-md text-on-surface-variant">16 June 2026, 05:46 PM WAT</span>
+<div class="flex items-center gap-2 text-primary mt-2 no-print">
+<button class="flex items-center gap-1 hover:underline font-label-md" onclick="window.print()">
+<span class="material-symbols-outlined text-sm">print</span> Print PDF
+                    </button>
+<span class="text-outline-variant">|</span>
+<button class="flex items-center gap-1 hover:underline font-label-md">
+<span class="material-symbols-outlined text-sm">share</span> Share Report
+                    </button>
+</div>
+</div>
+</header>
+<!-- Geospatial Viewport -->
+<section class="relative w-full h-[400px] overflow-hidden">
+<div class="absolute inset-0 bg-surface-dim" data-location="Uyo, Nigeria" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuB4KSDsoFt6jueR4jQMARJpw3SqfwwSkXhhIUswXnq-r0YBvxd_8Il1yuZt5AiQoOqr_yYruKrqidV1dH9K-793t1TQgOl1DLONGMNnuo1rR0nw37N8Z69fDVDCnbdmUHztWCi50lzqdlKFqaEcZtrXsHSfW9cByDkljtsMc_bqi6WD3gjoHmCIhpaplmlmMPS96Vi6lsvi_6W00E7oHd4pzRlPt-j2vNc4Rt9Urwwg3VD_DevmBGuT1xP41ndlAovr03XdwyWctr5Z')">
+</div>
+<!-- Overlay Interface Elements -->
+<div class="absolute top-4 left-4 flex flex-col gap-2">
+<div class="glass-panel p-3 rounded-xl flex items-center gap-3">
+<div class="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+<span class="material-symbols-outlined">layers</span>
+</div>
+<div>
+<p class="text-label-sm font-label-sm text-on-surface-variant leading-none">Map View</p>
+<p class="text-body-md font-body-md font-bold">Standard Regional Vector</p>
+</div>
+</div>
+</div>
+<div class="absolute bottom-4 right-4 glass-panel px-4 py-2 rounded-full text-label-md font-label-md flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-error animate-pulse"></span>
+                Digital Perimeter Verification Active
+            </div>
+</section>
+<!-- Executive Status Grid -->
+<section class="grid grid-cols-1 md:grid-cols-2 gap-0 border-b border-outline-variant">
+<div class="p-8 border-r border-outline-variant">
+<p class="text-label-md font-label-md text-on-surface-variant uppercase tracking-wider mb-2">Dimensions</p>
+<div class="flex items-baseline gap-2">
+<span class="font-headline-md text-headline-md text-on-surface">0.8</span>
+<span class="text-body-lg text-on-surface-variant">Plots</span>
+</div>
+<p class="text-body-md text-on-surface-variant mt-1">425 Sqm (Approximate)</p>
+</div>
+<div class="p-8">
+<p class="text-label-md font-label-md text-on-surface-variant uppercase tracking-wider mb-2">Environmental</p>
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">water_drop</span>
+<span class="font-headline-md text-headline-md text-on-surface">Medium</span>
+</div>
+<p class="text-body-md text-on-surface-variant mt-1">Seasonal Waterlogging Risk</p>
+</div>
+</section>
+<!-- Primary Analytical Summary -->
+<section class="p-8 bg-surface-container-lowest">
+<div class="flex items-start gap-4 max-w-3xl">
+<div class="mt-1 text-primary">
+<span class="material-symbols-outlined text-4xl">info_i</span>
+</div>
+<div>
+<h3 class="font-title-lg text-title-lg text-on-surface mb-2">Primary Analytical Summary</h3>
+<p class="text-body-lg text-on-surface-variant leading-relaxed">
+                        The designated parcel requires manual title verification. Remote sensing data indicates significant depression trends suggesting peak seasonal waterlogging between June and October. While the parcel is viable for development it requires a high foundation specification. Most critically the digital record for this specific coordinates shows a cadastral gap. A physical SURCON surveyor search at the State Ministry of Lands is mandatory before any financial commitment.
+                    </p>
+</div>
+</div>
+</section>
+<!-- Critical Property Indicators & Action Protocol -->
+<section class="grid grid-cols-1 lg:grid-cols-2 gap-8 p-8 border-t border-outline-variant bg-surface">
+<!-- Indicators -->
+<div>
+<h3 class="font-title-lg text-title-lg text-on-surface mb-6 flex items-center gap-2">
+<span class="material-symbols-outlined">analytics</span> Critical Property Indicators
+                </h3>
+<div class="space-y-4">
+<div class="flex items-start gap-4 p-4 rounded-2xl bg-surface-container-high">
+<div class="w-10 h-10 rounded-xl bg-surface flex items-center justify-center flex-shrink-0 text-error">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">verified_user</span>
+</div>
+<div>
+<p class="font-bold text-on-surface">Title Verification Status</p>
+<p class="text-body-md text-on-surface-variant">Manual search required. No active C of O found in recent digital buffers.</p>
+</div>
+</div>
+<div class="flex items-start gap-4 p-4 rounded-2xl bg-surface-container-high">
+<div class="w-10 h-10 rounded-xl bg-surface flex items-center justify-center flex-shrink-0 text-primary">
+<span class="material-symbols-outlined">tsunami</span>
+</div>
+<div>
+<p class="font-bold text-on-surface">Seasonal Environmental Variance</p>
+<p class="text-body-md text-on-surface-variant">Potential for depression based pooling. Hydro RIVERS data suggests 350m proximity to secondary basins.</p>
+</div>
+</div>
+<div class="flex items-start gap-4 p-4 rounded-2xl bg-surface-container-high opacity-70">
+<div class="w-10 h-10 rounded-xl bg-surface flex items-center justify-center flex-shrink-0 text-outline">
+<span class="material-symbols-outlined">cloud_off</span>
+</div>
+<div>
+<p class="font-bold text-on-surface">Remote Sensing Constraints</p>
+<p class="text-body-md text-on-surface-variant">High cloud cover in recent Sentinel 2 passes. Vegetation indices skipped for manual ground truth.</p>
+</div>
+</div>
+</div>
+</div>
+<!-- Action Protocol -->
+<div class="bg-inverse-surface text-inverse-on-surface p-8 rounded-[28px]">
+<h3 class="font-title-lg text-title-lg mb-6 flex items-center gap-2">
+<span class="material-symbols-outlined">assignment_turned_in</span> Due Diligence Protocol
+                </h3>
+<ol class="space-y-6">
+<li class="flex gap-4">
+<span class="w-8 h-8 rounded-full bg-primary flex items-center justify-center font-bold flex-shrink-0 text-white">1</span>
+<div>
+<p class="font-bold text-primary-fixed">Critical: State Ministry Search</p>
+<p class="text-body-md text-slate-300">Retain a licensed lawyer to perform a physical Title search at the State Ministry of Lands.</p>
+</div>
+</li>
+<li class="flex gap-4">
+<span class="w-8 h-8 rounded-full bg-primary-fixed-dim flex items-center justify-center font-bold flex-shrink-0 text-on-primary-fixed">2</span>
+<div>
+<p class="font-bold text-primary-fixed">High: Beacon and Perimeter Audit</p>
+<p class="text-body-md text-slate-300">Invite a SURCON registered surveyor to locate physical beacons and verify perimeter match.</p>
+</div>
+</li>
+<li class="flex gap-4">
+<span class="w-8 h-8 rounded-full bg-surface-container-highest flex items-center justify-center font-bold flex-shrink-0 text-on-surface">3</span>
+<div>
+<p class="font-bold text-primary-fixed">Medium: On Site Video Proof</p>
+<p class="text-body-md text-slate-300">Request a timestamped 360 degree video walkthrough of the parcel boundaries and neighboring access points.</p>
+</div>
+</li>
+</ol>
+</div>
+</section>
+<!-- Technical Appendix (Page Break) -->
+<section class="page-break p-8 border-t border-outline-variant bg-surface-container-lowest">
+<div class="flex items-center justify-between mb-8">
+<div>
+<h2 class="font-headline-md text-headline-md text-on-surface">Technical Appendix</h2>
+<p class="text-on-surface-variant font-body-md">GIS Professional Data Verification Layer</p>
+</div>
+<div class="p-2 border border-outline-variant rounded-lg font-mono text-label-sm text-on-surface-variant">
+                    LOG_LEVEL: VERBOSE_SPATIAL
+                </div>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+<!-- Column 1: Spatial -->
+<div class="space-y-4">
+<h4 class="font-bold text-label-md uppercase tracking-widest text-primary border-b border-primary/20 pb-2">Spatial Data</h4>
+<div class="space-y-2">
+<div class="flex justify-between text-body-md">
+<span class="text-on-surface-variant">Centroid</span>
+<span class="font-mono">5.00018 N, 7.98194 E</span>
+</div>
+<div class="flex justify-between text-body-md">
+<span class="text-on-surface-variant">CRS</span>
+<span class="font-mono">MINNA / Nigeria West</span>
+</div>
+<div class="flex justify-between text-body-md">
+<span class="text-on-surface-variant">Calculated Area</span>
+<span class="font-mono">0.0425 Ha</span>
+</div>
+</div>
+</div>
+<!-- Column 2: Environmental -->
+<div class="space-y-4">
+<h4 class="font-bold text-label-md uppercase tracking-widest text-primary border-b border-primary/20 pb-2">Environmental</h4>
+<div class="space-y-2">
+<div class="flex justify-between text-body-md">
+<span class="text-on-surface-variant">Terrain Model</span>
+<span class="font-mono">SRTM v3 DEM</span>
+</div>
+<div class="flex justify-between text-body-md">
+<span class="text-on-surface-variant">Hydro Proximity</span>
+<span class="font-mono">350m (Basin 4)</span>
+</div>
+<div class="flex justify-between text-body-md">
+<span class="text-on-surface-variant">NDWI Index</span>
+<span class="font-mono text-error">SKIPPED</span>
+</div>
+</div>
+</div>
+<!-- Column 3: Infrastructure -->
+<div class="space-y-4">
+<h4 class="font-bold text-label-md uppercase tracking-widest text-primary border-b border-primary/20 pb-2">Infrastructure</h4>
+<div class="space-y-2">
+<div class="flex justify-between text-body-md">
+<span class="text-on-surface-variant">OSM Road Prox</span>
+<span class="font-mono">120m (Lateral)</span>
+</div>
+<div class="flex justify-between text-body-md">
+<span class="text-on-surface-variant">Growth Buffer</span>
+<span class="font-mono">2km (Primary)</span>
+</div>
+<div class="flex justify-between text-body-md">
+<span class="text-on-surface-variant">Grid Access</span>
+<span class="font-mono">Available</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Data Integrity Table -->
+<div class="mt-12 overflow-x-auto">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-surface-container-low border-y border-outline-variant">
+<th class="p-4 text-label-md font-bold uppercase tracking-wider text-on-surface-variant">Indicator</th>
+<th class="p-4 text-label-md font-bold uppercase tracking-wider text-on-surface-variant">Source</th>
+<th class="p-4 text-label-md font-bold uppercase tracking-wider text-on-surface-variant">Era</th>
+<th class="p-4 text-label-md font-bold uppercase tracking-wider text-on-surface-variant">Confidence</th>
+<th class="p-4 text-label-md font-bold uppercase tracking-wider text-on-surface-variant">Status</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-outline-variant">
+<tr class="hover:bg-surface-container-lowest">
+<td class="p-4 text-body-md font-bold">Hydro Distance</td>
+<td class="p-4 text-body-md">HydroRIVERS v1.1</td>
+<td class="p-4 text-body-md">2024 Archival</td>
+<td class="p-4 text-body-md">94%</td>
+<td class="p-4"><span class="bg-green-100 text-green-800 px-2 py-1 rounded text-label-sm font-bold">VALID</span></td>
+</tr>
+<tr class="hover:bg-surface-container-lowest">
+<td class="p-4 text-body-md font-bold">Road Proximity</td>
+<td class="p-4 text-body-md">OpenStreetMap (OSM)</td>
+<td class="p-4 text-body-md">Real time API</td>
+<td class="p-4 text-body-md">88%</td>
+<td class="p-4"><span class="bg-green-100 text-green-800 px-2 py-1 rounded text-label-sm font-bold">VALID</span></td>
+</tr>
+<tr class="hover:bg-surface-container-lowest">
+<td class="p-4 text-body-md font-bold">Topography</td>
+<td class="p-4 text-body-md">SRTM Digital Elevation</td>
+<td class="p-4 text-body-md">30m Global Grid</td>
+<td class="p-4 text-body-md">91%</td>
+<td class="p-4"><span class="bg-green-100 text-green-800 px-2 py-1 rounded text-label-sm font-bold">VALID</span></td>
+</tr>
+<tr class="hover:bg-surface-container-lowest">
+<td class="p-4 text-body-md font-bold">Vegetation</td>
+<td class="p-4 text-body-md">Sentinel 2 MSI</td>
+<td class="p-4 text-body-md">Last 14 Days</td>
+<td class="p-4 text-body-md">12%</td>
+<td class="p-4"><span class="bg-gray-100 text-gray-800 px-2 py-1 rounded text-label-sm font-bold">LOW_VIS</span></td>
+</tr>
+<tr class="hover:bg-surface-container-lowest">
+<td class="p-4 text-body-md font-bold">Cadastral Title</td>
+<td class="p-4 text-body-md">Registry Buffer</td>
+<td class="p-4 text-body-md">Semi Annual</td>
+<td class="p-4 text-body-md">65%</td>
+<td class="p-4"><span class="bg-error-container text-on-error-container px-2 py-1 rounded text-label-sm font-bold">MISSING</span></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+<!-- Liability Disclaimer Footer -->
+<footer class="p-8 bg-surface-container-highest border-t border-outline-variant text-center">
+<div class="max-w-2xl mx-auto space-y-3">
+<p class="text-label-sm font-bold text-on-surface-variant uppercase tracking-widest">Liability Disclaimer</p>
+<p class="text-label-md text-on-surface-variant leading-relaxed">
+                    This document is a digital screening generated by the LandIQ platform. It is based on remote sensing GIS datasets and crowd sourced infrastructure mappings. This is <span class="font-bold underline text-on-surface">NOT a legal deed a signed land survey or a certificate of occupancy</span>. LandIQ does not guarantee the accuracy of government records or physical ground markers. Users must conduct physical due diligence through licensed legal and survey professionals before concluding any land transaction.
+                </p>
+<div class="pt-4 flex justify-center items-center gap-6 opacity-60 grayscale no-print">
+<span class="text-label-md font-bold">ISO 27001 Certified</span>
+<span class="text-label-md font-bold">Spatial Data Infrastructure Compliant</span>
+<span class="text-label-md font-bold">© 2026 LandIQ Corp</span>
+</div>
+</div>
+</footer>
+</div>
+<!-- Floating Action for Web Interaction (Suppressed on Print) -->
+<div class="fixed bottom-8 right-8 no-print md:flex gap-4 hidden">
+<button class="bg-surface-container-lowest text-primary border border-primary/20 shadow-lg px-6 py-3 rounded-full flex items-center gap-2 hover:bg-primary-container hover:text-on-primary-container transition-all" onclick="window.print()">
+<span class="material-symbols-outlined">download</span>
+            Download PDF
+        </button>
+<button class="bg-primary text-on-primary shadow-xl px-6 py-3 rounded-full flex items-center gap-2 hover:opacity-90 transition-all scale-105 active:scale-95">
+<span class="material-symbols-outlined">chat</span>
+            Ask AI Assistant
+        </button>
+</div>
+<script>
+        // Simple micro-interaction for the map area
+        const mapArea = document.querySelector('[data-location]');
+        if (mapArea) {
+            mapArea.addEventListener('mouseover', () => {
+                mapArea.style.transition = 'transform 2s ease-out';
+                mapArea.style.transform = 'scale(1.02)';
+            });
+            mapArea.addEventListener('mouseleave', () => {
+                mapArea.style.transform = 'scale(1)';
+            });
+        }
+    </script>
+</body></html>

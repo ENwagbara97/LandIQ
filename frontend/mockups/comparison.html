@@ -1,0 +1,347 @@
+<!DOCTYPE html><html lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>LandIQ | Comparison Workspace</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "tertiary-fixed-dim": "#adc7ff",
+                        "surface-container-lowest": "#ffffff",
+                        "outline": "#727785",
+                        "on-primary": "#ffffff",
+                        "secondary-container": "#7af4e3",
+                        "on-surface": "#1a1b1e",
+                        "on-secondary": "#ffffff",
+                        "surface-container-low": "#f4f3f7",
+                        "on-tertiary-fixed-variant": "#004493",
+                        "surface-dim": "#dbd9dd",
+                        "primary-fixed-dim": "#adc6ff",
+                        "on-primary-container": "#fefcff",
+                        "surface": "#faf9fd",
+                        "on-tertiary": "#ffffff",
+                        "on-secondary-fixed": "#00201c",
+                        "on-background": "#1a1b1e",
+                        "primary": "#0058bd",
+                        "on-surface-variant": "#424753",
+                        "on-secondary-container": "#006f65",
+                        "on-primary-fixed": "#001a41",
+                        "surface-tint": "#005ac1",
+                        "on-tertiary-container": "#fefcff",
+                        "on-secondary-fixed-variant": "#005049",
+                        "error": "#ba1a1a",
+                        "background": "#faf9fd",
+                        "on-tertiary-fixed": "#001a41",
+                        "inverse-primary": "#adc6ff",
+                        "error-container": "#ffdad6",
+                        "surface-container": "#efedf1",
+                        "tertiary": "#0058bb",
+                        "secondary-fixed-dim": "#5edaca",
+                        "on-error-container": "#93000a",
+                        "secondary-fixed": "#7df6e6",
+                        "inverse-on-surface": "#f1f0f4",
+                        "secondary": "#006a61",
+                        "on-error": "#ffffff",
+                        "primary-fixed": "#d8e2ff",
+                        "tertiary-container": "#1471e6",
+                        "surface-container-high": "#e9e7eb",
+                        "primary-container": "#2771df",
+                        "on-primary-fixed-variant": "#004494",
+                        "tertiary-fixed": "#d8e2ff",
+                        "surface-variant": "#e3e2e6",
+                        "inverse-surface": "#2f3033",
+                        "outline-variant": "#c2c6d5"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "element-gap-md": "16px",
+                        "container-margin": "16px",
+                        "gutter": "12px",
+                        "element-gap-sm": "8px",
+                        "sheet-top-padding": "24px",
+                        "bottom-nav-height": "80px"
+                    },
+                    "fontFamily": {
+                        "title-lg": ["DM Sans"],
+                        "label-sm": ["DM Sans"],
+                        "label-md": ["DM Sans"],
+                        "headline-md": ["DM Sans"],
+                        "body-lg": ["DM Sans"],
+                        "display-lg": ["DM Sans"],
+                        "body-md": ["DM Sans"]
+                    },
+                    "fontSize": {
+                        "title-lg": ["18px", {"lineHeight": "24px", "fontWeight": "500"}],
+                        "label-sm": ["11px", {"lineHeight": "16px", "fontWeight": "500"}],
+                        "label-md": ["12px", {"lineHeight": "16px", "letterSpacing": "0.5px", "fontWeight": "500"}],
+                        "headline-md": ["22px", {"lineHeight": "28px", "fontWeight": "500"}],
+                        "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                        "display-lg": ["28px", {"lineHeight": "36px", "letterSpacing": "-0.5px", "fontWeight": "500"}],
+                        "body-md": ["14px", {"lineHeight": "20px", "fontWeight": "400"}]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body { font-family: 'DM Sans', sans-serif; background-color: #faf9fd; }
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+        .glass-panel { backdrop-filter: blur(12px); background: rgba(250, 249, 253, 0.85); }
+        .map-sync-line { position: absolute; left: 50%; top: 0; bottom: 0; width: 1px; background: rgba(114, 119, 133, 0.2); z-index: 10; pointer-events: none; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        .comparison-grid-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    
+        /* Simple Mode (Default) */
+        .expert-only { display: none; }
+        .simple-only { display: block; }
+        
+        /* Expert Mode Overrides */
+        .expert-mode .expert-only { display: block; }
+        .expert-mode .simple-only { display: none; }
+        .expert-mode .comparison-grid-row { grid-template-columns: 1fr 1fr; }
+        
+        /* Simple Mode Progress Bar Styling */
+        .score-bar { height: 8px; width: 100%; background: rgba(0,0,0,0.05); border-radius: 99px; overflow: hidden; }
+        .score-fill { height: 100%; border-radius: 99px; }
+    </style>
+</head>
+<body class="bg-background text-on-surface overflow-hidden h-screen flex flex-col">
+<!-- Top Navigation Bar -->
+<header class="bg-surface-container-lowest border-b border-outline-variant text-primary fixed top-0 w-full z-40 flex justify-between items-center px-container-margin h-16">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-3xl">map</span>
+<h1 class="font-display-lg text-title-lg font-bold tracking-tight text-primary">LandIQ</h1>
+<div class="h-6 w-[1px] bg-outline-variant mx-4"></div>
+<span class="font-label-md text-on-surface-variant">Comparison Workspace</span>
+</div>
+<div class="flex items-center gap-3"><div class="flex items-center bg-surface-container-high rounded-full p-1 mr-2">
+<button class="px-4 py-1.5 rounded-full font-label-md transition-all bg-primary text-on-primary shadow-sm" id="toggle-simple" onclick="document.body.classList.remove('expert-mode'); this.classList.add('bg-primary', 'text-on-primary', 'shadow-sm'); document.getElementById('toggle-expert').classList.remove('bg-primary', 'text-on-primary', 'shadow-sm'); document.getElementById('toggle-expert').classList.add('text-on-surface-variant');">
+        Simple
+    </button>
+<button class="px-4 py-1.5 rounded-full font-label-md transition-all text-on-surface-variant" id="toggle-expert" onclick="document.body.classList.add('expert-mode'); this.classList.add('bg-primary', 'text-on-primary', 'shadow-sm'); this.classList.remove('text-on-surface-variant'); document.getElementById('toggle-simple').classList.remove('bg-primary', 'text-on-primary', 'shadow-sm'); document.getElementById('toggle-simple').classList.add('text-on-surface-variant');">
+        Expert
+    </button>
+</div>
+<button class="flex items-center gap-2 px-4 py-2 rounded-full bg-surface-container-high hover:bg-surface-container-highest transition-colors">
+<span class="material-symbols-outlined text-on-surface-variant text-[20px]">close</span>
+<span class="font-label-md text-on-surface-variant">Close</span>
+</button>
+</div>
+</header>
+<!-- Main Workspace -->
+<main class="flex-1 mt-16 flex flex-col overflow-hidden">
+<!-- Synced Map Panels -->
+<div class="relative flex h-[50vh] w-full p-2 bg-surface-container-low">
+<!-- Split Line Decorator -->
+<div class="map-sync-line"></div>
+<!-- Left Panel: Parcel A -->
+<div class="relative flex-1 rounded-l-xl overflow-hidden group border-r border-outline-variant/30">
+<div class="absolute top-4 left-4 z-20 px-3 py-1.5 rounded-lg bg-primary text-on-primary font-label-md shadow-lg flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-on-primary animate-pulse"></span>
+                Parcel #8821-A
+            </div>
+<div class="absolute inset-0 bg-surface-container-highest" id="map-a">
+<img alt="Satellite view of parcel A" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBcxQwyikZzp4n_MN2B-F1w32xdcCuj34ZHx9vc_-KLmGi83KbAoF3aXpgAcs1DkwGwvBUgjdBc0BRVl60nDbmbzC2knAKnRQAeXhfFgg0vAE2OoMKhEbHajxR6i-AYEgmQdW0xs5MRAPyyzjeUQCt21e1G9M3gJ2lgT3k-0q8-TTICXxAOgLq0nUZxIqexlW4WgGEMPyV30XNR0vGW2w13_No2WHlhOQHT3EOaUY9KSGQ4jM6jSajFBmnKkYcYaWpGvwAwjNM-_zrW">
+</div>
+<div class="absolute bottom-4 right-4 z-20 flex flex-col gap-2">
+<button class="p-2.5 rounded-xl bg-surface-container-lowest shadow-md hover:bg-surface transition-colors border border-outline-variant">
+<span class="material-symbols-outlined text-on-surface-variant">layers</span>
+</button>
+<button class="p-2.5 rounded-xl bg-surface-container-lowest shadow-md hover:bg-surface transition-colors border border-outline-variant">
+<span class="material-symbols-outlined text-on-surface-variant">my_location</span>
+</button>
+</div>
+</div>
+<!-- Right Panel: Parcel B -->
+<div class="relative flex-1 rounded-r-xl overflow-hidden group">
+<div class="absolute top-4 left-4 z-20 px-3 py-1.5 rounded-lg bg-secondary text-on-secondary font-label-md shadow-lg flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-on-secondary animate-pulse"></span>
+                Parcel #4402-B
+            </div>
+<div class="absolute inset-0 bg-surface-container-highest" id="map-b">
+<img alt="Aerial view of parcel B" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDotTwwyJuOimFqhsVkuryfbhP81NmqtcMEA6r3pQxjL5Fvmz1m0XRrk-dFUuSWbafyMMHSf7P5uvMHWdUVKXDYMq0rtS-jn1iwwgTKIbeolcqFucckUvKrcsZGBVzayvVyJr241lwB-NWxDSik-Pba0C7BCsX1jL7gW1W59y4DV1Mrlssfkz8cbkjKIznicoqF3Ws9YQQLFyI7ubsliUM08vsME3SwtRLVPK77pdHUKJpbS41H41f3e5nwynOiNPBfAqRhjaTZjnCN">
+</div>
+<div class="absolute bottom-4 right-4 z-20 flex flex-col gap-2">
+<button class="p-2.5 rounded-xl bg-surface-container-lowest shadow-md hover:bg-surface transition-colors border border-outline-variant">
+<span class="material-symbols-outlined text-on-surface-variant">layers</span>
+</button>
+<button class="p-2.5 rounded-xl bg-surface-container-lowest shadow-md hover:bg-surface transition-colors border border-outline-variant">
+<span class="material-symbols-outlined text-on-surface-variant">my_location</span>
+</button>
+</div>
+</div>
+<!-- Map Control Center -->
+<div class="absolute top-6 left-1/2 -translate-x-1/2 z-30 px-5 py-2.5 rounded-full glass-panel shadow-xl border border-outline-variant/30 flex items-center gap-3">
+<span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 1;">sync</span>
+<span class="font-label-md text-on-surface tracking-wide uppercase text-[10px]">Synced Viewport</span>
+</div>
+</div>
+<!-- Parameter Comparison Grid -->
+<div class="flex-1 bg-surface-container-lowest p-container-margin overflow-y-auto no-scrollbar">
+<div class="max-w-7xl mx-auto space-y-8 pb-12">
+<!-- Category: Terrain -->
+<section>
+<div class="flex items-center gap-3 mb-6">
+<div class="p-2 rounded-lg bg-primary/10">
+<span class="material-symbols-outlined text-primary">terrain</span>
+</div>
+<h2 class="font-headline-md text-title-lg text-on-surface">Terrain &amp; Elevation</h2>
+</div>
+<div class="comparison-grid-row"><!-- Simple View: Scores -->
+<div class="simple-only col-span-2 space-y-6">
+<div class="grid grid-cols-2 gap-8">
+<div class="space-y-2">
+<div class="flex justify-between font-label-md text-on-surface-variant"><span>Terrain Suitability</span><span>72%</span></div>
+<div class="score-bar"><div class="score-fill bg-primary" style="width: 72%"></div></div>
+</div>
+<div class="space-y-2">
+<div class="flex justify-between font-label-md text-on-surface-variant"><span>Terrain Suitability</span><span>88%</span></div>
+<div class="score-bar"><div class="score-fill bg-secondary" style="width: 88%"></div></div>
+</div>
+</div>
+</div>
+<!-- Expert View: Raw Metrics -->
+<div class="expert-only flex-1 grid grid-cols-2 gap-4">
+<div class="p-5 rounded-2xl bg-surface-container-low border border-outline-variant/40">
+<span class="font-label-sm text-on-surface-variant uppercase tracking-wider block mb-2">Avg. Elevation</span>
+<span class="font-display-lg text-headline-md text-primary">482 ft</span>
+</div>
+<div class="p-5 rounded-2xl bg-surface-container-low border border-outline-variant/40">
+<span class="font-label-sm text-on-surface-variant uppercase tracking-wider block mb-2">Max Slope</span>
+<span class="font-display-lg text-headline-md text-primary">12.4%</span>
+</div>
+</div>
+<div class="expert-only flex-1 grid grid-cols-2 gap-4">
+<div class="p-5 rounded-2xl bg-surface-container-low border border-outline-variant/40">
+<span class="font-label-sm text-on-surface-variant uppercase tracking-wider block mb-2">Avg. Elevation</span>
+<span class="font-display-lg text-headline-md text-secondary">512 ft</span>
+</div>
+<div class="p-5 rounded-2xl bg-surface-container-low border border-outline-variant/40">
+<span class="font-label-sm text-on-surface-variant uppercase tracking-wider block mb-2">Max Slope</span>
+<span class="font-display-lg text-headline-md text-secondary">8.1%</span>
+</div>
+</div></div>
+</section>
+<!-- Category: Environmental Risk -->
+<section>
+<div class="flex items-center gap-3 mb-6">
+<div class="p-2 rounded-lg bg-error/10">
+<span class="material-symbols-outlined text-error">flood</span>
+</div>
+<h2 class="font-headline-md text-title-lg text-on-surface">Environmental Risk</h2>
+</div>
+<div class="simple-only mb-6">
+<div class="grid grid-cols-2 gap-8">
+<div class="p-4 rounded-xl bg-error/5 border border-error/10 flex items-center gap-3">
+<span class="material-symbols-outlined text-error">warning</span>
+<span class="font-label-md text-error">High Risk Detected</span>
+</div>
+<div class="p-4 rounded-xl bg-secondary/5 border border-secondary/10 flex items-center gap-3">
+<span class="material-symbols-outlined text-secondary">check_circle</span>
+<span class="font-label-md text-secondary">Low Risk Profile</span>
+</div>
+</div>
+</div><div class="comparison-grid-row expert-only">
+<div class="p-5 rounded-2xl bg-error-container/20 border border-error/20 flex items-center justify-between">
+<div>
+<span class="font-label-sm text-error uppercase tracking-wider block mb-1">Flood Risk Zone</span>
+<span class="font-title-lg text-error">High (Zone AE)</span>
+</div>
+<div class="p-3 rounded-xl bg-error-container/40">
+<span class="material-symbols-outlined text-error" style="font-variation-settings: 'FILL' 1;">warning</span>
+</div>
+</div>
+<div class="p-5 rounded-2xl bg-secondary-container/20 border border-secondary/20 flex items-center justify-between">
+<div>
+<span class="font-label-sm text-secondary uppercase tracking-wider block mb-1">Flood Risk Zone</span>
+<span class="font-title-lg text-secondary">Low (Zone X)</span>
+</div>
+<div class="p-3 rounded-xl bg-secondary-container/40">
+<span class="material-symbols-outlined text-secondary" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+</div>
+</div>
+</div>
+</section>
+<!-- Category: Soil & Variables -->
+<section>
+<div class="flex items-center gap-3 mb-6">
+<div class="p-2 rounded-lg bg-secondary/10">
+<span class="material-symbols-outlined text-secondary">grass</span>
+</div>
+<h2 class="font-headline-md text-title-lg text-on-surface">Soil &amp; Vegetation</h2>
+</div>
+<div class="comparison-grid-row">
+<div class="grid grid-cols-2 gap-4">
+<div class="p-5 rounded-2xl bg-surface-container-low border border-outline-variant/40">
+<span class="font-label-sm text-on-surface-variant uppercase tracking-wider block mb-2">Soil Type</span>
+<span class="font-body-lg font-medium text-on-surface">Clay Loam</span>
+</div>
+<div class="p-5 rounded-2xl bg-surface-container-low border border-outline-variant/40">
+<span class="font-label-sm text-on-surface-variant uppercase tracking-wider block mb-2">Tree Density</span>
+<span class="font-body-lg font-medium text-on-surface">42%</span>
+</div>
+</div>
+<div class="grid grid-cols-2 gap-4">
+<div class="p-5 rounded-2xl bg-surface-container-low border border-outline-variant/40">
+<span class="font-label-sm text-on-surface-variant uppercase tracking-wider block mb-2">Soil Type</span>
+<span class="font-body-lg font-medium text-on-surface">Sandy Silty</span>
+</div>
+<div class="p-5 rounded-2xl bg-surface-container-low border border-outline-variant/40">
+<span class="font-label-sm text-on-surface-variant uppercase tracking-wider block mb-2">Tree Density</span>
+<span class="font-body-lg font-medium text-on-surface">15%</span>
+</div>
+</div>
+</div>
+</section>
+<!-- Integrated Intelligence Summary -->
+<div class="mt-12 p-8 rounded-[32px] bg-inverse-surface text-inverse-on-surface shadow-2xl relative overflow-hidden group">
+<div class="absolute -top-24 -right-24 w-64 h-64 bg-primary/20 rounded-full blur-[100px] pointer-events-none transition-all group-hover:bg-secondary/20"></div>
+<div class="relative z-10">
+<div class="flex items-center gap-4 mb-6">
+<div class="p-3 rounded-2xl bg-secondary-fixed/10 border border-secondary-fixed/20">
+<span class="material-symbols-outlined text-secondary-fixed text-3xl" style="font-variation-settings: 'FILL' 1;">auto_awesome</span>
+</div>
+<div>
+<h3 class="font-headline-md text-headline-md">Integrated Intelligence Insight</h3>
+<p class="text-secondary-fixed font-label-md uppercase tracking-widest">Comparative Summary</p>
+</div>
+</div>
+<div class="bg-white/5 p-6 rounded-2xl border border-white/10 backdrop-blur-sm">
+<p class="font-body-lg text-outline-variant leading-relaxed text-lg">
+                            Based on your spatial criteria, <span class="text-secondary-fixed font-bold">Parcel #4402-B</span> presents significantly lower developmental risk due to its location outside the 100-year floodplain and more manageable terrain slope (8.1% vs 12.4%). While <span class="text-tertiary-fixed-dim font-bold">Parcel #8821-A</span> offers better native vegetation cover, the soil stabilization costs for its clay-heavy composition and high flood risk zone may increase site preparation expenses by an estimated <span class="text-error-container font-bold">18-22%</span>.
+                        </p>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+<script>
+    // Interactive feedback for professional tool feel
+    const maps = document.querySelectorAll('.group');
+    maps.forEach(map => {
+        map.addEventListener('mouseenter', () => {
+            map.classList.add('ring-2', 'ring-primary/20', 'ring-inset');
+        });
+        map.addEventListener('mouseleave', () => {
+            map.classList.remove('ring-2', 'ring-primary/20', 'ring-inset');
+        });
+    });
+
+    // Close logic mock
+    document.querySelector('button').addEventListener('click', () => {
+        console.log('Workspace session finalized.');
+    });
+</script>
+</body></html>

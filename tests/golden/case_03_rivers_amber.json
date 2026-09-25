@@ -1,0 +1,25 @@
+{
+  "_description": "GOLDEN CASE 03 — Rivers State, Port Harcourt mainland. Expected: AMBER, MEDIUM flood risk.",
+  "input": {
+    "input_type": "manual_coordinates",
+    "raw_text": "4.8156N 7.0498E; 4.8163N 7.0511E; 4.8149N 7.0516E; 4.8142N 7.0503E; 4.8156N 7.0498E",
+    "stated_area_ha": 0.60,
+    "persona_mode": "SURVEYOR"
+  },
+  "expected": {
+    "coord_extract": {
+      "detected_crs": "WGS84",
+      "crs_confidence_min": 80,
+      "is_inside_nigeria": true
+    },
+    "crs_dialogs_fired": [],
+    "risk_assess": {
+      "flood_risk": "MEDIUM",
+      "terrain_suitability": "SUITABLE",
+      "traffic_light": "AMBER"
+    },
+    "report": {
+      "traffic_light": "AMBER"
+    }
+  }
+}

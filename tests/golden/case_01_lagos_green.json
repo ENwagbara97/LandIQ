@@ -1,0 +1,27 @@
+{
+  "_description": "GOLDEN CASE 01 — Valid Lagos parcel (Ikorodu LGA). Expected: GREEN, LOW flood risk.",
+  "input": {
+    "input_type": "manual_coordinates",
+    "raw_text": "6.6018N 3.5062E; 6.6025N 3.5075E; 6.6010N 3.5080E; 6.6003N 3.5067E; 6.6018N 3.5062E",
+    "stated_area_ha": 0.45,
+    "persona_mode": "EVERYDAY_BUYER"
+  },
+  "expected": {
+    "coord_extract": {
+      "detected_crs": "WGS84",
+      "crs_confidence_min": 85,
+      "is_inside_nigeria": true,
+      "computed_area_ha_approx": 0.43
+    },
+    "crs_dialogs_fired": [],
+    "risk_assess": {
+      "flood_risk": "LOW",
+      "terrain_suitability": "SUITABLE",
+      "traffic_light": "GREEN"
+    },
+    "report": {
+      "traffic_light": "GREEN",
+      "overall_risk_score_max": 40
+    }
+  }
+}

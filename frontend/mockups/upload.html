@@ -1,0 +1,330 @@
+<!DOCTYPE html><html class="light" lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>LandIQ | Multi-Format Upload &amp; Intake</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          "colors": {
+            "tertiary-fixed-dim": "#adc7ff",
+            "surface-container-lowest": "#ffffff",
+            "outline": "#727785",
+            "on-primary": "#ffffff",
+            "secondary-container": "#7af4e3",
+            "on-surface": "#1a1b1e",
+            "on-secondary": "#ffffff",
+            "surface-container-low": "#f4f3f7",
+            "on-tertiary-fixed-variant": "#004493",
+            "surface-dim": "#dbd9dd",
+            "primary-fixed-dim": "#adc6ff",
+            "on-primary-container": "#fefcff",
+            "surface": "#faf9fd",
+            "on-tertiary": "#ffffff",
+            "on-secondary-fixed": "#00201c",
+            "on-background": "#1a1b1e",
+            "primary": "#0058bd",
+            "on-surface-variant": "#424753",
+            "on-secondary-container": "#006f65",
+            "on-primary-fixed": "#001a41",
+            "surface-tint": "#005ac1",
+            "on-tertiary-container": "#fefcff",
+            "on-secondary-fixed-variant": "#005049",
+            "error": "#ba1a1a",
+            "background": "#faf9fd",
+            "on-tertiary-fixed": "#001a41",
+            "inverse-primary": "#adc6ff",
+            "error-container": "#ffdad6",
+            "surface-container": "#efedf1",
+            "tertiary": "#0058bb",
+            "secondary-fixed-dim": "#5edaca",
+            "on-error-container": "#93000a",
+            "secondary-fixed": "#7df6e6",
+            "inverse-on-surface": "#f1f0f4",
+            "secondary": "#006a61",
+            "on-error": "#ffffff",
+            "primary-fixed": "#d8e2ff",
+            "tertiary-container": "#1471e6",
+            "surface-container-high": "#e9e7eb",
+            "primary-container": "#2771df",
+            "on-primary-fixed-variant": "#004494",
+            "tertiary-fixed": "#d8e2ff",
+            "surface-variant": "#e3e2e6",
+            "inverse-surface": "#2f3033",
+            "outline-variant": "#c2c6d5"
+          },
+          "borderRadius": {
+            "DEFAULT": "0.25rem",
+            "lg": "0.5rem",
+            "xl": "0.75rem",
+            "full": "9999px"
+          },
+          "spacing": {
+            "element-gap-md": "16px",
+            "container-margin": "16px",
+            "gutter": "12px",
+            "element-gap-sm": "8px",
+            "sheet-top-padding": "24px",
+            "bottom-nav-height": "80px"
+          },
+          "fontFamily": {
+            "title-lg": ["DM Sans"],
+            "label-sm": ["DM Sans"],
+            "label-md": ["DM Sans"],
+            "headline-md": ["DM Sans"],
+            "body-lg": ["DM Sans"],
+            "display-lg": ["DM Sans"],
+            "body-md": ["DM Sans"]
+          },
+          "fontSize": {
+            "title-lg": ["18px", {"lineHeight": "24px", "fontWeight": "500"}],
+            "label-sm": ["11px", {"lineHeight": "16px", "fontWeight": "500"}],
+            "label-md": ["12px", {"lineHeight": "16px", "letterSpacing": "0.5px", "fontWeight": "500"}],
+            "headline-md": ["22px", {"lineHeight": "28px", "fontWeight": "500"}],
+            "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+            "display-lg": ["28px", {"lineHeight": "36px", "letterSpacing": "-0.5px", "fontWeight": "500"}],
+            "body-md": ["14px", {"lineHeight": "20px", "fontWeight": "400"}]
+          }
+        },
+      },
+    }
+  </script>
+<style>
+    body { font-family: 'DM Sans', sans-serif; }
+    .material-symbols-outlined {
+      font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+    }
+    .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+    .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background: #e3e2e6; border-radius: 10px; }
+    .dropzone-active { border-color: #0058bd; background-color: rgba(0, 88, 189, 0.04); }
+    @keyframes progress-shimmer {
+      0% { transform: translateX(-100%); }
+      100% { transform: translateX(100%); }
+    }
+    .shimmer-bg { position: relative; overflow: hidden; }
+    .shimmer-bg::after {
+      content: "";
+      position: absolute;
+      top: 0; right: 0; bottom: 0; left: 0;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+      animation: progress-shimmer 2s infinite;
+    }
+  </style>
+</head>
+<body class="bg-background text-on-background min-h-screen flex flex-col font-body-md">
+<!-- Header -->
+<header class="bg-surface border-b border-outline-variant/30 fixed top-0 w-full z-40 flex justify-between items-center px-container-margin h-16">
+<div class="flex items-center gap-4">
+<span class="material-symbols-outlined text-on-surface-variant p-2 rounded-full hover:bg-surface-container-high cursor-pointer transition-colors">menu</span>
+<h1 class="font-display-lg text-display-lg font-bold text-primary tracking-tight">LandIQ</h1>
+</div>
+<div class="flex items-center gap-container-margin">
+<nav class="hidden md:flex gap-6 mr-8">
+<a class="font-label-md text-label-md text-primary font-bold border-b-2 border-primary pb-1" href="#">Upload</a>
+<a class="font-label-md text-label-md text-on-surface-variant hover:text-primary transition-colors pb-1" href="#">Dashboard</a>
+<a class="font-label-md text-label-md text-on-surface-variant hover:text-primary transition-colors pb-1" href="#">History</a>
+</nav>
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-on-surface-variant hover:bg-surface-container-high p-2 rounded-full cursor-pointer transition-colors">notifications</span>
+<div class="w-10 h-10 rounded-full bg-primary-container overflow-hidden border border-outline-variant/30">
+<img alt="User" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB-Op9nmO0zkI1gGcZh--4Sy7pDcZGq0Ll5ejW4KI8Mj_mRreH1JSgwcAMnb2UlcCwoSBMdTjQKI9Wk06u-5oveWzacoOnRUQ0w6h7nh9p0T1BXYt625EJyARf6yf-oitE1IQieFgpAAXotaINmqycarkt4Wq4Kcuh-Li6KTTnTG6MtJ1LAQAL0c-UfViBisSVR_AxdQu8RXoY8Lge8QxFvmijy6mN8MmgD-jKjcN4lWQ7dpzlvMPY0AKGBNHfbn5dumNEV8FHSNaAa">
+</div>
+</div>
+</div>
+</header>
+<!-- Main Content -->
+<main class="flex-grow pt-20 px-container-margin pb-10 flex flex-col md:flex-row gap-gutter">
+<!-- Left Sidebar -->
+<aside class="w-full md:w-[320px] lg:w-[360px] flex flex-col gap-element-gap-md">
+<!-- Manual Intake -->
+<div class="bg-surface-container-lowest rounded-xl p-6 shadow-sm border border-outline-variant/50">
+<div class="flex items-center gap-2 mb-6">
+<span class="material-symbols-outlined text-primary">edit_note</span>
+<h2 class="font-title-lg text-title-lg text-on-surface">Manual Intake</h2>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant mb-6">Enter site coordinates or parcel IDs manually to begin intelligence parsing.</p>
+<form class="space-y-4" id="manualIntake">
+<div class="space-y-1">
+<label class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider pl-1">Coordinate System</label>
+<div class="relative">
+<select class="w-full bg-surface-container-low border border-outline-variant rounded-lg p-3 font-body-md appearance-none focus:ring-2 focus:ring-primary/20 transition-all outline-none">
+<option>WGS 84 (GPS)</option>
+<option>UTM</option>
+<option>State Plane</option>
+</select>
+<span class="material-symbols-outlined absolute right-3 top-3 text-on-surface-variant pointer-events-none">expand_more</span>
+</div>
+</div>
+<div class="grid grid-cols-2 gap-3">
+<div class="space-y-1">
+<label class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider pl-1">Latitude</label>
+<input class="w-full bg-surface-container-low border border-outline-variant rounded-lg p-3 font-body-md focus:ring-2 focus:ring-primary/20 transition-all outline-none" placeholder="0.0000" type="text">
+</div>
+<div class="space-y-1">
+<label class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider pl-1">Longitude</label>
+<input class="w-full bg-surface-container-low border border-outline-variant rounded-lg p-3 font-body-md focus:ring-2 focus:ring-primary/20 transition-all outline-none" placeholder="0.0000" type="text">
+</div>
+</div>
+<div class="space-y-1">
+<label class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider pl-1">Parcel ID (Optional)</label>
+<input class="w-full bg-surface-container-low border border-outline-variant rounded-lg p-3 font-body-md focus:ring-2 focus:ring-primary/20 transition-all outline-none" placeholder="e.g. APN 123-456-78" type="text">
+</div>
+<button class="w-full bg-primary text-on-primary font-label-md text-label-md py-4 rounded-full shadow hover:shadow-lg active:scale-[0.98] transition-all mt-4 flex items-center justify-center gap-2" type="submit">
+            Add to Queue
+            <span class="material-symbols-outlined text-[20px]">arrow_forward</span>
+</button>
+</form>
+</div>
+<!-- AI Insights -->
+<div class="bg-inverse-surface rounded-xl p-6 text-inverse-on-surface shadow-sm">
+<div class="flex items-center gap-2 mb-4">
+<span class="material-symbols-outlined text-secondary-fixed">auto_awesome</span>
+<h3 class="font-title-lg text-title-lg">AI Insights</h3>
+</div>
+<p class="font-body-md text-body-md opacity-80 mb-6">Gemini-powered cross-referencing of topology and environmental data.</p>
+<div class="grid grid-cols-2 gap-3">
+<div class="bg-white/10 hover:bg-white/15 p-4 rounded-xl border border-white/10 flex flex-col items-center gap-2 transition-colors cursor-pointer group">
+<span class="material-symbols-outlined text-secondary-fixed group-hover:scale-110 transition-transform">terrain</span>
+<span class="font-label-sm text-label-sm">Topo Check</span>
+</div>
+<div class="bg-white/10 hover:bg-white/15 p-4 rounded-xl border border-white/10 flex flex-col items-center gap-2 transition-colors cursor-pointer group">
+<span class="material-symbols-outlined text-secondary-fixed group-hover:scale-110 transition-transform">gavel</span>
+<span class="font-label-sm text-label-sm">Zoning Risk</span>
+</div>
+</div>
+</div>
+</aside>
+<!-- Main Section -->
+<section class="flex-grow flex flex-col gap-gutter">
+<!-- Dropzone -->
+<div class="relative flex-grow flex flex-col items-center justify-center border-2 border-dashed border-outline-variant/60 rounded-[2rem] bg-surface-container-low transition-all duration-300 group cursor-pointer overflow-hidden" id="dropzone">
+<div class="absolute inset-0 pointer-events-none bg-gradient-to-b from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+<div class="z-10 flex flex-col items-center gap-6 text-center p-8">
+<div class="w-20 h-20 rounded-full bg-primary-container/30 flex items-center justify-center text-primary group-hover:scale-110 transition-transform duration-500">
+<span class="material-symbols-outlined text-[40px]">cloud_upload</span>
+</div>
+<div class="space-y-2">
+<h2 class="font-display-lg text-display-lg text-on-surface">Upload file&nbsp;</h2>
+<p class="font-body-lg text-body-lg text-on-surface-variant max-w-md mx-auto">KML, GeoJSON, CSV, or Shapefiles. Multi-file support enabled.</p>
+</div>
+<div class="flex gap-3">
+<span class="px-4 py-1.5 bg-surface-container-highest rounded-full font-label-md text-label-md text-on-surface-variant border border-outline-variant/30">.KML</span>
+<span class="px-4 py-1.5 bg-surface-container-highest rounded-full font-label-md text-label-md text-on-surface-variant border border-outline-variant/30">.JSON</span>
+<span class="px-4 py-1.5 bg-surface-container-highest rounded-full font-label-md text-label-md text-on-surface-variant border border-outline-variant/30">.CSV</span>
+<span class="px-4 py-1.5 bg-surface-container-highest rounded-full font-label-md text-label-md text-on-surface-variant border border-outline-variant/30">.SHP</span>
+</div>
+</div>
+<input class="absolute inset-0 opacity-0 cursor-pointer" multiple="" type="file">
+</div>
+<!-- Ingestion Queue -->
+<div class="bg-surface-container-lowest rounded-xl p-6 shadow-sm border border-outline-variant/40">
+<div class="flex justify-between items-center mb-6">
+<div class="flex items-center gap-3">
+<div class="w-2 h-2 rounded-full bg-primary animate-pulse"></div>
+<h3 class="font-title-lg text-title-lg text-on-surface">Ingestion Queue</h3>
+</div>
+<span class="font-label-md text-label-md text-on-surface-variant bg-surface-container-high px-3 py-1 rounded-full">3 Tasks Remaining</span>
+</div>
+<div class="space-y-6">
+<!-- Active Task -->
+<div class="space-y-3">
+<div class="flex justify-between items-start">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-lg bg-primary-container/20 flex items-center justify-center text-primary">
+<span class="material-symbols-outlined">description</span>
+</div>
+<div>
+<p class="font-body-md text-body-md font-bold text-on-surface">Site_Survey_B7_Boundary.kml</p>
+<p class="font-label-sm text-label-sm text-primary" id="parsing-step">Finalizing parcel metadata...</p>
+</div>
+</div>
+<span class="font-label-md text-label-md text-primary font-bold">72%</span>
+</div>
+<div class="w-full h-1.5 bg-surface-container-high rounded-full overflow-hidden">
+<div class="h-full bg-primary rounded-full transition-all duration-700 shimmer-bg" id="progress-bar" style="width: 80%;"></div>
+</div>
+</div>
+<!-- Pending Grid -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+<div class="flex items-center justify-between p-4 bg-surface-container-low/50 rounded-lg border border-outline-variant/30">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-on-surface-variant/60">csv</span>
+<span class="font-body-md text-body-md text-on-surface-variant">Tax_Records_2024.csv</span>
+</div>
+<span class="font-label-sm text-label-sm text-outline border border-outline-variant/60 px-2 py-0.5 rounded uppercase tracking-tighter">Queued</span>
+</div>
+<div class="flex items-center justify-between p-4 bg-surface-container-low/50 rounded-lg border border-outline-variant/30">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-on-surface-variant/60">map</span>
+<span class="font-body-md text-body-md text-on-surface-variant">Wetland_Boundary.shp</span>
+</div>
+<span class="font-label-sm text-label-sm text-outline border border-outline-variant/60 px-2 py-0.5 rounded uppercase tracking-tighter">Queued</span>
+</div>
+</div>
+</div>
+</div>
+</section>
+</main>
+<script>
+    // Drag and Drop Visual Feedback
+    const dropzone = document.getElementById('dropzone');
+    
+    ['dragenter', 'dragover'].forEach(eventName => {
+      dropzone.addEventListener(eventName, (e) => {
+        e.preventDefault();
+        dropzone.classList.add('dropzone-active');
+      }, false);
+    });
+
+    ['dragleave', 'drop'].forEach(eventName => {
+      dropzone.addEventListener(eventName, (e) => {
+        e.preventDefault();
+        dropzone.classList.remove('dropzone-active');
+      }, false);
+    });
+
+    // Simulate parsing steps
+    const steps = [
+      "Validating file headers...",
+      "Extracting spatial vertices...",
+      "Normalizing coordinate systems...",
+      "Cross-referencing satellite imagery...",
+      "Optimizing geometry for rendering...",
+      "Generating AI preview...",
+      "Finalizing parcel metadata..."
+    ];
+    let stepIndex = 0;
+    const stepEl = document.getElementById('parsing-step');
+    const barEl = document.getElementById('progress-bar');
+    
+    setInterval(() => {
+      stepIndex = (stepIndex + 1) % steps.length;
+      stepEl.textContent = steps[stepIndex];
+      
+      let currentWidth = parseInt(barEl.style.width);
+      if (currentWidth >= 98) {
+        barEl.style.width = '72%';
+      } else {
+        barEl.style.width = (currentWidth + Math.floor(Math.random() * 4)) + '%';
+      }
+    }, 2800);
+
+    // Form submission feedback
+    document.getElementById('manualIntake').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const btn = e.target.querySelector('button');
+      const originalContent = btn.innerHTML;
+      btn.innerHTML = '<span class="material-symbols-outlined animate-spin text-[20px]">sync</span> Processing...';
+      btn.classList.add('pointer-events-none', 'opacity-80');
+      setTimeout(() => {
+        btn.innerHTML = originalContent;
+        btn.classList.remove('pointer-events-none', 'opacity-80');
+      }, 1200);
+    });
+  </script>
+</body></html>

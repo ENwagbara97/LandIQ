@@ -1,0 +1,50 @@
+[
+  {
+    "id": "FAIL/TIMEOUT/001",
+    "label": "Timeout Scenario — simulates NLIR 6s timeout (triggers fallback)",
+    "centroid": { "lat": 9.0765, "lng": 7.3986 },
+    "match_radius_m": 200,
+    "mock_scenario": "timeout",
+    "delay_seconds": 6,
+    "error_type": "FEED_TIMEOUT",
+    "notes": "Set MOCK_SCENARIO=timeout in feed_flags.json to activate. Adapter sleeps 6s then raises FeedTimeoutError. Fallback to OfflineRasterAdapter should fire. Report must complete with fallback_used=true."
+  },
+  {
+    "id": "FAIL/HTTP500/001",
+    "label": "HTTP 500 Scenario — simulates registry server error",
+    "centroid": { "lat": 10.5167, "lng": 7.4333 },
+    "match_radius_m": 200,
+    "mock_scenario": "http_error",
+    "http_status": 500,
+    "error_type": "HTTP_SERVER_ERROR",
+    "notes": "Simulates NLIR returning 500. Fallback should fire. fallback_used=true in feed_meta."
+  },
+  {
+    "id": "FAIL/SCHEMA_MISMATCH/001",
+    "label": "Schema Mismatch Scenario — simulates malformed registry response",
+    "centroid": { "lat": 12.0022, "lng": 8.5920 },
+    "match_radius_m": 200,
+    "mock_scenario": "schema_mismatch",
+    "error_type": "SCHEMA_MISMATCH",
+    "notes": "Simulates NLIR returning unexpected field names. Adapter must reject payload, fallback to offline, log SCHEMA_MISMATCH, and continue."
+  },
+  {
+    "id": "FAIL/PARTIAL/001",
+    "label": "Partial Data Scenario — simulates registry returning incomplete record",
+    "centroid": { "lat": 6.4500, "lng": 3.3800 },
+    "match_radius_m": 200,
+    "mock_scenario": "partial_data",
+    "title_type": "C_OF_O",
+    "title_status": null,
+    "acquisition_flag": null,
+    "notes": "Registry returns title_type but omits title_status and acquisition_flag. Adapter accepts what came, nulls the rest, sets fallback_used=true."
+  },
+  {
+    "id": "FAIL/NORECORD/001",
+    "label": "No Record Scenario — parcel not found in registry",
+    "centroid": { "lat": 5.5556, "lng": 5.7485 },
+    "match_radius_m": 200,
+    "mock_scenario": "no_record",
+    "notes": "No matching parcel in registry. All title fields return null. source_verified=false. Report continues with [UNVERIFIED] labels."
+  }
+]

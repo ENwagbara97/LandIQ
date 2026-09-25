@@ -1,0 +1,2800 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>LandIQ — Spatial Workbench</title>
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
+  <!-- Leaflet JS -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+  <style>
+    :root {
+      --bg-color: #080c14;
+      --panel-bg: rgba(13, 20, 35, 0.7);
+      --panel-border: rgba(255, 255, 255, 0.08);
+      --text-primary: #f8fafc;
+      --text-secondary: #94a3b8;
+      --text-muted: #64748b;
+      --primary: #3b82f6;
+      --primary-hover: #2563eb;
+      --primary-glow: rgba(59, 130, 246, 0.35);
+      --success: #10b981;
+      --success-bg: rgba(16, 185, 129, 0.12);
+      --warning: #f59e0b;
+      --warning-bg: rgba(245, 158, 11, 0.12);
+      --danger: #ef4444;
+      --danger-bg: rgba(239, 68, 68, 0.12);
+    }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      background-color: var(--bg-color);
+      color: var(--text-primary);
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+    header {
+      height: 70px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0 24px;
+      background: rgba(10, 16, 30, 0.8);
+      border-bottom: 1px solid var(--panel-border);
+      backdrop-filter: blur(12px);
+      z-index: 100;
+      margin-bottom: 24px;
+    }
+    .logo-container {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .logo-icon {
+      font-size: 24px;
+      background: linear-gradient(135deg, var(--primary), var(--success));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .logo-text {
+      font-family: 'Outfit', sans-serif;
+      font-size: 22px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+    }
+    .logo-badge {
+      font-size: 9px;
+      font-weight: 700;
+      background: rgba(59, 130, 246, 0.15);
+      color: #60a5fa;
+      border: 1px solid rgba(59, 130, 246, 0.3);
+      padding: 2px 6px;
+      border-radius: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .header-nav {
+      display: flex;
+      gap: 12px;
+    }
+    .btn {
+      background: rgba(255, 255, 255, 0.04);
+      color: var(--text-primary);
+      border: 1px solid var(--panel-border);
+      padding: 10px 16px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.2s;
+    }
+    .btn:hover {
+      background: rgba(255, 255, 255, 0.08);
+      border-color: rgba(255, 255, 255, 0.15);
+    }
+    .btn-primary {
+      background: var(--primary);
+      border-color: transparent;
+    }
+    .btn-primary:hover {
+      background: var(--primary-hover);
+      box-shadow: 0 0 12px var(--primary-glow);
+    }
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    .main-layout {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 380px 1fr;
+      gap: 24px;
+      padding: 0 24px 24px 24px;
+      overflow: hidden;
+    }
+    .sidebar {
+      background: transparent;
+      border-right: none;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      padding: 0;
+      overflow-y: auto;
+    }
+    .card {
+      background: var(--panel-bg);
+      border: 1px solid var(--panel-border);
+      border-radius: 12px;
+      padding: 18px;
+      backdrop-filter: blur(10px);
+    }
+    .card-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text-primary);
+      margin-bottom: 14px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+    }
+    .form-group {
+      margin-bottom: 12px;
+    }
+    .form-label {
+      display: block;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      margin-bottom: 6px;
+    }
+    .form-control {
+      width: 100%;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 8px;
+      color: var(--text-primary);
+      padding: 10px 12px;
+      font-size: 13px;
+      outline: none;
+      transition: all 0.2s;
+    }
+    .form-control:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 8px var(--primary-glow);
+    }
+    textarea.form-control {
+      resize: vertical;
+      font-family: monospace;
+    }
+    .form-or {
+      text-align: center;
+      font-size: 10px;
+      color: var(--text-muted);
+      margin: 10px 0;
+      position: relative;
+    }
+    .file-input-wrapper {
+      position: relative;
+      overflow: hidden;
+      display: inline-block;
+      width: 100%;
+    }
+    .file-input-btn {
+      width: 100%;
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px dashed rgba(255, 255, 255, 0.15);
+      border-radius: 8px;
+      padding: 14px;
+      text-align: center;
+      cursor: pointer;
+      font-size: 13px;
+      color: var(--text-secondary);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s;
+    }
+    .file-input-btn:hover {
+      border-color: var(--primary);
+      color: var(--text-primary);
+    }
+    .file-input-wrapper input[type=file] {
+      font-size: 100px;
+      position: absolute;
+      left: 0;
+      top: 0;
+      opacity: 0;
+      cursor: pointer;
+    }
+    .file-selected-name {
+      font-size: 11px;
+      color: var(--success);
+      margin-top: 6px;
+      text-align: center;
+      word-break: break-all;
+    }
+    .form-helper {
+      font-size: 10px;
+      color: var(--text-muted);
+      margin-top: 6px;
+      line-height: 1.3;
+    }
+    .btn-run {
+      width: 100%;
+      margin-top: 14px;
+      padding: 12px;
+      justify-content: center;
+    }
+    .history-container {
+      max-height: 250px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .history-item {
+      padding: 10px;
+      background: rgba(255, 255, 255, 0.01);
+      border: 1px solid rgba(255, 255, 255, 0.04);
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .history-item:hover {
+      background: rgba(255, 255, 255, 0.03);
+      border-color: rgba(255, 255, 255, 0.08);
+    }
+    .history-item.selected {
+      border-color: var(--primary);
+      background: rgba(59, 130, 246, 0.05);
+    }
+    .history-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .history-title {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--text-primary);
+    }
+    .history-meta {
+      display: flex;
+      justify-content: space-between;
+      font-size: 10px;
+      color: var(--text-muted);
+    }
+    .history-checkbox-wrapper {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+    }
+    .history-checkbox {
+      width: 14px;
+      height: 14px;
+      accent-color: var(--primary);
+    }
+    .traffic-indicator {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+    .traffic-indicator.green { background-color: var(--success); }
+    .traffic-indicator.amber { background-color: var(--warning); }
+    .traffic-indicator.red { background-color: var(--danger); }
+    .traffic-badge {
+      font-size: 9px;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 99px;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+    .traffic-badge.green { background: var(--success-bg); color: var(--success); }
+    .traffic-badge.amber { background: var(--warning-bg); color: var(--warning); }
+    .traffic-badge.red { background: var(--danger-bg); color: var(--danger); }
+    .empty-state {
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 12px;
+      padding: 12px;
+    }
+    .content-workspace {
+      position: relative;
+      background: transparent;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+    .view-section {
+      display: none;
+      width: 100%;
+      height: 100%;
+    }
+    .view-section.active {
+      display: flex;
+      flex-direction: column;
+    }
+    /* Welcome View Design */
+    #view-welcome {
+      align-items: center;
+      justify-content: center;
+      padding: 40px;
+      text-align: center;
+      background: var(--panel-bg);
+      border: 1px solid var(--panel-border);
+      border-radius: 16px;
+      backdrop-filter: blur(10px);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    }
+    .welcome-icon {
+      font-size: 80px;
+      margin-bottom: 24px;
+      background: linear-gradient(135deg, var(--primary), var(--success));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      filter: drop-shadow(0 0 15px rgba(59, 130, 246, 0.2));
+    }
+    .welcome-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 36px;
+      font-weight: 800;
+      margin-bottom: 12px;
+      color: var(--text-primary);
+    }
+    .welcome-subtitle {
+      font-size: 14px;
+      color: var(--text-secondary);
+      max-width: 600px;
+      line-height: 1.6;
+      margin-bottom: 40px;
+    }
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 180px);
+      gap: 16px;
+      justify-content: center;
+    }
+    .feature-card {
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      border-radius: 12px;
+      padding: 18px 12px;
+      text-align: center;
+      transition: all 0.2s;
+    }
+    .feature-card:hover {
+      background: rgba(255, 255, 255, 0.04);
+      border-color: rgba(255, 255, 255, 0.1);
+    }
+    .feature-step {
+      font-family: 'Outfit', sans-serif;
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 6px;
+    }
+    .feature-step.blue { color: #60a5fa; }
+    .feature-step.green { color: #34d399; }
+    .feature-step.orange { color: #fbbf24; }
+    .feature-desc {
+      font-size: 12px;
+      color: var(--text-primary);
+      font-weight: 500;
+      line-height: 1.4;
+    }
+    /* Split layout (for Gate and Report View) */
+    .split-view {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 420px 1fr;
+      overflow: hidden;
+      background: var(--panel-bg);
+      border: 1px solid var(--panel-border);
+      border-radius: 16px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    }
+    .split-panel {
+      padding: 20px;
+      overflow-y: auto;
+      background: rgba(10, 16, 30, 0.4);
+      border-right: 1px solid var(--panel-border);
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .split-map-area {
+      position: relative;
+      height: 100%;
+    }
+    .leaflet-map {
+      width: 100%;
+      height: 100%;
+      z-index: 10;
+    }
+    .map-controls {
+      position: absolute;
+      bottom: 24px;
+      left: 24px;
+      z-index: 40;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .map-control-btn {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: var(--panel-bg);
+      border: 1px solid var(--panel-border);
+      color: var(--text-primary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 14px;
+      transition: all 0.2s;
+    }
+    .map-control-btn:hover {
+      background: rgba(255, 255, 255, 0.1);
+      color: var(--primary);
+    }
+    /* Progress view styles */
+    #view-progress {
+      align-items: center;
+      justify-content: center;
+      padding: 40px;
+    }
+    .progress-card {
+      max-width: 450px;
+      width: 100%;
+      background: var(--panel-bg);
+      border: 1px solid var(--panel-border);
+      border-radius: 16px;
+      padding: 32px;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .spinner {
+      width: 50px;
+      height: 50px;
+      border: 3px solid rgba(255, 255, 255, 0.05);
+      border-top-color: var(--primary);
+      border-radius: 50%;
+      animation: spin 1s infinite linear;
+      margin-bottom: 24px;
+    }
+    .progress-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 18px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+    .progress-subtitle {
+      font-size: 13px;
+      color: var(--text-secondary);
+      margin-bottom: 24px;
+    }
+    /* Gate View Panels */
+    .gate-warning-box {
+      background: var(--warning-bg);
+      border: 1px solid rgba(245, 158, 11, 0.3);
+      color: #fcd34d;
+      border-radius: 8px;
+      padding: 12px;
+      font-size: 12px;
+      line-height: 1.4;
+      display: flex;
+      gap: 8px;
+    }
+    .gate-warning-box i {
+      margin-top: 2px;
+    }
+    .gate-action-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-top: 10px;
+    }
+    /* Report Metrics UI */
+    .viability-score-row {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin: 10px 0;
+    }
+    .circular-gauge {
+      width: 70px;
+      height: 70px;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .circular-gauge svg {
+      transform: rotate(-90deg);
+      width: 100%;
+      height: 100%;
+    }
+    .circular-gauge-text {
+      position: absolute;
+      font-family: 'Outfit', sans-serif;
+      font-weight: 800;
+      font-size: 16px;
+    }
+    .report-exec-summary {
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid rgba(255, 255, 255, 0.04);
+      border-radius: 8px;
+      padding: 12px;
+      font-size: 12px;
+      line-height: 1.4;
+      color: var(--text-secondary);
+    }
+    .report-recommendation-box {
+      background: rgba(59, 130, 246, 0.06);
+      border: 1px solid rgba(59, 130, 246, 0.15);
+      border-radius: 8px;
+      padding: 12px;
+      font-size: 12px;
+      line-height: 1.4;
+      color: #93c5fd;
+    }
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+    .metric-card {
+      background: rgba(255, 255, 255, 0.015);
+      border: 1px solid rgba(255, 255, 255, 0.03);
+      border-radius: 8px;
+      padding: 10px;
+    }
+    .metric-header {
+      font-size: 9px;
+      font-weight: 700;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.02em;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .metric-value {
+      font-family: 'Outfit', sans-serif;
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text-primary);
+      margin-top: 4px;
+    }
+    .checklist-container {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .checklist-item {
+      display: flex;
+      gap: 10px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+    }
+    .checklist-checkbox {
+      margin-top: 3px;
+      width: 14px;
+      height: 14px;
+      accent-color: var(--primary);
+    }
+    .checklist-text-wrapper {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .checklist-action {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+    .checklist-rationale {
+      font-size: 10px;
+      color: var(--text-muted);
+      line-height: 1.3;
+    }
+    .badge-priority {
+      font-size: 8px;
+      font-weight: 700;
+      padding: 1px 4px;
+      border-radius: 2px;
+      width: fit-content;
+    }
+    .badge-priority.critical { background: var(--danger-bg); color: var(--danger); }
+    .badge-priority.high { background: var(--warning-bg); color: #f59e0b; }
+    .badge-priority.medium { background: rgba(59, 130, 246, 0.15); color: #60a5fa; }
+    .badge-priority.low { background: rgba(255, 255, 255, 0.05); color: var(--text-muted); }
+    
+    .data-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 11px;
+      text-align: left;
+    }
+    .data-table th {
+      color: var(--text-muted);
+      font-weight: 700;
+      text-transform: uppercase;
+      padding: 6px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    }
+    .data-table td {
+      padding: 6px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+      color: var(--text-secondary);
+    }
+    /* Overlay and Modal classes */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(5, 8, 15, 0.85);
+      backdrop-filter: blur(8px);
+      z-index: 1000;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .modal-overlay.active {
+      display: flex;
+    }
+    .modal-card {
+      background: var(--panel-bg);
+      border: 1px solid var(--panel-border);
+      border-radius: 16px;
+      width: 100%;
+      max-width: 500px;
+      padding: 24px;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+    }
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 18px;
+    }
+    .modal-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 17px;
+      font-weight: 700;
+    }
+    .modal-close-btn {
+      color: var(--text-muted);
+      font-size: 18px;
+      cursor: pointer;
+      background: transparent;
+      border: none;
+    }
+    .modal-close-btn:hover {
+      color: var(--text-primary);
+    }
+    .dialog-option-btn {
+      width: 100%;
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      border-radius: 8px;
+      padding: 12px;
+      text-align: left;
+      color: var(--text-secondary);
+      font-size: 12px;
+      margin-bottom: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .dialog-option-btn:hover, .dialog-option-btn.selected {
+      background: rgba(59, 130, 246, 0.05);
+      border-color: var(--primary);
+      color: var(--text-primary);
+    }
+    /* Compare modal styling */
+    .compare-container {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      max-height: 450px;
+      overflow-y: auto;
+    }
+    .compare-card {
+      background: rgba(255, 255, 255, 0.01);
+      border: 1px solid rgba(255, 255, 255, 0.03);
+      border-radius: 10px;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .compare-card-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text-primary);
+      text-transform: capitalize;
+    }
+    .compare-row {
+      display: flex;
+      gap: 12px;
+    }
+    .compare-col {
+      flex: 1;
+      background: rgba(255, 255, 255, 0.015);
+      border-radius: 6px;
+      padding: 8px;
+    }
+    .compare-col-label {
+      font-size: 9px;
+      color: var(--text-muted);
+    }
+    .compare-col-val {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text-primary);
+      margin-top: 2px;
+    }
+    .compare-delta-text {
+      font-size: 11px;
+      color: var(--text-secondary);
+      line-height: 1.4;
+    }
+    .badge-diff {
+      font-size: 8px;
+      font-weight: 700;
+      padding: 1px 4px;
+      border-radius: 2px;
+      text-transform: uppercase;
+    }
+    .badge-diff.improved { background: var(--success-bg); color: var(--success); }
+    .badge-diff.worsened { background: var(--danger-bg); color: var(--danger); }
+    .badge-diff.unchanged { background: rgba(255, 255, 255, 0.04); color: var(--text-muted); }
+    .badge-diff.changed { background: rgba(59,130,246,0.1); color: #3b82f6; }
+
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    /* Modal System Styling Framework */
+    .print-modal-backdrop {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background-color: rgba(15, 23, 42, 0.6);
+        backdrop-filter: blur(4px);
+        z-index: 9999;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: opacity 0.2s ease-in-out;
+    }
+    .print-modal-backdrop.hidden {
+        display: none;
+        opacity: 0;
+    }
+    .print-modal-container {
+        background: #ffffff;
+        border-radius: 12px;
+        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        width: 90%;
+        max-width: 800px;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        border: 1px solid #e2e8f0;
+    }
+    .print-modal-header {
+        padding: 16px 24px;
+        background: #f8fafc;
+        border-bottom: 1px solid #e2e8f0;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    .print-modal-header h3 {
+        margin: 0;
+        font-size: 1.15rem;
+        font-weight: 700;
+        color: #1e293b;
+    }
+    .print-modal-header p {
+        margin: 4px 0 0 0;
+        font-size: 0.8rem;
+        color: #64748b;
+    }
+    .close-modal-x {
+        background: none;
+        border: none;
+        font-size: 1.5rem;
+        color: #94a3b8;
+        cursor: pointer;
+    }
+    .close-modal-x:hover { color: #475569; }
+    .print-modal-body {
+        position: relative;
+        width: 100%;
+        height: 440px;
+        background: #0f172a;
+    }
+    #modal-adjustment-map {
+        width: 100%;
+        height: 100%;
+    }
+    .print-viewport-guide {
+        position: absolute;
+        top: 16px;
+        bottom: 16px;
+        left: 16px;
+        right: 16px;
+        border: 2px dashed rgba(255, 255, 255, 0.5);
+        border-radius: 6px;
+        pointer-events: none;
+        z-index: 1000;
+        display: flex;
+        align-items: flex-end;
+        justify-content: center;
+    }
+    .print-viewport-guide span {
+        background: rgba(15, 23, 42, 0.85);
+        color: #ffffff;
+        font-size: 10px;
+        letter-spacing: 0.05em;
+        padding: 4px 8px;
+        border-radius: 4px;
+        margin-bottom: 8px;
+        text-transform: uppercase;
+        font-weight: 500;
+    }
+    .print-modal-footer {
+        padding: 16px 24px;
+        background: #f8fafc;
+        border-top: 1px solid #e2e8f0;
+        display: flex;
+        justify-content: flex-end;
+        gap: 12px;
+    }
+    .btn-primary-modal {
+        background: #10b981;
+        color: white;
+        border: none;
+        padding: 8px 16px;
+        border-radius: 6px;
+        font-weight: 500;
+        cursor: pointer;
+    }
+    .btn-primary-modal:hover { background: #059669; }
+    .btn-secondary-modal {
+        background: white;
+        color: #475569;
+        border: 1px solid #cbd5e1;
+        padding: 8px 16px;
+        border-radius: 6px;
+        font-weight: 500;
+        cursor: pointer;
+    }
+    .btn-secondary-modal:hover { background: #f1f5f9; }
+  </style>
+</head>
+<body>
+
+  <!-- Top Navigation Header -->
+  <header>
+    <div class="logo-container">
+      <i class="fa-solid fa-layer-group logo-icon"></i>
+      <span class="logo-text">LandIQ</span>
+      <span class="logo-badge">Lite Runtime</span>
+    </div>
+    <div class="header-nav">
+      <button class="btn" id="btn-settings"><i class="fa-solid fa-gear"></i> Settings</button>
+      <button class="btn" id="btn-new-analysis"><i class="fa-solid fa-plus"></i> New Analysis</button>
+      <button class="btn" id="btn-show-history"><i class="fa-solid fa-clock-rotate-left"></i> History & Audit</button>
+    </div>
+  </header>
+
+  <!-- Main Grid Workspace -->
+  <div class="main-layout">
+    
+    <!-- Sidebar: Forms and Local Audit Records -->
+    <div class="sidebar">
+      
+      <!-- Run Land Audit Card -->
+      <div class="card">
+        <div class="card-title">
+          <span><i class="fa-solid fa-satellite-dish" style="color:var(--primary);"></i> Run Land Audit</span>
+        </div>
+        
+        <form id="upload-form">
+          <div class="form-group">
+            <label class="form-label" for="input-area">Stated Area (Hectares) — Optional</label>
+            <input type="number" step="0.001" id="input-area" class="form-control" placeholder="e.g. 1.20">
+          </div>
+          
+          <div class="form-group">
+            <label class="form-label" for="input-persona">Target Persona (UX Framing)</label>
+            <select id="input-persona" class="form-control">
+              <option value="EVERYDAY_BUYER">Everyday Land Buyer</option>
+              <option value="SURVEYOR">Registered Surveyor</option>
+              <option value="REALTOR">Independent Realtor</option>
+              <option value="ARCHITECT">Architect</option>
+              <option value="INSTITUTIONAL_DEV">Property Developer</option>
+            </select>
+          </div>
+          
+          <div class="form-group">
+            <label class="form-label" for="input-coords">Coordinate Input (Decimal / DMS / UTM / Tabular)</label>
+            <textarea id="input-coords" class="form-control" rows="6" wrap="off" spellcheck="false" autocomplete="off" style="font-family: monospace; white-space: pre; overflow-x: auto; resize: vertical;" placeholder="e.g. 6.6018N 3.5062E; 6.6025N 3.5075E...
+OR
+| SC/AK/K 49700 | 387804.297 | 550821.575 |
+| SC/AK/K 49701 | 387798.928 | 550820.648 |"></textarea>
+          </div>
+          
+          <div class="form-or">— OR —</div>
+          
+          <div class="form-group">
+            <label class="form-label">Upload Survey Plan or Vector File</label>
+            <input type="file" id="input-file" class="form-control">
+            <div id="file-name-display" class="file-selected-name" style="display:none;"></div>
+            <div class="form-helper">Supports TXT, PDF, images, KML, or zipped Shapefile (.zip)</div>
+          </div>
+          
+          <div id="upload-error" class="gate-warning-box" style="display:none; background:var(--danger-bg); border-color:rgba(239,68,68,0.3); color:#fca5a5;"></div>
+          
+          <div id="upload-success-badge" style="display:none; margin-bottom: 16px; padding: 12px; background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.2); border-radius: 8px; justify-content: space-between; align-items: center; animation: fadeIn 0.3s ease-out;">
+            <div>
+              <span style="font-size: 10px; text-transform: uppercase; font-weight: 700; letter-spacing: 0.05em; color: #34d399; display: block;">System Mapping Status</span>
+              <span id="badge-zone-label" style="font-size: 14px; font-weight: 600; color: #fff;">Target Canvas: Layered in --</span>
+            </div>
+            <span id="badge-method-label" style="font-size: 10px; font-weight: 500; background: #059669; color: white; padding: 2px 8px; border-radius: 9999px; box-shadow: 0 1px 2px rgba(0,0,0,0.1);">
+              Method
+            </span>
+          </div>
+
+          <button type="submit" id="btn-submit-run" class="btn btn-primary btn-run">
+            <i class="fa-solid fa-play"></i> Extract & Verify Boundary
+          </button>
+        </form>
+      </div>
+
+      <!-- Audit History Card -->
+      <div class="card" style="flex: 1; display: flex; flex-direction: column;">
+        <div class="card-title">
+          <span><i class="fa-solid fa-list-check" style="color:var(--success);"></i> Audit History</span>
+          <button class="btn" id="btn-compare" style="font-size: 10px; padding: 4px 10px; border-radius: 4px;" disabled>Compare (0)</button>
+        </div>
+        <div class="history-container" id="history-items-container" style="flex: 1;">
+          <div class="empty-state">No audits completed yet.</div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Workspace View Panel (Right Column) -->
+    <div class="content-workspace">
+      
+      <!-- Welcome / Intro Screen -->
+      <div class="view-section active" id="view-welcome">
+        <i class="fa-solid fa-shield-halved welcome-icon"></i>
+        <h1 class="welcome-title">Carfax for Land in Nigeria</h1>
+        <p class="welcome-subtitle">
+          Upload land survey details to instantly compute elevation, slope, NDWI water signals, road proximity, urban expansion scores, and check against mock government gazette zones.
+        </p>
+        <div class="features-grid">
+          <div class="feature-card">
+            <div class="feature-step blue">Step 0</div>
+            <div class="feature-desc">Confirm Boundary Gate</div>
+          </div>
+          <div class="feature-card">
+            <div class="feature-step green">100%</div>
+            <div class="feature-desc">Offline Raster Fallback</div>
+          </div>
+          <div class="feature-card">
+            <div class="feature-step orange">Layer 4</div>
+            <div class="feature-desc">Tailored Due Diligence</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Progress Tracking Screen -->
+      <div class="view-section" id="view-progress">
+        <div class="progress-card">
+          <div class="spinner"></div>
+          <h3 class="progress-title" id="progress-heading">Analyzing coordinates...</h3>
+          <p class="progress-subtitle" id="progress-subtext">Checking local registries.</p>
+          <div class="progress-bar-wrapper">
+            <div class="progress-bar-fill" id="progress-bar" style="width: 0%;"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Gate Verification Split Screen -->
+      <div class="view-section" id="view-gate">
+        <div class="split-view">
+          <div class="split-panel" style="overflow-y: auto;">
+            <h2 class="welcome-title" style="font-size: 20px; margin-bottom: 6px;">Verify Extraction</h2>
+            <p class="welcome-subtitle" style="font-size: 12px; margin-bottom: 10px;">Please confirm the detected geometry is accurate before analytical run.</p>
+            
+            <!-- Standard Mode Box -->
+            <div id="standard-gate-info">
+                <div class="card" style="background: rgba(255,255,255,0.015); border-color: rgba(255,255,255,0.04); padding: 12px;">
+                  <span class="form-label" style="font-size: 9px;">Detected System CRS</span>
+                  <div id="gate-crs-label" style="font-family: monospace; font-size: 13px; font-weight: 700; color: #60a5fa; margin-top: 2px;">WGS84 (Confidence: --%)</div>
+                </div>
+
+                <div id="gate-discrepancy-box" class="gate-warning-box" style="display:none; margin-top: 10px;">
+                  <i class="fa-solid fa-triangle-exclamation"></i>
+                  <span id="gate-discrepancy-text"></span>
+                </div>
+            </div>
+
+            <!-- Cadastral Mode Box -->
+            <div id="cadastral-gate-info" style="display:none; flex-direction: column; gap: 12px;">
+                <!-- Plan metadata card -->
+                <div class="card" style="padding: 12px;">
+                    <div style="font-size: 10px; text-transform: uppercase; color: var(--text-muted); font-weight: 700; margin-bottom: 8px;">Plan Metadata</div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 12px;">
+                        <div><span style="color:var(--text-secondary)">Owner:</span> <br><span id="cad-owner" style="font-weight:600">--</span></div>
+                        <div><span style="color:var(--text-secondary)">Location:</span> <br><span id="cad-location" style="font-weight:600">--</span></div>
+                        <div><span style="color:var(--text-secondary)">Datum:</span> <br><span id="cad-datum" style="font-weight:600">--</span></div>
+                        <div><span style="color:var(--text-secondary)">Plan No:</span> <br><span id="cad-planno" style="font-weight:600">--</span></div>
+                    </div>
+                </div>
+
+                <!-- Coordinate Health Check -->
+                <div class="card" style="padding: 12px;">
+                    <div style="font-size: 10px; text-transform: uppercase; color: var(--text-muted); font-weight: 700; margin-bottom: 8px;">Coordinate Health Check</div>
+                    <div class="checklist-container" id="cad-health-checklist" style="font-size: 12px;">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+
+                <!-- Stated vs Computed Area Comparison -->
+                <div class="card" style="padding: 12px;">
+                    <div style="font-size: 10px; text-transform: uppercase; color: var(--text-muted); font-weight: 700; margin-bottom: 8px;">Area Verification</div>
+                    <div style="display:flex; justify-content: space-between; font-size: 12px;">
+                        <span style="color:var(--text-secondary)">Stated Area:</span> <span id="cad-area-stated" style="font-weight:600">--</span>
+                    </div>
+                    <div style="display:flex; justify-content: space-between; font-size: 12px; margin-top: 4px;">
+                        <span style="color:var(--text-secondary)">Computed Area:</span> <span id="cad-area-computed" style="font-weight:600">--</span>
+                    </div>
+                    <div style="display:flex; justify-content: space-between; font-size: 12px; margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--panel-border);">
+                        <span style="color:var(--text-secondary)">Discrepancy:</span> <span id="cad-area-diff" style="font-weight:700">--</span>
+                    </div>
+                </div>
+
+                <!-- Coordinate Ledger Toggle -->
+                <button id="btn-toggle-ledger" class="btn" style="width:100%; justify-content:center;">
+                    <i class="fa-solid fa-table"></i> Review Technical Details (Ledger)
+                </button>
+
+                <!-- Coordinate Ledger (hidden by default) -->
+                <div id="cadastral-ledger-container" class="card" style="display:none; padding: 12px; margin-top: 4px;">
+                    <div style="font-size: 10px; text-transform: uppercase; color: var(--text-muted); font-weight: 700; margin-bottom: 8px;">Coordinate Ledger</div>
+                    <div style="max-height: 250px; overflow-y: auto; overflow-x: auto;">
+                        <table class="data-table" id="cadastral-ledger-table" style="min-width: 400px;">
+                            <thead>
+                                <tr>
+                                    <th>Station ID</th>
+                                    <th>Easting (m)</th>
+                                    <th>Northing (m)</th>
+                                    <th>Source</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Populated by JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                    <div style="font-size: 10px; color: var(--warning); margin-top: 8px; display: none;" id="cad-partial-warning">
+                        <i class="fa-solid fa-triangle-exclamation"></i> Partial extraction detected. Edit the cells above to complete the polygon.
+                    </div>
+                    <button id="btn-recompute-ledger" class="btn btn-primary" style="width: 100%; margin-top: 10px; font-size: 11px; justify-content: center;">
+                        <i class="fa-solid fa-calculator"></i> Recompute Polygon
+                    </button>
+                </div>
+            </div>
+
+            <div class="gate-action-grid" style="margin-top: 16px;">
+              <button class="btn" id="btn-gate-no" style="justify-content: center; background: rgba(239, 68, 68, 0.05); border-color: rgba(239, 68, 68, 0.2); color: #fca5a5;"><i class="fa-solid fa-xmark"></i> Reject</button>
+              <button class="btn btn-primary" id="btn-gate-yes" style="justify-content: center;"><i class="fa-solid fa-check"></i> Confirm</button>
+            </div>
+          </div>
+
+          <div class="split-map-area">
+            <div id="gate-map" class="leaflet-map"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Analysis Results Split Screen -->
+      <div class="view-section" id="view-report">
+        <div class="split-view">
+          <div class="split-panel">
+            
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 10px; margin-bottom: 16px;">
+              <div>
+                <span id="report-meta-tag" style="font-size: 9px; font-weight:700; color:var(--text-muted); text-transform:uppercase;">Report</span>
+                <h2 id="report-title" style="font-family:'Outfit'; font-size: 18px; font-weight:800; margin-top:2px;">Ikorodu LGA</h2>
+                <p id="report-lga-state" style="font-size:11px; color:var(--text-secondary); margin-top:2px;">Lagos State</p>
+              </div>
+              <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 8px;">
+                <span id="report-traffic-light" class="traffic-badge green">Green</span>
+                <div style="display: flex; align-items: center; gap: 6px; background: rgba(255,255,255,0.05); padding: 4px 8px; border-radius: 20px;">
+                  <span style="font-size: 10px; font-weight: 600;" id="label-mode-simple">Simple</span>
+                  <label class="switch" style="position: relative; display: inline-block; width: 34px; height: 18px;">
+                    <input type="checkbox" id="report-mode-toggle" checked>
+                    <span class="slider round" style="position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: var(--primary); transition: .4s; border-radius: 34px;">
+                      <span style="position: absolute; content: ''; height: 14px; width: 14px; left: 2px; bottom: 2px; background-color: white; transition: .4s; border-radius: 50%;"></span>
+                    </span>
+                  </label>
+                  <span style="font-size: 10px; font-weight: 600; color: var(--text-muted);" id="label-mode-expert">Expert</span>
+                </div>
+              </div>
+            </div>
+
+            <style>
+              input:checked + .slider { background-color: var(--warning); }
+              input:checked + .slider span { transform: translateX(16px); }
+              .expert-only { transition: max-height 0.3s ease, opacity 0.3s ease; }
+            </style>
+
+            <h4 class="form-label" style="margin-bottom:8px; font-size: 10px;">Buyer's Decision Card</h4>
+            <div id="decision-card-grid" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 16px;">
+              <div class="metric-card" id="dc-flood">
+                <div class="metric-header"><i class="fa-solid fa-water"></i> Flood Risk</div>
+                <div class="metric-value" id="val-flood" style="font-size:12px;">--</div>
+              </div>
+              <div class="metric-card" id="dc-terrain">
+                <div class="metric-header"><i class="fa-solid fa-mountain"></i> Terrain</div>
+                <div class="metric-value" id="val-terrain" style="font-size:12px;">--</div>
+              </div>
+              <div class="metric-card" id="dc-road">
+                <div class="metric-header"><i class="fa-solid fa-road"></i> Road Access</div>
+                <div class="metric-value" id="val-road" style="font-size:12px;">--</div>
+              </div>
+              <div class="metric-card" id="dc-encroachment">
+                <div class="metric-header"><i class="fa-solid fa-eye"></i> Encroachment</div>
+                <div class="metric-value" id="val-encroachment" style="font-size:12px;">--</div>
+              </div>
+              <div class="metric-card" id="dc-title" style="display: none;">
+                <div class="metric-header"><i class="fa-solid fa-file-contract"></i> Title Status</div>
+                <div class="metric-value" id="val-title" style="font-size:12px;">--</div>
+              </div>
+              <div class="metric-card" id="dc-development">
+                <div class="metric-header"><i class="fa-solid fa-building"></i> Development</div>
+                <div class="metric-value" id="val-development" style="font-size:12px;">--</div>
+              </div>
+            </div>
+
+            <div class="viability-score-row" style="margin-top:0;">
+              <div class="circular-gauge">
+                <svg viewBox="0 0 100 100">
+                  <circle cx="50" cy="50" r="40" stroke="rgba(255,255,255,0.05)" stroke-width="8" fill="transparent"/>
+                  <circle id="report-score-fill" cx="50" cy="50" r="40" stroke="var(--primary)" stroke-width="8" fill="transparent" stroke-dasharray="251.2" stroke-dashoffset="0"/>
+                </svg>
+                <span class="circular-gauge-text" id="report-score-text">--</span>
+              </div>
+              <div>
+                <div style="font-size:12px; font-weight:700;">Viability Index</div>
+                <p id="report-date" style="font-size:10px; color:var(--text-muted); margin-top:2px;"></p>
+              </div>
+            </div>
+
+            <div class="report-exec-summary" id="report-exec-summary"></div>
+            
+            <div class="report-recommendation-box" id="report-ai-rec"></div>
+
+            <button class="btn btn-primary" id="btn-download-pdf" style="width:100%; justify-content:center; margin-bottom: 10px;">
+              <i class="fa-solid fa-file-pdf"></i> Export <span id="pdf-btn-mode-text">Expert</span> PDF
+            </button>
+
+            <div class="expert-only" id="section-action-items">
+              <h4 class="form-label" style="margin-bottom:0; font-size: 10px;">Due Diligence Action Items</h4>
+              <div class="card" style="background: rgba(255,255,255,0.01); border-color: rgba(255,255,255,0.03); padding: 12px; margin-bottom: 16px;">
+                <div class="checklist-container" id="report-checklist-container"></div>
+              </div>
+            </div>
+
+            <details class="tech-accordion expert-only" id="section-advanced-tech" style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); border-radius: 6px; margin-bottom: 16px;">
+              <summary style="padding: 12px; font-size: 11px; font-weight: 600; cursor: pointer; user-select: none;">Advanced Technical Details (Geospatial & Transparency)</summary>
+              <div style="padding: 12px; border-top: 1px solid rgba(255,255,255,0.05);">
+                <button class="btn" id="btn-preview-elevation" style="width:100%; justify-content:center; margin-bottom: 10px; background: rgba(59, 130, 246, 0.1); border-color: rgba(59, 130, 246, 0.2); color: #60a5fa;">
+                  <i class="fa-solid fa-chart-line"></i> Preview Elevation & Drainage Profile 📊
+                </button>
+
+                <h4 class="form-label" style="margin-bottom:8px; font-size: 10px;">Geospatial Metrics</h4>
+                <div class="metrics-grid" style="margin-bottom: 16px;">
+                  <div class="metric-card">
+                    <div class="metric-header"><i class="fa-solid fa-mountain"></i> Elevation</div>
+                    <div class="metric-value" id="metric-elev">-- m</div>
+                  </div>
+                  <div class="metric-card">
+                    <div class="metric-header"><i class="fa-solid fa-arrow-trend-up"></i> Slope</div>
+                    <div class="metric-value" id="metric-slope">--%</div>
+                  </div>
+                  <div class="metric-card">
+                    <div class="metric-header"><i class="fa-solid fa-water"></i> Flood Proximity</div>
+                    <div class="metric-value" id="metric-flood-risk" style="font-size:12px;">--</div>
+                  </div>
+                  <div class="metric-card">
+                    <div class="metric-header"><i class="fa-solid fa-chart-line"></i> Growth</div>
+                    <div class="metric-value" id="metric-growth" style="font-size:12px;">--</div>
+                  </div>
+                </div>
+                
+                <h4 class="form-label" style="margin-bottom:8px; font-size: 10px;">Verification Sources</h4>
+                <div style="max-height:160px; overflow-y:auto; border: 1px solid rgba(255,255,255,0.05); border-radius: 4px;">
+                  <table class="data-table" style="margin-bottom: 0;">
+                    <thead>
+                      <tr>
+                        <th>Data Feed</th>
+                        <th>Source</th>
+                        <th>Conf</th>
+                        <th>Verified</th>
+                      </tr>
+                    </thead>
+                    <tbody id="report-sources-tbody"></tbody>
+                  </table>
+                </div>
+              </div>
+            </details>
+
+            <div id="report-model-info" style="font-size: 9px; color: var(--text-muted); text-align: center;">Orchestrated locally via Ollama</div>
+          </div>
+          <div class="split-map-area" style="position: relative;">
+            <div id="report-map" class="leaflet-map"></div>
+            
+            <div id="health-check-box" style="position: absolute; bottom: 20px; left: 20px; z-index: 1000; background: rgba(15, 23, 42, 0.9); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 6px; padding: 12px; backdrop-filter: blur(4px); box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.5); display: none; width: 220px; font-family: 'Inter', sans-serif;">
+              <div style="font-size: 10px; font-weight: 700; color: #94a3b8; text-transform: uppercase; margin-bottom: 6px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 4px;"><i class="fa-solid fa-heart-pulse"></i> Coordinate Health</div>
+              <div style="display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 4px;">
+                <span style="color: #cbd5e1;">Mean Segment:</span>
+                <span id="hc-mean" style="color: #fff; font-weight: 600;">--</span>
+              </div>
+              <div style="display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 4px;">
+                <span style="color: #cbd5e1;">Max Segment:</span>
+                <span id="hc-max" style="color: #fff; font-weight: 600;">--</span>
+              </div>
+              <div style="display: flex; justify-content: space-between; font-size: 11px;">
+                <span style="color: #cbd5e1;">Std Dev:</span>
+                <span id="hc-stddev" style="color: #fff; font-weight: 600;">--</span>
+              </div>
+            </div>
+            <div class="map-controls">
+              <button class="map-control-btn" id="btn-map-sat" title="Google Satellite Layer"><i class="fa-solid fa-satellite"></i></button>
+              <button class="map-control-btn" id="btn-map-osm" title="OSM Street Layer"><i class="fa-solid fa-map"></i></button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Interactive CRS / Axis Flip Resolution Dialog Modal -->
+  <div id="dialog-modal" class="modal-overlay">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 class="modal-title" id="dialog-title">CRS Conflict Warning</h3>
+        <button class="modal-close-btn" id="btn-dialog-close"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <p id="dialog-message" style="font-size:12px; color:var(--text-secondary); line-height:1.5; margin-bottom:16px;"></p>
+      <div id="dialog-options-container"></div>
+      <div class="gate-action-grid" style="margin-top: 14px;">
+        <button class="btn" id="btn-dialog-cancel" style="justify-content:center;">Cancel</button>
+        <button class="btn btn-primary" id="btn-dialog-submit" style="justify-content:center;">Apply Selection</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Compare Results Side-by-Side Modal Overlay -->
+  <div id="compare-modal" class="modal-overlay">
+    <div class="modal-card" style="max-width: 600px;">
+      <div class="modal-header">
+        <h3 class="modal-title">Compare Land Audits</h3>
+        <button class="modal-close-btn" id="btn-compare-close-modal"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="compare-container">
+        <div id="compare-text-delta" class="report-recommendation-box" style="margin-bottom:8px; font-size:12px; background:rgba(59,130,246,0.05); color:#93c5fd;"></div>
+        <div id="compare-fields-container" style="display:flex; flex-direction:column; gap:10px;"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Elevation Profile & Outfall Modal Overlay -->
+  <div id="elevation-modal" class="modal-overlay">
+    <div class="modal-card" style="max-width: 600px; display: flex; flex-direction: column; gap: 16px;">
+      <div class="modal-header">
+        <h3 class="modal-title"><i class="fa-solid fa-mountain" style="color:var(--primary);"></i> Elevation & Outfall Profile</h3>
+        <button class="modal-close-btn" id="btn-elevation-close-modal"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      
+      <!-- Free Tier Locked Panel -->
+      <div id="elevation-paywall" style="display: none; text-align: center; padding: 20px 10px; flex-direction: column; align-items: center; gap: 16px;">
+        <i class="fa-solid fa-lock" style="font-size: 48px; color: var(--warning); filter: drop-shadow(0 0 10px rgba(245, 158, 11, 0.3));"></i>
+        <h4 style="font-family: 'Outfit'; font-size: 18px; font-weight: 700; color: var(--text-primary);">Unlock Professional Site Grading</h4>
+        <p style="font-size: 13px; color: var(--text-secondary); line-height: 1.5; max-width: 400px; margin: 0 auto;">
+          Unlock the full elevation cross-section, check outfall drainage connection levels, and see if public roads sit higher than your plot before committing funds.
+        </p>
+        <button class="btn btn-primary" id="btn-upgrade-paystack" style="margin-top: 12px; width: 100%; justify-content: center;">
+          <i class="fa-solid fa-credit-card"></i> Pay ₦5,000 via Paystack Simulation
+        </button>
+      </div>
+
+      <!-- Premium Tier Content Panel -->
+      <div id="elevation-premium-content" style="display: none; flex-direction: column; gap: 16px;">
+        <div class="report-recommendation-box" style="background: rgba(16, 185, 129, 0.06); border-color: rgba(16, 185, 129, 0.15); color: #a7f3d0; padding: 12px; font-size: 12px; line-height: 1.4;">
+          <p id="elevation-outfall-status-text"></p>
+        </div>
+
+        <div style="background: rgba(255, 255, 255, 0.02); border: 1px solid var(--panel-border); border-radius: 12px; padding: 14px; display: flex; flex-direction: column; gap: 10px;">
+          <h4 style="font-size: 12px; font-weight: 700; color: var(--text-primary); text-transform: uppercase;">Elevation Profile Chart</h4>
+          <!-- 2D SVG Line Chart -->
+          <div style="width: 100%; height: 200px; background: rgba(0,0,0,0.2); border-radius: 8px; position: relative;" id="elevation-chart-container">
+            <!-- SVG will be generated here -->
+          </div>
+          <div style="display: flex; gap: 16px; font-size: 10px; color: var(--text-muted); justify-content: center; margin-top: 4px;">
+            <span><span style="display: inline-block; width: 12px; height: 3px; background: #3b82f6; vertical-align: middle; margin-right: 4px;"></span>Internal Axis</span>
+            <span><span style="display: inline-block; width: 12px; height: 3px; background: #10b981; vertical-align: middle; margin-right: 4px;"></span>Outfall Path</span>
+          </div>
+        </div>
+
+        <div style="display: flex; gap: 10px; width: 100%;">
+          <button class="btn" id="btn-download-premium-pdf" style="flex: 1; justify-content: center; background: var(--primary); border-color: transparent; color: white;">
+            <i class="fa-solid fa-file-pdf"></i> Export Premium PDF
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const API_BASE = '';
+    
+    // Direct anchor-based download trigger to ensure browsers honor filenames and extensions
+    function downloadFile(url, filename) {
+      const btn = document.activeElement;
+      const originalText = btn ? btn.innerHTML : '';
+      if(btn && btn.tagName === 'BUTTON') btn.innerHTML = '<i class="fa-solid fa-spinner animate-spin"></i> Generating...';
+      
+      fetch(url)
+        .then(response => {
+          if (!response.ok) {
+            return response.text().then(text => { throw new Error(text); });
+          }
+          return response.blob();
+        })
+        .then(blob => {
+          const objectUrl = window.URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = objectUrl;
+          a.download = filename || 'report.pdf';
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          window.URL.revokeObjectURL(objectUrl);
+          if(btn && btn.tagName === 'BUTTON') btn.innerHTML = originalText;
+        })
+        .catch(err => {
+          console.error("Download error:", err);
+          alert("Failed to download PDF. Please try again.");
+          if(btn && btn.tagName === 'BUTTON') btn.innerHTML = originalText;
+        });
+    }
+
+    let gateMapInstance = null;
+    let reportMapInstance = null;
+    let currentRunId = null;
+    let selectedHistoryIds = [];
+    let activePolygonLayer = null;
+    
+    // CRS dialog answers collector
+    let dialogAnswers = {};
+    let activeDialogsQueue = [];
+    let currentDialogIndex = 0;
+
+    // Robust coordinate parser to normalize coordinates format to list of {lat, lng} objects
+    function formatArea(ha, state) {
+      if (!ha) return '--';
+      const sqm = ha * 10000;
+      let plotSize = 648; // default Lagos
+      const s = (state || '').toLowerCase();
+      if (s.includes('fct') || s.includes('abuja')) plotSize = 900;
+      else if (s.includes('rivers') || s.includes('portharcourt')) plotSize = 465;
+      else if (s.includes('kano')) plotSize = 450;
+      else if (s.includes('edo') || s.includes('delta')) plotSize = 900;
+      const plots = sqm / plotSize;
+      const stateLabel = state ? state.split(' ')[0] : 'Lagos';
+      return `${sqm.toLocaleString(undefined, {maximumFractionDigits:0})} sqm &middot; &approx; ${plots.toFixed(1)} plots (${stateLabel} std.) &middot; ${ha.toFixed(2)} ha`;
+    }
+
+    function parseCoords(coords) {
+      if (!coords) return [];
+      return coords.map(c => {
+        if (Array.isArray(c)) {
+          return { lat: c[0], lng: c[1] };
+        } else if (c && typeof c === 'object') {
+          return {
+            lat: typeof c.lat !== 'undefined' ? c.lat : c.latitude,
+            lng: typeof c.lng !== 'undefined' ? c.lng : c.longitude
+          };
+        }
+        return null;
+      }).filter(c => c !== null && !isNaN(c.lat) && !isNaN(c.lng));
+    }
+
+    // Initialize map with polygon
+    function initMap(mapId, coordinates, centroid, zoom = 15) {
+      // Clean previous map instance
+      if (mapId === 'gate-map' && gateMapInstance) {
+        gateMapInstance.remove();
+        gateMapInstance = null;
+      }
+      if (mapId === 'report-map' && reportMapInstance) {
+        reportMapInstance.remove();
+        reportMapInstance = null;
+      }
+
+      const map = L.map(mapId).setView([centroid.lat, centroid.lng], zoom);
+      
+      const osmTiles = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '© OpenStreetMap contributors'
+      });
+
+      const satelliteTiles = L.tileLayer('http://{s}.google.com/vt/lyrs=s,h&x={x}&y={y}&z={z}', {
+        maxZoom: 24,
+        maxNativeZoom: 20,
+        subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
+        attribution: '© Google Hybrid / OSM'
+      });
+
+      satelliteTiles.addTo(map);
+
+      let boundaryLayer = null;
+
+      if (coordinates && coordinates.length > 0) {
+        const parsed = parseCoords(coordinates);
+        const polygonCoords = parsed.map(c => [c.lat, c.lng]);
+        boundaryLayer = L.polygon(polygonCoords, {
+          color: '#DC2626', // High-visibility Red Boundary matching static map / PDF style
+          fillColor: '#DC2626',
+          fillOpacity: 0.12,
+          weight: 3
+        });
+      } else {
+        // Hydration hook: check and restore active parcel layers on map re-load
+        const storedParcel = localStorage.getItem('landiq_active_boundary');
+        if (storedParcel) {
+          try {
+            const geoJsonGeom = JSON.parse(storedParcel);
+            
+            if (window.landIqBoundaryLayer) {
+              try {
+                map.removeLayer(window.landIqBoundaryLayer);
+              } catch(e) {}
+            }
+            
+            boundaryLayer = L.geoJSON(geoJsonGeom, {
+              style: {
+                color: '#DC2626', // High-visibility Red Boundary
+                weight: 3,
+                fillColor: '#DC2626',
+                fillOpacity: 0.12
+              }
+            });
+          } catch (err) {
+            console.error("Failed hydrating parcel boundary state:", err);
+          }
+        }
+      }
+
+      if (boundaryLayer) {
+        boundaryLayer.addTo(map);
+        window.landIqBoundaryLayer = boundaryLayer;
+
+        // Dynamic boundary line thickness based on zoom (zoomed-out = thicker)
+        map.on('zoomend', function() {
+            if (boundaryLayer && typeof boundaryLayer.setStyle === 'function') {
+                const z = map.getZoom();
+                const newWeight = z <= 12 ? 8 : (z <= 15 ? 5 : 3);
+                boundaryLayer.setStyle({ weight: newWeight });
+            }
+        });
+      }
+
+      L.marker([centroid.lat, centroid.lng]).addTo(map)
+        .bindPopup(`Centroid: ${centroid.lat.toFixed(5)}, ${centroid.lng.toFixed(5)}`);
+
+      if (mapId === 'gate-map') gateMapInstance = map;
+      if (mapId === 'report-map') {
+        reportMapInstance = map;
+        
+        // Map controls bindings
+        document.getElementById('btn-map-sat').onclick = () => {
+          map.removeLayer(osmTiles);
+          satelliteTiles.addTo(map);
+        };
+        document.getElementById('btn-map-osm').onclick = () => {
+          map.removeLayer(satelliteTiles);
+          osmTiles.addTo(map);
+        };
+      }
+
+      // Defer map size invalidation and fitBounds to ensure DOM element transition/layout calculation has completed
+      setTimeout(() => {
+        map.invalidateSize({ animate: false });
+        if (boundaryLayer) {
+          const bounds = boundaryLayer.getBounds();
+          if (bounds.isValid()) {
+            map.fitBounds(bounds, { padding: [30, 30], animate: false });
+          }
+        }
+      }, 150);
+
+      return map;
+    }
+
+    function showView(viewId) {
+      const views = ['view-welcome', 'view-progress', 'view-gate', 'view-report'];
+      views.forEach(v => {
+        const el = document.getElementById(v);
+        if (el) {
+          if (v === viewId) el.classList.add('active');
+          else el.classList.remove('active');
+        }
+      });
+      // Invalidate leaflet size if view switched
+      setTimeout(() => {
+        if (viewId === 'view-gate' && gateMapInstance) gateMapInstance.invalidateSize();
+        if (viewId === 'view-report' && reportMapInstance) reportMapInstance.invalidateSize();
+      }, 100);
+    }
+
+    // File selection display helper
+    document.getElementById('input-file').addEventListener('change', (e) => {
+      const display = document.getElementById('file-name-display');
+      if (e.target.files.length > 0) {
+        display.innerText = '📄 ' + e.target.files[0].name;
+      } else {
+        display.innerText = '';
+      }
+    });
+
+    // Form submission
+    document.getElementById('upload-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const fileInput = document.getElementById('input-file');
+      const textInput = document.getElementById('input-coords');
+      const areaInput = document.getElementById('input-area');
+      const personaInput = document.getElementById('input-persona');
+      const errorBox = document.getElementById('upload-error');
+      
+      errorBox.style.display = 'none';
+
+      if (fileInput.files.length === 0 && textInput.value.trim() === '') {
+        errorBox.innerText = 'Provide coordinate string input or upload a survey plan.';
+        errorBox.style.display = 'flex';
+        return;
+      }
+
+      const formData = new FormData();
+      if (fileInput.files.length > 0) {
+        formData.append('file', fileInput.files[0]);
+      }
+      if (textInput.value.trim() !== '') {
+        formData.append('raw_text', textInput.value.trim());
+      }
+      if (areaInput.value.trim() !== '') {
+        formData.append('stated_area_ha', parseFloat(areaInput.value));
+      }
+      formData.append('persona_mode', personaInput.value);
+      formData.append('user_id', 'anonymous');
+      
+      const visionProvider = localStorage.getItem('landiq_vision_provider');
+      const visionKey = localStorage.getItem('landiq_vision_key');
+      if (visionProvider) formData.append('vision_provider', visionProvider);
+      if (visionKey) formData.append('vision_api_key', visionKey);
+
+      const submitBtn = document.getElementById('btn-submit-run');
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = '<i class="fa-solid fa-spinner animate-spin"></i> Extracting...';
+
+      try {
+        const response = await fetch(`${API_BASE}/api/upload`, {
+          method: 'POST',
+          body: formData
+        });
+
+        const data = await response.json();
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = '<i class="fa-solid fa-play"></i> Extract & Verify Boundary';
+
+        if (!response.ok) {
+          document.getElementById('upload-success-badge').style.display = 'none';
+          errorBox.innerText = data.detail?.instruction || data.detail || 'Failed to initialize session.';
+          errorBox.style.display = 'flex';
+          return;
+        }
+
+        currentRunId = data.run_id || (data.data && data.data.run_id) || "cadastral-session";
+        dialogAnswers = {};
+
+        // ==========================================
+        // CADASTRAL MODE (Survey Plans)
+        // ==========================================
+        if (data.cadastral_mode) {
+          const cad = data.data;
+          
+          document.getElementById('standard-gate-info').style.display = 'none';
+          document.getElementById('cadastral-gate-info').style.display = 'flex';
+          
+          // Metadata
+          document.getElementById('cad-owner').innerText = cad.plan_details?.owner_name || 'Unknown';
+          document.getElementById('cad-location').innerText = cad.plan_details?.location || 'Not specified';
+          document.getElementById('cad-datum').innerText = cad.extraction_meta?.datum_detected || 'Unknown';
+          document.getElementById('cad-planno').innerText = cad.plan_details?.plan_number || 'Unknown';
+          
+          // Health Check
+          const health = document.getElementById('cad-health-checklist');
+          health.innerHTML = '';
+          const addCheck = (label, ok, msg) => {
+             health.innerHTML += `<div style="display:flex; justify-content:space-between; margin-bottom: 4px;">
+                <span>${label}</span>
+                <span style="color: ${ok ? 'var(--success)' : 'var(--warning)'}">${ok ? '<i class="fa-solid fa-check"></i> ' + msg : '<i class="fa-solid fa-triangle-exclamation"></i> ' + msg}</span>
+             </div>`;
+          };
+          
+          addCheck('Closed Polygon', cad.polygon?.is_closed, cad.polygon?.is_closed ? 'Yes' : 'Open');
+          addCheck('Closure Error', cad.polygon?.closure_error_m <= 0.5, cad.polygon?.closure_error_m.toFixed(2) + 'm');
+          addCheck('Beacon Count', cad.polygon?.vertex_count >= 3, cad.polygon?.vertex_count + ' beacons');
+          
+          // Area Verification
+          const stateGuess = cad.plan_details?.location || 'Lagos';
+          document.getElementById('cad-area-stated').innerHTML = cad.polygon?.stated_area_sqm ? formatArea(cad.polygon.stated_area_sqm / 10000, stateGuess) : 'Not stated';
+          document.getElementById('cad-area-computed').innerHTML = cad.polygon?.computed_area_sqm ? formatArea(cad.polygon.computed_area_sqm / 10000, stateGuess) : '--';
+          
+          let diffStr = '--';
+          if (cad.polygon?.area_discrepancy_pct !== null && cad.polygon?.area_discrepancy_pct !== undefined) {
+              diffStr = cad.polygon.area_discrepancy_pct.toFixed(1) + '%';
+              if (cad.polygon.area_discrepancy_pct > 10) {
+                 document.getElementById('cad-area-diff').style.color = 'var(--danger)';
+              } else if (cad.polygon.area_discrepancy_pct > 3) {
+                 document.getElementById('cad-area-diff').style.color = 'var(--warning)';
+              } else {
+                 document.getElementById('cad-area-diff').style.color = 'var(--success)';
+              }
+          }
+          document.getElementById('cad-area-diff').innerText = diffStr;
+          
+          // Ledger
+          const tbody = document.querySelector('#cadastral-ledger-table tbody');
+          tbody.innerHTML = '';
+          cad.beacons.forEach(b => {
+             tbody.innerHTML += `<tr>
+                <td>${b.station_id}</td>
+                <td contenteditable="true" style="background: rgba(255,255,255,0.05); padding: 4px; border-radius: 4px;">${b.easting_utm?.toFixed(3) || ''}</td>
+                <td contenteditable="true" style="background: rgba(255,255,255,0.05); padding: 4px; border-radius: 4px;">${b.northing_utm?.toFixed(3) || ''}</td>
+                <td>${b.source}</td>
+             </tr>`;
+          });
+          
+          if (!cad.polygon?.is_closed) {
+             document.getElementById('cad-partial-warning').style.display = 'block';
+             document.getElementById('cadastral-ledger-container').style.display = 'block';
+          } else {
+             document.getElementById('cad-partial-warning').style.display = 'none';
+          }
+          
+          // Ledger Toggle
+          document.getElementById('btn-toggle-ledger').onclick = (e) => {
+             e.preventDefault();
+             const cont = document.getElementById('cadastral-ledger-container');
+             cont.style.display = cont.style.display === 'none' ? 'block' : 'none';
+          };
+          
+          // Recompute logic
+          document.getElementById('btn-recompute-ledger').onclick = (e) => {
+             e.preventDefault();
+             const rows = document.querySelectorAll('#cadastral-ledger-table tbody tr');
+             let syntheticText = "STATION_ID\tEASTING\tNORTHING\n";
+             rows.forEach(tr => {
+                const id = tr.cells[0].innerText.trim();
+                const e_val = tr.cells[1].innerText.trim();
+                const n_val = tr.cells[2].innerText.trim();
+                if (id && e_val && n_val && !isNaN(parseFloat(e_val)) && !isNaN(parseFloat(n_val))) {
+                    syntheticText += `${id}\t${e_val}\t${n_val}\n`;
+                }
+             });
+             
+             document.getElementById('input-file').value = "";
+             document.getElementById('file-name-display').style.display = 'none';
+             document.getElementById('input-coords').value = syntheticText;
+             
+             if (cad.polygon?.stated_area_sqm) {
+                 document.getElementById('input-area').value = (cad.polygon.stated_area_sqm / 10000).toFixed(3);
+             }
+             
+             // Hide the gate view and show progress
+             showView('view-progress');
+             document.getElementById('upload-form').dispatchEvent(new Event('submit'));
+          };
+          
+          // Map update
+          if (cad.polygon?.is_closed && cad.polygon.wgs84_coordinates?.length > 0) {
+              const geom = {
+                type: "Polygon",
+                coordinates: [cad.polygon.wgs84_coordinates.map(c => [c[1], c[0]])]
+              };
+              geom.coordinates[0].push(geom.coordinates[0][0]); // close polygon
+              localStorage.setItem('landiq_active_boundary', JSON.stringify(geom));
+              
+              let sumLat = 0, sumLng = 0;
+              cad.polygon.wgs84_coordinates.forEach(c => { sumLat += c[0]; sumLng += c[1]; });
+              const centroid = {lat: sumLat / cad.polygon.wgs84_coordinates.length, lng: sumLng / cad.polygon.wgs84_coordinates.length};
+              
+              showView('view-gate');
+              const rawCoords = cad.polygon.wgs84_coordinates.map(c => ({lat: c[0], lng: c[1]}));
+              initMap('gate-map', rawCoords, centroid);
+          } else {
+              showView('view-gate');
+              document.getElementById('gate-map').innerHTML = '<div style="padding:40px;text-align:center;color:var(--text-muted);"><i class="fa-solid fa-map" style="font-size:32px;"></i><br><br>Map unavailable until polygon is closed.<br>Check the ledger to add missing points.</div>';
+          }
+          
+          document.getElementById('badge-zone-label').innerText = `Cadastral Sub-system Active`;
+          document.getElementById('badge-method-label').innerText = cad.extraction_meta?.extraction_method || "OCR";
+          document.getElementById('upload-success-badge').style.display = 'flex';
+          
+          return;
+        }
+
+        // ==========================================
+        // STANDARD MODE (DD, DMS, KML, SHP)
+        // ==========================================
+        document.getElementById('standard-gate-info').style.display = 'block';
+        document.getElementById('cadastral-gate-info').style.display = 'none';
+
+        // On boundary calculation confirm, serialize raw GeoJSON geometry object directly to client-side storage
+        if (data.map_preview && data.map_preview.coordinates) {
+          const parsed = parseCoords(data.map_preview.coordinates);
+          const geoJsonGeom = {
+            type: "Polygon",
+            coordinates: [parsed.map(c => [c.lng, c.lat])]
+          };
+          if (parsed.length > 0) {
+            const first = parsed[0];
+            const last = parsed[parsed.length - 1];
+            if (first.lat !== last.lat || first.lng !== last.lng) {
+              geoJsonGeom.coordinates[0].push([first.lng, first.lat]);
+            }
+          }
+          localStorage.setItem('landiq_active_boundary', JSON.stringify(geoJsonGeom));
+        }
+
+        // If T3 area discrepancy warning is present
+        const discrepancyBox = document.getElementById('gate-discrepancy-box');
+        if (data.area_discrepancy_message) {
+          discrepancyBox.style.display = 'flex';
+          document.getElementById('gate-discrepancy-text').innerText = data.area_discrepancy_message;
+        } else {
+          discrepancyBox.style.display = 'none';
+        }
+
+        // Setup CRS Label and High Visibility Badge
+        document.getElementById('gate-crs-label').innerText = `${data.map_preview.detected_crs} (Confidence: ${data.map_preview.crs_confidence.toFixed(0)}%)`;
+        
+        document.getElementById('badge-zone-label').innerText = `Layered in ${data.map_preview.detected_crs}`;
+        document.getElementById('badge-method-label').innerText = data.map_preview.discovery_method || "Unknown";
+        document.getElementById('upload-success-badge').style.display = 'flex';
+
+        // Switch to gate map view
+        showView('view-gate');
+        initMap('gate-map', data.map_preview.coordinates, data.map_preview.centroid);
+
+        // Queue dialog triggers if any (T1-T5)
+        if (data.dialogs && data.dialogs.length > 0) {
+          activeDialogsQueue = data.dialogs;
+          currentDialogIndex = 0;
+          showNextDialog();
+        }
+
+      } catch (err) {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = '<i class="fa-solid fa-play"></i> Extract & Verify Boundary';
+        errorBox.innerText = 'Error: ' + err.message;
+        errorBox.style.display = 'flex';
+        console.error(err);
+      }
+    });
+
+    // CRS Dialog Display Helper
+    function showNextDialog() {
+      if (currentDialogIndex >= activeDialogsQueue.length) {
+        document.getElementById('dialog-modal').classList.remove('active');
+        return;
+      }
+      
+      const dialog = activeDialogsQueue[currentDialogIndex];
+      const modal = document.getElementById('dialog-modal');
+      
+      document.getElementById('dialog-title').innerText = `${dialog.icon} ${dialog.title}`;
+      document.getElementById('dialog-message').innerText = dialog.message;
+      
+      const container = document.getElementById('dialog-options-container');
+      container.innerHTML = '';
+      
+      dialog.options.forEach(opt => {
+        const btn = document.createElement('button');
+        btn.className = 'dialog-option-btn';
+        btn.innerText = opt.label;
+        btn.onclick = () => {
+          container.querySelectorAll('.dialog-option-btn').forEach(b => b.classList.remove('selected'));
+          btn.classList.add('selected');
+          dialogAnswers[dialog.code] = opt.value;
+        };
+        container.appendChild(btn);
+      });
+      
+      modal.classList.add('active');
+    }
+
+    // CRS Dialog Close
+    document.getElementById('btn-dialog-close').onclick = () => {
+      document.getElementById('dialog-modal').classList.remove('active');
+    };
+    document.getElementById('btn-dialog-cancel').onclick = () => {
+      document.getElementById('dialog-modal').classList.remove('active');
+    };
+
+    // Apply CRS Dialog FIX selection
+    document.getElementById('btn-dialog-submit').onclick = () => {
+      const activeDialog = activeDialogsQueue[currentDialogIndex];
+      if (!dialogAnswers[activeDialog.code]) {
+        alert('Choose an option to proceed.');
+        return;
+      }
+      currentDialogIndex++;
+      showNextDialog();
+    };
+
+    // Confirm Boundary Gate (GATE YES)
+    document.getElementById('btn-gate-yes').onclick = async () => {
+      if (!currentRunId) return;
+      
+      const btnGateYes = document.getElementById('btn-gate-yes');
+      const originalHtml = btnGateYes.innerHTML;
+      btnGateYes.disabled = true;
+      btnGateYes.innerHTML = '<i class="fa-solid fa-spinner animate-spin"></i> Confirming...';
+
+      try {
+        let viewport = null;
+        if (gateMapInstance) {
+          const center = gateMapInstance.getCenter();
+          viewport = {
+            lat: center.lat,
+            lng: center.lng,
+            zoom: gateMapInstance.getZoom() + 1
+          };
+        }
+
+        const payload = { 
+          responses: dialogAnswers,
+          map_viewport: viewport,
+          llm_provider: localStorage.getItem('landiq_llm_provider') || null,
+          llm_api_key: localStorage.getItem('landiq_llm_key') || null
+        };
+
+        const response = await fetch(`${API_BASE}/api/confirm/${currentRunId}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        if (!response.ok) {
+          alert('Boundary verification confirmation failed.');
+          btnGateYes.disabled = false;
+          btnGateYes.innerHTML = originalHtml;
+          return;
+        }
+
+        // Run progress tracking polling
+        startProgressTracking(currentRunId);
+
+      } catch (err) {
+        alert('Failed to connect to confirmation endpoint. ' + err.message);
+        console.error(err);
+        btnGateYes.disabled = false;
+        btnGateYes.innerHTML = originalHtml;
+      }
+    };
+
+    // Reject Boundary Gate (GATE NO)
+    document.getElementById('btn-gate-no').onclick = async () => {
+      if (!currentRunId) return;
+      await fetch(`${API_BASE}/api/reject/${currentRunId}`, { method: 'POST' });
+      localStorage.removeItem('landiq_active_boundary');
+      showView('view-welcome');
+      currentRunId = null;
+    };
+
+    // Progress Polling loop
+    let progressInterval = null;
+    function startProgressTracking(runId) {
+      showView('view-progress');
+      document.getElementById('progress-bar').style.width = '5%';
+      document.getElementById('progress-heading').innerText = 'Initializing analysis...';
+      document.getElementById('progress-subtext').innerText = 'Starting multi-agent sequence.';
+
+      const progressStages = {
+        'INIT': { width: '10%', heading: 'Bootstrapping caches...', desc: 'Reading state benchmarks.' },
+        'COORD_EXTRACT': { width: '20%', heading: 'Validating coordinates...', desc: 'Verifying CRS offsets.' },
+        'GATE': { width: '30%', heading: 'Clearing confirmation gate...', desc: 'User confirmation logged.' },
+        'ADAPTER_FETCH': { width: '45%', heading: 'Fetching spatial feeds...', desc: 'Querying local database rows.' },
+        'GIS_ANALYSIS': { width: '60%', heading: 'Processing GIS parameters...', desc: 'Calculating elevation and slope contours.' },
+        'RISK_ASSESS': { width: '75%', heading: 'Analyzing flood models...', desc: 'Running deterministic risk rules.' },
+        'SUITABILITY': { width: '85%', heading: 'Checking conflicts...', desc: 'Evaluating urban building densities.' },
+        'REPORT_GEN': { width: '95%', heading: 'Synthesizing plain English...', desc: 'Orchestrating text summaries via Ollama.' },
+        'COMPLETE': { width: '100%', heading: 'Complete!', desc: 'Finalizing PDF output templates.' }
+      };
+
+      if (progressInterval) clearInterval(progressInterval);
+
+      progressInterval = setInterval(async () => {
+        try {
+          const res = await fetch(`${API_BASE}/api/session/${runId}`);
+          if (!res.ok) return;
+
+          const data = await res.json();
+          const stage = data.pipeline_stage;
+
+          if (progressStages[stage]) {
+            const current = progressStages[stage];
+            document.getElementById('progress-bar').style.width = current.width;
+            document.getElementById('progress-heading').innerText = current.heading;
+            document.getElementById('progress-subtext').innerText = current.desc;
+          }
+
+          if (data.status === 'completed') {
+            clearInterval(progressInterval);
+            // Load final report
+            loadReport(runId);
+          } else if (data.status === 'error') {
+            clearInterval(progressInterval);
+            alert(`Analysis failed: ${data.error_detail || 'Unknown pipeline error.'}`);
+            showView('view-welcome');
+          }
+
+        } catch (err) {
+          console.error(err);
+        }
+      }, 1000);
+    }
+
+    // Load full report into View
+    async function loadReport(reportId) {
+      try {
+        const response = await fetch(`${API_BASE}/api/report/${reportId}`);
+        if (!response.ok) {
+          alert('Could not fetch report details.');
+          return;
+        }
+
+        const report = await response.json();
+        
+        // Hydrate persistent boundary for loaded history reports
+        if (report.parcel_geometry && report.parcel_geometry.coordinates) {
+          const parsed = parseCoords(report.parcel_geometry.coordinates);
+          const geoJsonGeom = {
+            type: "Polygon",
+            coordinates: [parsed.map(c => [c.lng, c.lat])]
+          };
+          if (parsed.length > 0) {
+            const first = parsed[0];
+            const last = parsed[parsed.length - 1];
+            if (first.lat !== last.lat || first.lng !== last.lng) {
+              geoJsonGeom.coordinates[0].push([first.lng, first.lat]);
+            }
+          }
+          localStorage.setItem('landiq_active_boundary', JSON.stringify(geoJsonGeom));
+        }
+
+        // Setup text info
+        const stateName = report.parcel_geometry.location_context.state || 'Nigeria';
+        document.getElementById('report-title').innerText = report.parcel_geometry.location_context.lga || 'Nigerian Land Parcel';
+        document.getElementById('report-lga-state').innerHTML = `${stateName} &mdash; ${formatArea(report.parcel_geometry.computed_area_ha, stateName)}`;
+        
+        // Traffic Light Badge
+        const tl = report.summary.traffic_light;
+        const badge = document.getElementById('report-traffic-light');
+        badge.className = `traffic-badge ${tl.toLowerCase()}`;
+        badge.innerText = tl;
+
+        // Score
+        const score = report.summary.overall_risk_score;
+        document.getElementById('report-score-text').innerText = score.toFixed(0);
+        // set SVG dashoffset
+        const fill = document.getElementById('report-score-fill');
+        const offset = 251.2 - (251.2 * score) / 100;
+        fill.style.strokeDashoffset = offset;
+        
+        // Risk coloring mapping
+        if (score > 60) fill.style.stroke = 'var(--danger)';
+        else if (score > 35) fill.style.stroke = 'var(--warning)';
+        else fill.style.stroke = 'var(--success)';
+
+        // Summary Narratives
+        document.getElementById('report-date').innerText = new Date(report.meta.generated_at).toLocaleString();
+        document.getElementById('report-exec-summary').innerText = report.summary.executive_summary;
+        document.getElementById('report-ai-rec').innerText = report.summary.ai_recommendation;
+
+        // Buyer's Decision Card (FIX 2.1)
+        const _vFlood = report.flood_risk_metrics.level;
+        document.getElementById('val-flood').innerHTML = `<span style="color: ${_vFlood === 'HIGH' ? 'var(--danger)' : (_vFlood === 'MODERATE' ? 'var(--warning)' : 'var(--success)')}; font-weight:700;">${_vFlood}</span>`;
+        
+        const _vTerrain = report.terrain_assessment.suitability;
+        document.getElementById('val-terrain').innerHTML = `<span style="color: ${_vTerrain === 'UNSUITABLE' ? 'var(--danger)' : 'var(--success)'}; font-weight:700;">${_vTerrain}</span>`;
+        
+        const _vRoad = report.accessibility_development.road_category || 'UNKNOWN';
+        document.getElementById('val-road').innerHTML = `<span style="color: ${_vRoad === 'POOR' ? 'var(--danger)' : 'var(--success)'}; font-weight:700;">${_vRoad}</span>`;
+        
+        const _vEncroach = report.encroachment.flag ? 'SUSPECTED' : 'CLEAR';
+        document.getElementById('val-encroachment').innerHTML = `<span style="color: ${_vEncroach === 'SUSPECTED' ? 'var(--warning)' : 'var(--success)'}; font-weight:700;">${_vEncroach}</span>`;
+        
+        const _titleStat = report.title_record.title_status;
+        if (_titleStat === 'VERIFIED') {
+            document.getElementById('val-title').innerHTML = `<span style="color: var(--success); font-weight:700;">VERIFIED</span>`;
+        } else if (_titleStat === 'FLAGGED') {
+            document.getElementById('val-title').innerHTML = `<span style="color: var(--danger); font-weight:700;">FLAGGED</span>`;
+        } else {
+            // Grey Dot Rule
+            document.getElementById('val-title').innerHTML = `<span style="color: var(--text-muted); font-weight:600;"><i class="fa-solid fa-circle" style="font-size: 8px; margin-right: 4px;"></i> NOT CHECKED</span>`;
+        }
+        
+        const _dev = report.growth_potential.level;
+        document.getElementById('val-development').innerHTML = `<span style="font-weight:700;">${_dev}</span>`;
+
+        // Metrics Grid (Advanced Details)
+        document.getElementById('metric-elev').innerText = report.terrain_assessment.elevation_m !== null ? `${report.terrain_assessment.elevation_m.toFixed(1)} m` : 'N/A';
+        document.getElementById('metric-slope').innerText = report.terrain_assessment.steepness_of_land !== null ? `${report.terrain_assessment.steepness_of_land.toFixed(1)}%` : 'N/A';
+        document.getElementById('metric-flood-risk').innerText = report.flood_risk_metrics.level;
+        document.getElementById('metric-growth').innerText = report.growth_potential.level;
+
+        // Setup checklist checklist
+        const chkContainer = document.getElementById('report-checklist-container');
+        chkContainer.innerHTML = '';
+        
+        // Parse raw advisory flags or Tailored Checklist if present
+        if (report.advisory_flags && report.advisory_flags.length > 0) {
+          report.advisory_flags.forEach(flag => {
+            const div = document.createElement('div');
+            div.className = 'checklist-item';
+            
+            // Get priority based on text content
+            let pClass = 'medium';
+            let priorityText = 'REVIEW';
+            if (flag.includes('HIGH') || flag.includes('CRITICAL')) { pClass = 'critical'; priorityText = 'CRITICAL'; }
+            else if (flag.includes('MODERATE')) { pClass = 'high'; priorityText = 'WARNING'; }
+
+            
+            // Extract action and rationale from flat strings
+            const parts = flag.split(':');
+            const action = parts[0] || 'Advisory';
+            const rationale = parts[1] || flag;
+
+            div.innerHTML = `
+              <input type="checkbox" class="checklist-checkbox">
+              <div class="checklist-text-wrapper">
+                <span class="badge-priority ${pClass}">${priorityText}</span>
+                <span class="checklist-action">${action}</span>
+                <span class="checklist-rationale">${rationale}</span>
+              </div>
+            `;
+            chkContainer.appendChild(div);
+          });
+        } else {
+          chkContainer.innerHTML = '<div class="empty-state">No special due diligence flags. Proceed with standard searches.</div>';
+        }
+
+        // Setup Data Sources transparency table
+        const tbody = document.getElementById('report-sources-tbody');
+        tbody.innerHTML = '';
+        
+        const sourcesResponse = await fetch(`${API_BASE}/api/report/${reportId}/sources`);
+        if (sourcesResponse.ok) {
+          const sources = await sourcesResponse.json();
+          sources.forEach(src => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+              <td><strong>${src.field_name || src.data_feed_name || '—'}</strong></td>
+              <td>${src.source_label || src.provider_name || '—'}</td>
+              <td>${Number(src.confidence_score).toFixed(0)}%</td>
+              <td>${src.fallback_used ? '<span style="color:var(--text-muted)"><i class="fa-solid fa-database"></i> Offline Cache</span>' : (src.live_feed_used ? '<span style="color:var(--success)"><i class="fa-solid fa-circle-check"></i> Live Feed</span>' : '<span style="color:var(--text-muted)"><i class="fa-solid fa-database"></i> Offline Cache</span>')}</td>
+            `;
+            tbody.appendChild(tr);
+          });
+        }
+
+        // Setup Model tag
+        document.getElementById('report-model-info').innerText = `Orchestrated via local Ollama (${report.ollama_model_used || 'offline model'})`;
+
+        // Action binding for PDF (adjust based on premium status)
+        document.getElementById('btn-download-pdf').onclick = () => {
+          const activeGeoJson = JSON.parse(localStorage.getItem('landiq_active_boundary') || 'null');
+          if (!activeGeoJson) {
+            alert("No active boundary found. Cannot adjust print frame.");
+            return;
+          }
+          openPrintAdjustmentWorkflow(activeGeoJson, reportId, false);
+        };
+
+        // Close Elevation Modal
+        document.getElementById('btn-elevation-close-modal').onclick = () => {
+          document.getElementById('elevation-modal').classList.remove('active');
+        };
+
+        // Preview Elevation Profile Button Click
+        document.getElementById('btn-preview-elevation').onclick = () => {
+          const isPremium = true;
+          const modal = document.getElementById('elevation-modal');
+          const paywall = document.getElementById('elevation-paywall');
+          const content = document.getElementById('elevation-premium-content');
+          
+          if (isPremium) {
+            paywall.style.display = 'none';
+            content.style.display = 'flex';
+            
+            // Format status text
+            const outfallStatus = report.terrain_assessment.outfall_connected ? "Connected" : "Not Connected";
+            const outfallDist = report.terrain_assessment.outfall_distance_m !== null ? `${report.terrain_assessment.outfall_distance_m.toFixed(1)} m` : "N/A";
+            const outfallAsset = report.terrain_assessment.outfall_asset_type || "N/A";
+            let warningText = "";
+            if (report.terrain_assessment.drainage_block_warning) {
+              warningText = "<br/><strong style='color:#ef4444;'>⚠ Gravity block warning: Water line sits higher than plot, pumping or site filling required!</strong>";
+            } else if (report.terrain_assessment.outfall_connected) {
+              warningText = "<br/><strong style='color:#10b981;'>✓ Gravity drainage verified: Property slopes naturally to street outfall.</strong>";
+            }
+            
+            document.getElementById('elevation-outfall-status-text').innerHTML = `
+              <strong>Drainage Outfall Status:</strong> ${outfallStatus}<br/>
+              <strong>Outfall Distance:</strong> ${outfallDist}<br/>
+              <strong>Asset Type:</strong> ${outfallAsset}
+              ${warningText}
+            `;
+            
+            // Render SVG Line Chart
+            const chartContainer = document.getElementById('elevation-chart-container');
+            const profile = report.premium_elevation_profile || { internal_profile_points: [], outfall_profile_points: [] };
+            chartContainer.innerHTML = generateElevationSvg(profile.internal_profile_points || [], profile.outfall_profile_points || []);
+            
+            // Premium PDF download binding
+            document.getElementById('btn-download-premium-pdf').onclick = () => {
+              const activeGeoJson = JSON.parse(localStorage.getItem('landiq_active_boundary') || 'null');
+              if (!activeGeoJson) {
+                alert("No active boundary found. Cannot adjust print frame.");
+                return;
+              }
+              openPrintAdjustmentWorkflow(activeGeoJson, reportId, true);
+            };
+          } else {
+            content.style.display = 'none';
+            paywall.style.display = 'flex';
+            
+            // Paystack Simulation
+            document.getElementById('btn-upgrade-paystack').onclick = async () => {
+              const upgradeBtn = document.getElementById('btn-upgrade-paystack');
+              upgradeBtn.disabled = true;
+              upgradeBtn.innerHTML = '<i class="fa-solid fa-spinner animate-spin"></i> Initializing Paystack Transaction...';
+              
+              try {
+                const email = "buyer@landiq.ng";
+                const response = await fetch(`${API_BASE}/api/payment/initiate?report_id=${reportId}&email=${email}&amount_ngn=5000`, {
+                  method: 'POST'
+                });
+                
+                if (!response.ok) {
+                  alert("Failed to initialize simulated transaction.");
+                  upgradeBtn.disabled = false;
+                  upgradeBtn.innerHTML = '<i class="fa-solid fa-credit-card"></i> Pay ₦5,000 via Paystack Simulation';
+                  return;
+                }
+                
+                const data = await response.json();
+                
+                upgradeBtn.innerHTML = '<i class="fa-solid fa-spinner animate-spin"></i> Processing Secure Payment...';
+                
+                // Simulate gateway processing delay
+                setTimeout(() => {
+                  upgradeBtn.disabled = false;
+                  upgradeBtn.innerHTML = '<i class="fa-solid fa-credit-card"></i> Pay ₦5,000 via Paystack Simulation';
+                  
+                  // Mark as premium
+                  localStorage.setItem(`premium_${reportId}`, 'true');
+                  alert(`Simulated Paystack Transaction Successful!\nReference: ${data.data.reference}`);
+                  
+                  // Refresh and show premium view
+                  document.getElementById('btn-preview-elevation').click();
+                }, 1500);
+                
+              } catch (err) {
+                console.error(err);
+                alert("Connection error initiating simulated payment.");
+                upgradeBtn.disabled = false;
+                upgradeBtn.innerHTML = '<i class="fa-solid fa-credit-card"></i> Pay ₦5,000 via Paystack Simulation';
+              }
+            };
+          }
+          
+          modal.classList.add('active');
+        };
+
+        function generateElevationSvg(internalPts, outfallPts) {
+          var width = 500;
+          var height = 180;
+          var padding = 25;
+          
+          var allPts = [];
+          for (var i = 0; i < internalPts.length; i++) { allPts.push(internalPts[i]); }
+          for (var i = 0; i < outfallPts.length; i++) { allPts.push(outfallPts[i]); }
+          
+          var elevations = [];
+          for (var i = 0; i < allPts.length; i++) {
+            if (allPts[i].elevation_m !== null && allPts[i].elevation_m !== undefined) {
+              elevations.push(allPts[i].elevation_m);
+            }
+          }
+          
+          if (elevations.length === 0) {
+            return '<svg width="100%" height="100%" viewBox="0 0 500 180"><text x="50%" y="50%" fill="#94a3b8" text-anchor="middle" font-size="12">No elevation data available</text></svg>';
+          }
+          
+          var minE = Math.min.apply(null, elevations);
+          var maxE = Math.max.apply(null, elevations);
+          var rangeE = maxE - minE;
+          if (rangeE === 0) rangeE = 10;
+          minE -= rangeE * 0.1;
+          maxE += rangeE * 0.1;
+          rangeE = maxE - minE;
+          
+          var maxD_internal = 1;
+          for (var i = 0; i < internalPts.length; i++) {
+            if (internalPts[i].distance_m > maxD_internal) maxD_internal = internalPts[i].distance_m;
+          }
+          var maxD_outfall = 1;
+          for (var i = 0; i < outfallPts.length; i++) {
+            if (outfallPts[i].distance_m > maxD_outfall) maxD_outfall = outfallPts[i].distance_m;
+          }
+
+          function getSvgCoords(dist, elev, isOutfall) {
+            var maxDist = isOutfall ? maxD_outfall : maxD_internal;
+            var x = padding + (dist / maxDist) * (width - 2 * padding);
+            var y = height - padding - ((elev - minE) / rangeE) * (height - 2 * padding);
+            return x.toFixed(1) + ',' + y.toFixed(1);
+          }
+
+          var internalCoords = [];
+          for (var i = 0; i < internalPts.length; i++) {
+            var p = internalPts[i];
+            if (p.elevation_m !== null && p.elevation_m !== undefined) {
+              internalCoords.push(getSvgCoords(p.distance_m, p.elevation_m, false));
+            }
+          }
+          var internalLine = internalCoords.length > 0 ? '<polyline points="' + internalCoords.join(' ') + '" fill="none" stroke="#3b82f6" stroke-width="3" />' : '';
+          
+          var internalDots = '';
+          for (var i = 0; i < internalPts.length; i++) {
+            var p = internalPts[i];
+            if (p.elevation_m !== null && p.elevation_m !== undefined) {
+              var coords = getSvgCoords(p.distance_m, p.elevation_m, false).split(',');
+              var lbl = p.label || ('Point ' + (i + 1));
+              internalDots += '<circle cx="' + coords[0] + '" cy="' + coords[1] + '" r="4" fill="#3b82f6" stroke="#080c14" stroke-width="1"><title>' + lbl + ': ' + p.distance_m.toFixed(1) + 'm, ' + p.elevation_m.toFixed(1) + 'm</title></circle>';
+            }
+          }
+
+          var outfallCoords = [];
+          for (var i = 0; i < outfallPts.length; i++) {
+            var p = outfallPts[i];
+            if (p.elevation_m !== null && p.elevation_m !== undefined) {
+              outfallCoords.push(getSvgCoords(p.distance_m, p.elevation_m, true));
+            }
+          }
+          var outfallLine = outfallCoords.length > 0 ? '<polyline points="' + outfallCoords.join(' ') + '" fill="none" stroke="#10b981" stroke-dasharray="4,4" stroke-width="3" />' : '';
+          
+          var outfallDots = '';
+          for (var i = 0; i < outfallPts.length; i++) {
+            var p = outfallPts[i];
+            if (p.elevation_m !== null && p.elevation_m !== undefined) {
+              var coords = getSvgCoords(p.distance_m, p.elevation_m, true).split(',');
+              var lbl = p.label || 'Outfall Point';
+              outfallDots += '<circle cx="' + coords[0] + '" cy="' + coords[1] + '" r="4" fill="#10b981" stroke="#080c14" stroke-width="1"><title>' + lbl + ': ' + p.distance_m.toFixed(1) + 'm, ' + p.elevation_m.toFixed(1) + 'm</title></circle>';
+            }
+          }
+
+          var grids = '';
+          for (var i = 0; i <= 4; i++) {
+            var val = minE + (rangeE * i / 4);
+            var y = height - padding - (i / 4) * (height - 2 * padding);
+            grids += '<line x1="' + padding + '" y1="' + y + '" x2="' + (width - padding) + '" y2="' + y + '" stroke="rgba(255,255,255,0.05)" stroke-width="1" />';
+            grids += '<text x="' + (padding - 5) + '" y="' + (y + 3) + '" fill="#64748b" font-size="8" text-anchor="end">' + val.toFixed(1) + 'm</text>';
+          }
+          
+          return '<svg width="100%" height="100%" viewBox="0 0 500 180">' + grids + internalLine + outfallLine + internalDots + outfallDots + '</svg>';
+        }
+
+        // Render Leaflet Satellite Map
+        showView('view-report');
+        initMap('report-map', report.parcel_geometry.coordinates, report.parcel_geometry.centroid);
+
+        // Add Health Check box data
+        if (report.parcel_geometry.health_check_stats) {
+          document.getElementById('health-check-box').style.display = 'block';
+          document.getElementById('hc-mean').innerText = `${report.parcel_geometry.health_check_stats.mean_segment_m} m`;
+          document.getElementById('hc-max').innerText = `${report.parcel_geometry.health_check_stats.max_segment_m} m`;
+          document.getElementById('hc-stddev').innerText = `${report.parcel_geometry.health_check_stats.std_dev_m} m`;
+        } else {
+          document.getElementById('health-check-box').style.display = 'none';
+        }
+
+        // Refresh recent audit records lists
+        loadHistory();
+
+      } catch (err) {
+        alert('Connection error loading report.');
+        console.error(err);
+      }
+    }
+
+    // Load Audit Records History
+    async function loadHistory() {
+      const container = document.getElementById('history-items-container');
+      try {
+        const response = await fetch(`${API_BASE}/api/history`);
+        if (!response.ok) return;
+
+        const history = await response.json();
+        window.landIqHistory = history;
+        if (history.length === 0) {
+          container.innerHTML = '<div class="empty-state">No audits completed yet.</div>';
+          return;
+        }
+
+        container.innerHTML = '';
+        history.forEach(item => {
+          const div = document.createElement('div');
+          
+          const isSelected = selectedHistoryIds.includes(item.report_id);
+          div.className = `history-item ${isSelected ? 'selected' : ''}`;
+          
+          const tlClass = (item.traffic_light || 'GREEN').toLowerCase();
+
+          const scoreText = (item.overall_risk_score !== undefined && item.overall_risk_score !== null) 
+            ? item.overall_risk_score.toFixed(0) 
+            : '—';
+          const areaText = (item.computed_area_ha !== undefined && item.computed_area_ha !== null) 
+            ? item.computed_area_ha.toFixed(2) 
+            : '—';
+
+          div.innerHTML = `
+            <div class="history-header">
+              <div class="history-checkbox-wrapper" onclick="toggleCompareCheck(event, '${item.report_id}')">
+                <input type="checkbox" class="history-checkbox" ${isSelected ? 'checked' : ''}>
+                <span class="history-title">${item.parcel_lga || item.lga || 'Nigerian Parcel'}</span>
+              </div>
+              <span class="traffic-indicator ${tlClass}"></span>
+            </div>
+            <div class="history-meta" onclick="loadReport('${item.report_id}')">
+              <span>Score: ${scoreText} | Area: ${areaText} Ha</span>
+              <span>${new Date(item.generated_at).toLocaleDateString()}</span>
+            </div>
+          `;
+          container.appendChild(div);
+        });
+
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    // Toggle Compare selections
+    function toggleCompareCheck(e, reportId) {
+      e.stopPropagation();
+      const idx = selectedHistoryIds.indexOf(reportId);
+      if (idx > -1) {
+        selectedHistoryIds.splice(idx, 1);
+      } else {
+        if (selectedHistoryIds.length >= 2) {
+          alert('You can compare up to 2 items at a time.');
+          return;
+        }
+        selectedHistoryIds.push(reportId);
+      }
+      
+      const compareBtn = document.getElementById('btn-compare');
+      compareBtn.innerText = `Compare (${selectedHistoryIds.length})`;
+      compareBtn.disabled = selectedHistoryIds.length < 2;
+      
+      loadHistory();
+    }
+
+    // History Compare Button click
+    document.getElementById('btn-compare').onclick = async () => {
+      if (selectedHistoryIds.length < 2) return;
+      
+      const idA = selectedHistoryIds[0];
+      const idB = selectedHistoryIds[1];
+      const allHist = window.landIqHistory || [];
+      const reportA = allHist.find(r => r.report_id === idA);
+      const reportB = allHist.find(r => r.report_id === idB);
+      const nameA = reportA ? (reportA.parcel_lga || 'Unknown Area') : 'Earlier Report';
+      const nameB = reportB ? (reportB.parcel_lga || 'Unknown Area') : 'Later Report';
+
+      try {
+        const response = await fetch(`${API_BASE}/api/compare/${idA}/${idB}`);
+        if (!response.ok) {
+          alert('Failed to compute comparison delta.');
+          return;
+        }
+
+        const delta = await response.json();
+        
+        document.getElementById('compare-text-delta').innerText = delta.plain_english_delta || 'Calculated spatial parameter deltas.';
+
+        const fieldsContainer = document.getElementById('compare-fields-container');
+        fieldsContainer.innerHTML = '';
+
+        delta.fields.forEach(f => {
+          const card = document.createElement('div');
+          card.className = 'compare-card';
+          
+          card.innerHTML = `
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <span class="compare-card-title">${f.field_name.replace(/_/g, ' ')}</span>
+              <span class="badge-diff ${f.direction}">${f.direction}</span>
+            </div>
+            <div class="compare-row">
+              <div class="compare-col">
+                <div class="compare-col-label">Earlier (${nameA})</div>
+                <div class="compare-col-val">${f.value_a !== null ? f.value_a : 'N/A'}</div>
+              </div>
+              <div class="compare-col">
+                <div class="compare-col-label">Later (${nameB})</div>
+                <div class="compare-col-val">${f.value_b !== null ? f.value_b : 'N/A'}</div>
+              </div>
+            </div>
+
+            <p class="compare-delta-text">${f.plain_english}</p>
+          `;
+          fieldsContainer.appendChild(card);
+        });
+
+        // Open compare modal
+        document.getElementById('compare-modal').classList.add('active');
+
+      } catch (err) {
+        alert('Error computing report comparisons.');
+        console.error(err);
+      }
+    };
+
+    // Close Compare Modal bindings
+    document.getElementById('btn-compare-close-modal').onclick = () => {
+      document.getElementById('compare-modal').classList.remove('active');
+    };
+
+    // Top Navigation actions
+    document.getElementById('btn-new-analysis').onclick = () => {
+      showView('view-welcome');
+      document.getElementById('upload-form').reset();
+      document.getElementById('file-name-display').innerText = '';
+      currentRunId = null;
+      localStorage.removeItem('landiq_active_boundary');
+    };
+    
+    document.getElementById('btn-show-history').onclick = () => {
+      // Just toggle list check states or alert
+      loadHistory();
+    };
+
+    // Initial load
+    loadHistory();
+  </script>
+
+  <div id="print-adjustment-modal" class="print-modal-backdrop hidden">
+      <div class="print-modal-container">
+          <div class="print-modal-header">
+              <div>
+                  <h3>Frame Your Report Map Layout</h3>
+                  <p>Pan and zoom the canvas view to capture specific landmarks, roads, or rivers for the final PDF.</p>
+              </div>
+              <button id="close-print-modal-btn" class="close-modal-x">&times;</button>
+          </div>
+
+          <div class="print-modal-body">
+              <div id="modal-adjustment-map"></div>
+              <div class="print-viewport-guide">
+                  <span>PDF Snapshot Capture Frame</span>
+              </div>
+          </div>
+
+          <div class="print-modal-footer">
+              <button id="cancel-print-btn" class="btn-secondary-modal">Cancel</button>
+              <button id="confirm-print-btn" class="btn-primary-modal">Confirm & Generate PDF</button>
+          </div>
+      </div>
+  </div>
+
+  <!-- Settings Modal -->
+  <div class="modal-overlay" id="settings-modal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div class="modal-title"><i class="fa-solid fa-gear" style="color:var(--primary);"></i> Global Settings</div>
+        <button class="modal-close-btn" id="close-settings-modal"><i class="fa-solid fa-times"></i></button>
+      </div>
+      
+      <div style="margin-bottom: 20px;">
+        <h4 style="color:var(--text-primary); font-size:14px; margin-bottom:12px; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:6px;">Vision OCR Engine</h4>
+        <div class="form-group">
+          <label class="form-label" for="setting-vision-provider">Provider</label>
+          <select id="setting-vision-provider" class="form-control">
+            <option value="">Default (Tesseract Local)</option>
+            <option value="gemini">Google Gemini</option>
+            <option value="openai">OpenAI GPT-4o</option>
+            <option value="anthropic">Anthropic Claude</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="setting-vision-key">API Key</label>
+          <input type="password" id="setting-vision-key" class="form-control" placeholder="Optional for Tesseract">
+        </div>
+      </div>
+
+      <div style="margin-bottom: 20px;">
+        <h4 style="color:var(--text-primary); font-size:14px; margin-bottom:12px; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:6px;">Report Writer (LLM)</h4>
+        <div class="form-group">
+          <label class="form-label" for="setting-llm-provider">Provider</label>
+          <select id="setting-llm-provider" class="form-control">
+            <option value="">Default (Ollama Local)</option>
+            <option value="gemini">Google Gemini</option>
+            <option value="openai">OpenAI GPT-4o</option>
+            <option value="anthropic">Anthropic Claude</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="setting-llm-key">API Key</label>
+          <input type="password" id="setting-llm-key" class="form-control" placeholder="Optional for Ollama">
+        </div>
+      </div>
+
+      <div class="print-modal-footer" style="background:transparent; border-top:1px solid var(--panel-border); padding: 16px 0 0 0;">
+        <button id="save-settings-btn" class="btn btn-primary" style="width:100%; justify-content:center;">Save Settings</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Global tracking references for the modal map state context
+    let previewMapInstance = null;
+    let activeBoundaryGeoJson = null;
+    let activeReportIdForPrint = null;
+    let isPremiumPrint = false;
+
+    // UI Elements Hook Selections
+    const printModal = document.getElementById('print-adjustment-modal');
+    const closeXBtn = document.getElementById('close-print-modal-btn');
+    const cancelBtn = document.getElementById('cancel-print-btn');
+    const confirmBtn = document.getElementById('confirm-print-btn');
+
+    function openPrintAdjustmentWorkflow(geoJsonGeometry, reportId, premium) {
+        activeBoundaryGeoJson = geoJsonGeometry;
+        activeReportIdForPrint = reportId;
+        isPremiumPrint = premium;
+        printModal.classList.remove('hidden');
+
+        // Timeout loop guarantees the DOM element is fully visible before initializing Leaflet
+        setTimeout(() => {
+            if (!previewMapInstance) {
+                previewMapInstance = L.map('modal-adjustment-map', {
+                    zoomControl: true,
+                    attributionControl: false
+                });
+
+                L.tileLayer('http://{s}.google.com/vt/lyrs=s,h&x={x}&y={y}&z={z}', {
+                    maxZoom: 24,
+                    maxNativeZoom: 20,
+                    subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
+                    attribution: '© Google Hybrid / OSM'
+                }).addTo(previewMapInstance);
+            } else {
+                // Clear prior temporary boundary trace layers
+                previewMapInstance.eachLayer((layer) => {
+                    if (layer instanceof L.GeoJSON) {
+                        previewMapInstance.removeLayer(layer);
+                    }
+                });
+            }
+
+            // Overlay property line mask boundaries onto the preview panel
+            const boundaryLayer = L.geoJSON(activeBoundaryGeoJson, {
+                style: { color: '#dc2626', weight: 3, fillColor: '#dc2626', fillOpacity: 0.08 }
+            }).addTo(previewMapInstance);
+
+            // STABILIZE LAYOUT SIZE: Clear hidden layout caching bugs and adjust camera context
+            previewMapInstance.invalidateSize({ animate: false });
+            
+            const bounds = boundaryLayer.getBounds();
+            if (bounds.isValid()) {
+                previewMapInstance.fitBounds(bounds, { padding: [40, 40], animate: false });
+            }
+        }, 250);
+    }
+
+    function closePrintModal() {
+        printModal.classList.add('hidden');
+    }
+
+    // Attach Event Listeners
+    if(closeXBtn) closeXBtn.addEventListener('click', closePrintModal);
+    if(cancelBtn) cancelBtn.addEventListener('click', closePrintModal);
+
+    if(confirmBtn) confirmBtn.addEventListener('click', async () => {
+        if (!previewMapInstance || !activeBoundaryGeoJson || !activeReportIdForPrint) return;
+
+        // Extract exact center metrics and zoom tier modifications
+        const currentCenter = previewMapInstance.getCenter();
+        const currentZoom = previewMapInstance.getZoom();
+
+        closePrintModal();
+        
+        // Determine mode
+        const modeToggle = document.getElementById('report-mode-toggle');
+        const isExpert = modeToggle ? modeToggle.checked : true;
+        const mode = isExpert ? "expert" : "simple";
+
+        // Show progress UI directly on button or as a global loader
+        const btnDownloadPdf = document.getElementById(isPremiumPrint ? 'btn-download-premium-pdf' : 'btn-download-pdf');
+        const oldHtml = btnDownloadPdf.innerHTML;
+        btnDownloadPdf.disabled = true;
+        btnDownloadPdf.innerHTML = '<i class="fa-solid fa-spinner animate-spin"></i> Compiling PDF Report...';
+
+        try {
+            const reportRequestPayload = {
+                map_viewport: {
+                    lat: currentCenter.lat,
+                    lng: currentCenter.lng,
+                    zoom: currentZoom
+                }
+            };
+
+            const response = await fetch(`/api/report/${activeReportIdForPrint}/generate-pdf?include_elevation_profile=${isPremiumPrint}&mode=${mode}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(reportRequestPayload)
+            });
+
+            if (!response.ok) throw new Error("Server reporting pipeline failure occurred.");
+
+            // Receive document blob binary and launch user system browser download trigger
+            const fileBlob = await response.blob();
+            const downloadUrl = window.URL.createObjectURL(fileBlob);
+            const anchorLink = document.createElement('a');
+            anchorLink.href = downloadUrl;
+            anchorLink.download = `${activeReportIdForPrint}_report.pdf`;
+            document.body.appendChild(anchorLink);
+            anchorLink.click();
+            anchorLink.remove();
+            window.URL.revokeObjectURL(downloadUrl);
+            
+        } catch (error) {
+            alert("Failed to build PDF layout report: " + error.message);
+        } finally {
+            if(btnDownloadPdf) {
+                btnDownloadPdf.disabled = false;
+                btnDownloadPdf.innerHTML = oldHtml;
+            }
+        }
+    });
+    // ==========================================
+    // SETTINGS MODAL LOGIC
+    // ==========================================
+    const settingsModal = document.getElementById('settings-modal');
+    const btnSettings = document.getElementById('btn-settings');
+    const btnCloseSettings = document.getElementById('close-settings-modal');
+    const btnSaveSettings = document.getElementById('save-settings-btn');
+    
+    // Inputs
+    const elVisProv = document.getElementById('setting-vision-provider');
+    const elVisKey = document.getElementById('setting-vision-key');
+    const elLlmProv = document.getElementById('setting-llm-provider');
+    const elLlmKey = document.getElementById('setting-llm-key');
+
+    function loadSettings() {
+      elVisProv.value = localStorage.getItem('landiq_vision_provider') || '';
+      elVisKey.value = localStorage.getItem('landiq_vision_key') || '';
+      elLlmProv.value = localStorage.getItem('landiq_llm_provider') || '';
+      elLlmKey.value = localStorage.getItem('landiq_llm_key') || '';
+    }
+
+    if(btnSettings) {
+      btnSettings.addEventListener('click', () => {
+        loadSettings();
+        settingsModal.classList.add('active');
+      });
+    }
+
+    if(btnCloseSettings) {
+      btnCloseSettings.addEventListener('click', () => {
+        settingsModal.classList.remove('active');
+      });
+    }
+
+    if(btnSaveSettings) {
+      btnSaveSettings.addEventListener('click', () => {
+        localStorage.setItem('landiq_vision_provider', elVisProv.value);
+        localStorage.setItem('landiq_vision_key', elVisKey.value);
+        localStorage.setItem('landiq_llm_provider', elLlmProv.value);
+        localStorage.setItem('landiq_llm_key', elLlmKey.value);
+        settingsModal.classList.remove('active');
+        // Flash button
+        const oldHtml = btnSettings.innerHTML;
+        btnSettings.innerHTML = '<i class="fa-solid fa-check"></i> Saved';
+        setTimeout(() => btnSettings.innerHTML = oldHtml, 2000);
+      });
+    }
+
+    // Initialize on load
+    loadSettings();
+
+    // Toggle Simple/Expert Mode
+    const modeToggle = document.getElementById('report-mode-toggle');
+    if(modeToggle) {
+      modeToggle.addEventListener('change', (e) => {
+        const isExpert = e.target.checked;
+        const expertEls = document.querySelectorAll('.expert-only');
+        
+        document.getElementById('label-mode-expert').style.color = isExpert ? '#fff' : 'var(--text-muted)';
+        document.getElementById('label-mode-simple').style.color = isExpert ? 'var(--text-muted)' : '#fff';
+        document.getElementById('pdf-btn-mode-text').innerText = isExpert ? 'Expert' : 'Simple';
+
+        expertEls.forEach(el => {
+          el.style.display = isExpert ? '' : 'none';
+        });
+      });
+      // Initial trigger
+      modeToggle.dispatchEvent(new Event('change'));
+    }
+  </script>
+</body>
+</html>

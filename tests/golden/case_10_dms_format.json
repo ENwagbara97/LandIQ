@@ -1,0 +1,22 @@
+{
+  "_description": "GOLDEN CASE 10 — DMS format coordinate string. Expected: Dialog T5 fires, DMS converted to Decimal Degrees, user confirms conversion.",
+  "input": {
+    "input_type": "manual_coordinates",
+    "raw_text": "6°36'6.5\"N 3°30'22.3\"E; 6°36'8.9\"N 3°30'27.0\"E; 6°36'3.6\"N 3°30'28.8\"E; 6°36'1.1\"N 3°30'24.1\"E; 6°36'6.5\"N 3°30'22.3\"E",
+    "_note": "Degrees-Minutes-Seconds format. Must detect, convert, confirm with user via T5.",
+    "stated_area_ha": 0.38,
+    "persona_mode": "EVERYDAY_BUYER"
+  },
+  "expected": {
+    "coord_extract": {
+      "dms_converted": true,
+      "detected_crs": "WGS84",
+      "is_inside_nigeria": true,
+      "warnings_contain": ["DMS_CONVERTED"]
+    },
+    "crs_dialogs_fired": ["T5"],
+    "gate": {
+      "dialog_message_contains": "Degrees-Minutes-Seconds"
+    }
+  }
+}
