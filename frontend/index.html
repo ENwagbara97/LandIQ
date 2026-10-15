@@ -1756,7 +1756,7 @@ OR
   </div>
 
   <script>
-    const API_BASE = '';
+    const API_BASE = 'https://landiq-api-oqcg.onrender.com';
 
     // =========================================================================
     // COGO TRAVERSE ENGINE (CLIENT-SIDE)
@@ -3501,7 +3501,7 @@ OR
                 }
             };
 
-            const response = await fetch(`/api/report/${activeReportIdForPrint}/generate-pdf?include_elevation_profile=${isPremiumPrint}&mode=${mode}`, {
+            const response = await fetch(`${API_BASE}/api/report/${activeReportIdForPrint}/generate-pdf?include_elevation_profile=${isPremiumPrint}&mode=${mode}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(reportRequestPayload)
