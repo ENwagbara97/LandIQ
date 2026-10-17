@@ -1,0 +1,653 @@
+This is exactly the kind of dashboard I would build for LandIQ.
+
+Looking at the screenshot, the structure is good because it answers three executive questions:
+
+1. **What is happening?**
+2. **What is broken?**
+3. **Where do I need to investigate?**
+
+For LandIQ, your admin dashboard should be less like a typical SaaS dashboard and more like a **GIS + AI Operations Command Center**.
+
+---
+
+# LANDIQ ADMIN PANEL
+
+## Sidebar Navigation
+
+```text
+📊 Dashboard
+
+📑 Reports
+    - All Reports
+    - Generated Reports
+    - Failed Reports
+    - Scheduled Reports
+
+👥 Users
+    - All Users
+    - Active Users
+    - Surveyors
+    - Enterprise Clients
+
+🤖 AI Operations
+    - Agent Health
+    - Prompt Monitoring
+    - LLM Usage
+    - Fallback Events
+
+🗺 GIS Engine
+    - Spatial Analysis Queue
+    - DEM Processing
+    - Flood Analysis
+    - Mapbox Usage
+
+📄 Survey Plans
+    - Uploaded Plans
+    - Extraction Logs
+    - Coordinate Validation
+
+📈 Analytics
+    - Usage Analytics
+    - Revenue Analytics
+    - State Analytics
+
+⚙ System Health
+    - API Status
+    - Database
+    - Cache
+    - Queues
+
+🔐 Admin Management
+```
+
+---
+
+# EXECUTIVE DASHBOARD (TOP CARDS)
+
+These cards should update in real time.
+
+### Users
+
+```text
+Total Users
+
+12,451
+```
+
+---
+
+### Active Users
+
+```text
+Today's Active Users
+
+1,321
+```
+
+---
+
+### Reports Generated
+
+```text
+Reports Generated
+
+5,832
+```
+
+---
+
+### Success Rate
+
+```text
+Successful Reports
+
+97.8%
+```
+
+---
+
+### Failed Reports
+
+```text
+Failed Reports
+
+127
+```
+
+---
+
+### Revenue
+
+```text
+Monthly Revenue
+
+₦4.3M
+```
+
+---
+
+# AI OPERATIONS SECTION
+
+This is the heart of LandIQ.
+
+Most SaaS founders forget this.
+
+---
+
+## AI Success Rate
+
+```text
+Agent Success Rate
+
+96.4%
+```
+
+Meaning:
+
+Successfully completed reports.
+
+---
+
+## AI Failure Rate
+
+```text
+AI Failures
+
+3.6%
+```
+
+Examples:
+
+* Parsing failure
+* Prompt failure
+* Hallucination detection
+* Invalid response
+
+---
+
+## Average LLM Response Time
+
+```text
+2.8 seconds
+```
+
+---
+
+## Fallback Rate
+
+```text
+Fallback Triggered
+
+11.3%
+```
+
+Meaning:
+
+Primary model failed.
+
+System switched to backup.
+
+---
+
+## LLM Distribution
+
+Pie Chart
+
+```text
+GPT-5
+Claude
+Gemini
+Fallback Engine
+```
+
+---
+
+## Token Consumption
+
+```text
+Today's Tokens
+
+4.2 Million
+```
+
+---
+
+## Cost Analysis
+
+```text
+OpenAI Cost
+
+$23.40
+
+Claude Cost
+
+$18.10
+
+Gemini Cost
+
+$4.50
+```
+
+---
+
+# REPORT GENERATION ANALYTICS
+
+Most important operational metric.
+
+---
+
+## Report Pipeline
+
+Visual Funnel
+
+```text
+Survey Uploads
+
+10,000
+
+↓
+Coordinate Extraction
+
+9,850
+
+↓
+Parcel Plotting
+
+9,500
+
+↓
+Flood Analysis
+
+9,100
+
+↓
+PDF Generation
+
+8,950
+
+↓
+Delivered
+
+8,900
+```
+
+This immediately identifies bottlenecks.
+
+---
+
+# GIS ENGINE MONITORING
+
+This is where LandIQ becomes unique.
+
+---
+
+## Average Flood Analysis Time
+
+```text
+3.2 seconds
+```
+
+---
+
+## Average Slope Analysis Time
+
+```text
+1.1 seconds
+```
+
+---
+
+## Average Map Generation Time
+
+```text
+2.4 seconds
+```
+
+---
+
+## DEM Processing Failures
+
+```text
+34
+```
+
+---
+
+## Invalid Coordinate Uploads
+
+```text
+82
+```
+
+---
+
+## Failed Spatial Operations
+
+```text
+17
+```
+
+---
+
+# SURVEY PLAN INTELLIGENCE
+
+Very valuable.
+
+---
+
+## Upload Success Rate
+
+```text
+98.2%
+```
+
+---
+
+## OCR Accuracy
+
+```text
+93%
+```
+
+---
+
+## Coordinate Extraction Success
+
+```text
+96%
+```
+
+---
+
+## Survey Plans Requiring Manual Review
+
+```text
+41
+```
+
+---
+
+## Most Common Survey Errors
+
+```text
+Missing Coordinates
+
+Wrong CRS
+
+Corrupt PDF
+
+Unreadable Scan
+
+Missing Bearings
+```
+
+---
+
+# NIGERIA LAND INTELLIGENCE ANALYTICS
+
+This becomes investor gold.
+
+---
+
+## Reports by State
+
+Map of Nigeria
+
+```text
+Akwa Ibom 34%
+
+Lagos 22%
+
+Rivers 15%
+
+FCT 12%
+
+Enugu 8%
+```
+
+---
+
+## Most Analyzed Locations
+
+Leaderboard.
+
+---
+
+## Flood Risk Distribution
+
+```text
+Low
+
+Medium
+
+High
+```
+
+---
+
+## Most Common Due Diligence Issues
+
+```text
+Title Not Verified
+
+Beacon Verification Needed
+
+Flood Risk
+
+Missing Documentation
+```
+
+---
+
+# SYSTEM HEALTH
+
+Critical.
+
+---
+
+## API Health
+
+```text
+OpenAI
+✓
+
+Claude
+✓
+
+Mapbox
+✓
+
+AWS
+✓
+```
+
+---
+
+## Database Status
+
+```text
+Healthy
+```
+
+---
+
+## Queue Length
+
+```text
+27 Pending Jobs
+```
+
+---
+
+## Error Logs
+
+Live feed.
+
+---
+
+# REVENUE DASHBOARD
+
+Needed once monetization starts.
+
+---
+
+## Revenue Today
+
+## Revenue This Month
+
+## Reports Purchased
+
+## Conversion Rate
+
+## Average Revenue Per User
+
+## Refund Requests
+
+---
+
+# ALERTS CENTER
+
+Real-time notifications.
+
+Example:
+
+```text
+⚠ OpenAI latency increased by 40%
+
+⚠ Flood Analysis Service Failure
+
+⚠ Coordinate Extraction Accuracy Dropped
+
+⚠ Mapbox Quota at 85%
+```
+
+---
+
+# MOST IMPORTANT FEATURE
+
+I would add something many founders never think of:
+
+## LandIQ Intelligence Quality Score
+
+```text
+Overall System Confidence
+
+92%
+```
+
+Based on:
+
+* AI accuracy
+* GIS accuracy
+* OCR success
+* Report delivery success
+
+If this drops:
+
+You investigate immediately.
+
+---
+
+# MASTER PROMPT FOR STITCH / LOVABLE / BOLT / CURSOR
+
+```text
+Design a premium enterprise SaaS Admin Dashboard for a Nigerian GIS and AI-powered land intelligence platform called LANDIQ.
+
+Style:
+- Modern enterprise dashboard
+- Similar to Stripe, Linear, ArcGIS Dashboard and Datadog
+- Clean white content area
+- Dark left sidebar
+- Professional GIS technology aesthetic
+- Responsive desktop-first layout
+- Card-based analytics
+- Premium PropTech design
+
+Sidebar Navigation:
+Dashboard
+Reports
+Users
+AI Operations
+GIS Engine
+Survey Plans
+Analytics
+Revenue
+System Health
+Admin Management
+
+Top KPI Cards:
+Total Users
+Active Users
+Reports Generated
+Success Rate
+Failed Reports
+Monthly Revenue
+
+Dashboard Sections:
+
+1. AI Operations
+- AI Success Rate
+- AI Failure Rate
+- LLM Response Time
+- Fallback Rate
+- Token Usage
+- Cost by Model
+- Model Distribution Chart
+
+2. Report Generation Pipeline
+Visual funnel showing:
+Survey Uploads
+Coordinate Extraction
+Parcel Plotting
+Flood Analysis
+PDF Generation
+Delivered Reports
+
+3. GIS Engine Analytics
+Average Flood Analysis Time
+Slope Analysis Time
+Map Generation Time
+DEM Failures
+Spatial Processing Failures
+Invalid Coordinate Count
+
+4. Survey Plan Analytics
+Upload Success Rate
+OCR Accuracy
+Coordinate Extraction Accuracy
+Manual Review Queue
+Most Common Upload Errors
+
+5. Nigeria Intelligence Analytics
+Interactive Nigeria Map
+Reports By State
+Flood Risk Distribution
+Most Common Due Diligence Issues
+
+6. Revenue Analytics
+MRR
+Revenue Growth
+Reports Purchased
+Conversion Rate
+ARPU
+
+7. System Health
+API Status
+Database Health
+Queue Status
+Cache Status
+Error Logs
+Mapbox Usage
+OpenAI Usage
+
+8. Alerts Center
+Real-time system alerts
+Latency warnings
+Model failures
+API outages
+
+Use modern charts, progress bars, donut charts, line graphs, heatmaps and executive KPI cards.
+Make it look like a system used by a national land intelligence company processing thousands of land reports daily.
+```
+
+If LandIQ becomes successful across Nigeria, this dashboard will be more valuable than most founders realize because it will tell you **where users fail, where AI fails, where GIS fails, and where revenue is leaking**—all from a single command center.

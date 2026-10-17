@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />
+    <title>LandIQ — Spatial Workbench</title>
+    <meta name="description" content="LandIQ — AI-powered land risk intelligence for Nigeria." />
+    <meta name="robots" content="index, follow" />
+    <meta property="og:title" content="LandIQ — Spatial Workbench" />
+    <meta property="og:description" content="AI-powered land risk intelligence for Nigeria." />
+    <meta property="og:type" content="website" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+      /* Prevent flash of unstyled content */
+      html, body { margin: 0; padding: 0; background: #0F1117; }
+      #splash {
+        position: fixed; inset: 0;
+        background: #0F1117;
+        display: flex; flex-direction: column;
+        align-items: center; justify-content: center;
+        z-index: 9999;
+        font-family: 'Inter', sans-serif;
+        transition: opacity 0.3s ease;
+      }
+      #splash.hidden { opacity: 0; pointer-events: none; }
+      .splash-logo {
+        width: 48px; height: 48px; margin-bottom: 20px;
+        background: linear-gradient(135deg, #0058BD, #00A294);
+        border-radius: 14px;
+        display: flex; align-items: center; justify-content: center;
+      }
+      .splash-logo svg { width: 28px; height: 28px; fill: white; }
+      .splash-title { color: #f8fafc; font-size: 20px; font-weight: 700; letter-spacing: -0.5px; margin: 0 0 6px; }
+      .splash-sub { color: #64748b; font-size: 13px; margin: 0 0 28px; }
+      .splash-bar {
+        width: 180px; height: 3px; background: #1e293b; border-radius: 99px; overflow: hidden;
+      }
+      .splash-progress {
+        height: 100%; width: 0;
+        background: linear-gradient(90deg, #0058BD, #00A294);
+        border-radius: 99px;
+        animation: load 1.2s ease forwards;
+      }
+      @keyframes load {
+        0% { width: 0; } 60% { width: 70%; } 100% { width: 100%; }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="splash">
+      <div class="splash-logo">
+        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+          <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+        </svg>
+      </div>
+      <p class="splash-title">LandIQ</p>
+      <p class="splash-sub">Spatial Intelligence Platform</p>
+      <div class="splash-bar"><div class="splash-progress"></div></div>
+    </div>
+    <div id="root"></div>
+    <script>
+      // Hide splash once React is ready
+      window.__hideSplash = function() {
+        var s = document.getElementById('splash');
+        if (s) { s.classList.add('hidden'); setTimeout(function(){ s.remove(); }, 350); }
+      };
+    </script>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

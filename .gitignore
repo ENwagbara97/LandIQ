@@ -29,3 +29,19 @@ temp_prompt*.txt
 final_prompt*.txt
 *_prompt_content.txt
 *.tmp
+
+# Frontend, Node & Build Artifacts
+node_modules/
+**/node_modules/
+dist/
+**/dist/
+.local/
+**/.local/
+*.tsbuildinfo
+**/*.tsbuildinfo
+.replit-artifact/
+**/.replit-artifact/
+.git_backup/
+**/.git_backup/
+.env.local
+**/.env.local

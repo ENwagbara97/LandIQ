@@ -58,13 +58,14 @@ logging.basicConfig(
 )
 logger = logging.getLogger("landiq.server")
 
-# ── CORS — read allowed origins from environment (never use * in production) ──
+# ── CORS — read allowed origins from environment ─────────────────────────────
 _raw_origins = os.getenv(
     "ALLOWED_ORIGINS",
     "http://localhost:5173,http://localhost:5174,"
     "http://127.0.0.1:5173,http://127.0.0.1:8000",
 )
 ALLOWED_ORIGINS = [o.strip() for o in _raw_origins.split(",") if o.strip()]
+_allow_all_cors = "*" in ALLOWED_ORIGINS
 
 # ── Admin API key (optional — guard /api/admin/stats) ─────────────────────────
 ADMIN_API_KEY = os.getenv("ADMIN_API_KEY", "")
@@ -114,8 +115,9 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=ALLOWED_ORIGINS,
-    allow_credentials=True,
+    allow_origins=["*"] if _allow_all_cors else ALLOWED_ORIGINS,
+    allow_origin_regex=None if _allow_all_cors else r"^https:\/\/.*\.vercel\.app$",
+    allow_credentials=not _allow_all_cors,
     allow_methods=["*"],
     allow_headers=["*"],
 )

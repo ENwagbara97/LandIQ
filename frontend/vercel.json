@@ -1,0 +1,9 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "installCommand": "pnpm --prefix Land-Intelligence install",
+  "buildCommand": "pnpm --prefix Land-Intelligence -r --filter @workspace/landiq run build",
+  "outputDirectory": "Land-Intelligence/artifacts/landiq/dist/public",
+  "rewrites": [
+    { "source": "/(.*)", "destination": "/index.html" }
+  ]
+}

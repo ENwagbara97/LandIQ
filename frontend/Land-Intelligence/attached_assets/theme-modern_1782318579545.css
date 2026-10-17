@@ -1,0 +1,589 @@
+@import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200');
+
+/* --- FontAwesome to Google Material Symbols Mapping Layer --- */
+.fa-solid, .fa-regular, .fas, .far, .fa, [class^="fa-"], [class*=" fa-"] {
+  font-family: 'Material Symbols Outlined' !important;
+  font-weight: normal !important;
+  font-style: normal !important;
+  line-height: 1 !important;
+  letter-spacing: normal !important;
+  text-transform: none !important;
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap !important;
+  word-wrap: normal !important;
+  direction: ltr !important;
+  -webkit-font-feature-settings: 'liga' !important;
+  -webkit-font-smoothing: antialiased !important;
+}
+
+/* Icon glyph codepoint mappings */
+.fa-layer-group::before { content: "\e53b" !important; } /* layers */
+.fa-sun::before { content: "\e518" !important; }         /* light_mode */
+.fa-moon::before { content: "\e51c" !important; }        /* dark_mode */
+.fa-gear::before { content: "\e8b8" !important; }        /* settings */
+.fa-plus::before { content: "\e145" !important; }        /* add */
+.fa-clock-rotate-left::before { content: "\e889" !important; } /* history */
+.fa-satellite-dish::before { content: "\eb46" !important; }    /* satellite_alt */
+.fa-play::before { content: "\e037" !important; }        /* play_arrow */
+.fa-list-check::before { content: "\f0c5" !important; }   /* fact_check */
+.fa-shield-halved::before { content: "\e8b4" !important; } /* shield */
+.fa-triangle-exclamation::before { content: "\e002" !important; } /* warning */
+.fa-table::before { content: "\e26f" !important; }       /* table_chart */
+.fa-calculator::before { content: "\ea5f" !important; }  /* calculate */
+.fa-xmark::before { content: "\e5cd" !important; }       /* close */
+.fa-check::before { content: "\e5ca" !important; }       /* check */
+.fa-water::before { content: "\f074" !important; }       /* water */
+.fa-mountain::before { content: "\e568" !important; }     /* terrain */
+.fa-road::before { content: "\eac9" !important; }       /* route */
+.fa-eye::before { content: "\e8f4" !important; }         /* visibility */
+.fa-file-contract::before { content: "\e873" !important; } /* description */
+.fa-building::before { content: "\e7ee" !important; }     /* domain */
+.fa-file-pdf::before { content: "\e415" !important; }     /* picture_as_pdf */
+.fa-chart-line::before { content: "\e6e1" !important; }   /* show_chart */
+.fa-arrow-trend-up::before { content: "\e8e5" !important; } /* trending_up */
+.fa-heart-pulse::before { content: "\e87d" !important; }  /* favorite */
+.fa-satellite::before { content: "\e561" !important; }   /* satellite */
+.fa-lock::before { content: "\e897" !important; }        /* lock */
+.fa-credit-card::before { content: "\e8a1" !important; }  /* credit_card */
+.fa-spinner::before { content: "\e863" !important; }     /* autorenew */
+.fa-circle::before { content: "\ef4a" !important; }      /* circle */
+.fa-circle-check::before { content: "\e86c" !important; } /* check_circle */
+.fa-database::before { content: "\f103" !important; }     /* database */
+.fa-times::before { content: "\e5cd" !important; }       /* close */
+.fa-pen-to-square::before { content: "\e254" !important; } /* edit */
+.fa-file-invoice::before { content: "\e873" !important; }  /* description */
+.fa-map::before { content: "\e55b" !important; }         /* map */
+.fa-bars::before { content: "\e5d2" !important; }        /* menu */
+.fa-user::before { content: "\e7fd" !important; }        /* person */
+.fa-file-shield::before { content: "\e8a6" !important; }  /* policy/shield */
+.fa-circle-half-stroke::before { content: "\e3ab" !important; } /* contrast */
+
+:root {
+  /* Colors */
+  --bg-color: #202124 !important;          /* Slate/Neutral Charcoal background */
+  --panel-bg: rgba(32, 33, 36, 0.75) !important; /* Frosted Glass Obsidian panels */
+  --panel-border: rgba(255, 255, 255, 0.08) !important;
+  
+  --primary: #4285F4 !important;          /* Vibrant Google Blue */
+  --primary-hover: #1A73E8 !important;    /* Tertiary Blue (active / hover state) */
+  --primary-glow: rgba(66, 133, 244, 0.3) !important;
+  
+  --success: #00A294 !important;          /* Vibrant Secondary Teal */
+  --success-bg: rgba(0, 162, 148, 0.12) !important;
+  
+  --text-primary: #F1F3F4 !important;     /* Bright Neutral text */
+  --text-secondary: #E8EAED !important;   /* Medium Neutral text */
+  --text-muted: #9AA0A6 !important;       /* Muted gray text */
+  
+  --header-bg: rgba(32, 33, 36, 0.85) !important;
+  --split-panel-bg: rgba(26, 27, 30, 0.6) !important;
+  
+  --input-bg: rgba(255, 255, 255, 0.04) !important;
+  --input-border: rgba(255, 255, 255, 0.12) !important;
+  --file-input-bg: rgba(255, 255, 255, 0.02) !important;
+  --file-input-border: rgba(255, 255, 255, 0.18) !important;
+  
+  --btn-secondary-bg: rgba(255, 255, 255, 0.05) !important;
+  --btn-secondary-hover: rgba(255, 255, 255, 0.1) !important;
+  
+  --modal-bg: rgba(32, 33, 36, 0.9) !important;
+  
+  /* Layout helpers */
+  --bg-main: #202124 !important;
+  --bg-sidebar: rgba(32, 33, 36, 0.75) !important;
+}
+
+/* --- Step 2b: Light Mode Variables Override --- */
+html.theme-light {
+  --bg-color: #F8FAFC !important;          /* Crisp light background */
+  --panel-bg: #FFFFFF !important;          /* Pure white card/panel background */
+  --panel-border: #E2E8F0 !important;      /* Soft grey border for cards */
+  
+  --primary: #4285F4 !important;          /* Constant brand blue */
+  --primary-hover: #1A73E8 !important;    /* Tertiary Blue */
+  --primary-glow: rgba(66, 133, 244, 0.15) !important;
+  
+  --success: #00A294 !important;          /* Constant brand teal */
+  --success-bg: rgba(0, 162, 148, 0.08) !important;
+  
+  --text-primary: #202124 !important;     /* Slate dark text for strong contrast */
+  --text-secondary: #5F6368 !important;   /* Medium slate text */
+  --text-muted: #70757A !important;       /* Muted grey labels */
+  
+  --header-bg: #FFFFFF !important;         /* Pure white header */
+  --split-panel-bg: #F8FAFC !important;    /* Lighter details pane */
+  
+  --input-bg: #FFFFFF !important;          /* White form backgrounds */
+  --input-border: #DADCE0 !important;      /* Solid input outline */
+  --file-input-bg: #F8FAFC !important;
+  --file-input-border: #DADCE0 !important;
+  
+  --btn-secondary-bg: #F1F3F4 !important;
+  --btn-secondary-hover: #E8EAED !important;
+  
+  --modal-bg: rgba(255, 255, 255, 0.96) !important;
+  
+  /* Layout helpers */
+  --bg-main: #F8FAFC !important;
+  --bg-sidebar: #FFFFFF !important;
+}
+
+/* --- Global Font Override --- */
+body, button, input, select, textarea, span, p, h1, h2, h3, h4, h5, h6, a {
+  font-family: 'DM Sans', sans-serif !important;
+  letter-spacing: -0.01em;
+}
+
+/* --- Step 3: High-Fidelity UI Polish (Frosted Glass & Scale Animations) --- */
+.card, .modal-card, #view-welcome, .split-view {
+  backdrop-filter: blur(16px) !important;
+  -webkit-backdrop-filter: blur(16px) !important;
+  box-shadow: 0 12px 40px 0 rgba(0, 0, 0, 0.25) !important;
+  border-radius: 14px !important;
+  border: 1px solid var(--panel-border) !important;
+  transition: transform 250ms cubic-bezier(0.4, 0, 0.2, 1), box-shadow 250ms cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+.history-item {
+  background: var(--btn-secondary-bg) !important;
+  border-color: var(--panel-border) !important;
+  border-radius: 10px !important;
+  transition: all 0.2s ease !important;
+}
+.history-item:hover {
+  transform: translateY(-2px) !important;
+  background: var(--btn-secondary-hover) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+  border-color: rgba(66, 133, 244, 0.3) !important;
+}
+
+.form-control {
+  border-radius: 10px !important;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+.form-control:focus {
+  border-color: var(--primary) !important;
+  box-shadow: 0 0 0 3px var(--primary-glow) !important;
+  background: rgba(255, 255, 255, 0.06) !important;
+}
+
+.btn {
+  border-radius: 10px !important;
+  transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+.btn:hover:not(:disabled) {
+  transform: translateY(-1px) !important;
+  box-shadow: 0 4px 12px rgba(66, 133, 244, 0.2) !important;
+}
+.btn:active:not(:disabled) {
+  transform: translateY(0) !important;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, var(--primary), var(--primary-hover)) !important;
+  border: none !important;
+  color: white !important;
+}
+.btn-primary:hover:not(:disabled) {
+  background: linear-gradient(135deg, var(--primary-hover), #1765c9) !important;
+  box-shadow: 0 6px 16px var(--primary-glow) !important;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 99px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* Header UI cleanup */
+header {
+  border-radius: 0 0 16px 16px !important;
+  margin-bottom: 16px !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15) !important;
+  border-bottom: 1px solid var(--panel-border) !important;
+}
+
+/* --- Step 4: Mobile-First Responsive Framework --- */
+
+/* Bottom Navigation Bar (Hidden on Desktop) */
+.mobile-tabs {
+  display: none;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 64px;
+  background: #202124;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.2);
+  z-index: 9999;
+  justify-content: space-around;
+  align-items: center;
+  padding: 0 8px;
+}
+
+.mobile-tab-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  width: 25%;
+  height: 100%;
+  transition: all 0.2s ease;
+}
+
+.mobile-tab-btn i {
+  font-size: 20px;
+  transition: transform 0.2s ease;
+}
+
+.mobile-tab-btn.active {
+  color: var(--primary);
+}
+
+.mobile-tab-btn.active i {
+  transform: translateY(-2px) scale(1.1);
+}
+
+/* Mobile Media Queries */
+@media (max-width: 768px) {
+  /* Reveal Mobile Nav Bar */
+  .mobile-tabs {
+    display: flex;
+  }
+  
+  /* Disable body fixed viewport constraints to allow scroll if needed,
+     or stack elements cleanly */
+  body {
+    height: auto !important;
+    min-height: 100vh;
+    overflow-y: auto !important;
+    padding-bottom: 80px; /* Spacer for bottom tabs bar */
+  }
+
+  header {
+    height: 60px !important;
+    padding: 0 16px !important;
+    margin-bottom: 12px !important;
+  }
+  
+  .header-nav {
+    gap: 8px !important;
+  }
+  
+  .header-nav .btn {
+    padding: 8px 10px !important;
+    font-size: 11px !important;
+  }
+  
+  .header-nav .btn span, 
+  .header-nav .btn i:not(#theme-icon) {
+    display: none !important; /* Hide button text/icons to fit mobile headers */
+  }
+  
+  /* Convert Main Layout grid to stacked flex container */
+  .main-layout {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 0 !important;
+    padding: 0 12px !important;
+    height: calc(100vh - 150px) !important;
+    min-height: 480px;
+    overflow: hidden !important;
+  }
+  
+  /* Mobile Tab Toggle Logic using data-active-tab attribute */
+  
+  /* Hide main elements by default on mobile */
+  .sidebar, 
+  .content-workspace {
+    display: none !important;
+    width: 100% !important;
+    height: 100% !important;
+    flex: 1 !important;
+  }
+  
+  /* Show Sidebar when inputs tab is active */
+  body[data-active-tab="inputs"] .sidebar {
+    display: flex !important;
+    overflow-y: auto !important;
+  }
+  
+  /* Show Content Workspace when map or report tabs are active */
+  body[data-active-tab="map"] .content-workspace,
+  body[data-active-tab="report"] .content-workspace {
+    display: flex !important;
+  }
+  
+  /* Welcome Screen layout adjustment */
+  #view-welcome {
+    padding: 24px 16px !important;
+    text-align: center !important;
+    justify-content: flex-start !important;
+    overflow-y: auto !important;
+  }
+  
+  .welcome-icon {
+    font-size: 50px !important;
+    margin-bottom: 12px !important;
+  }
+  
+  .welcome-title {
+    font-size: 24px !important;
+  }
+  
+  .welcome-subtitle {
+    font-size: 13px !important;
+    margin-bottom: 20px !important;
+  }
+  
+  .features-grid {
+    grid-template-columns: 1fr !important;
+    width: 100% !important;
+    max-width: 320px;
+  }
+  
+  /* Split View layout adjustments (Gate & Report panels) */
+  .split-view {
+    display: flex !important;
+    flex-direction: column !important;
+    height: 100% !important;
+    border-radius: 12px !important;
+  }
+  
+  /* Toggle split-panel (left report details) and split-map-area (right map canvas) */
+  body[data-active-tab="report"] .split-panel {
+    display: flex !important;
+    width: 100% !important;
+    height: 100% !important;
+  }
+  
+  body[data-active-tab="map"] .split-map-area {
+    display: block !important;
+    width: 100% !important;
+    height: 100% !important;
+  }
+  
+  /* Hide the inactive split half on mobile */
+  body[data-active-tab="map"] .split-panel {
+    display: none !important;
+  }
+  
+  body[data-active-tab="report"] .split-map-area {
+    display: none !important;
+  }
+  
+  /* When standard or cadastral gate is loaded */
+  #view-gate .split-view,
+  #view-report .split-view {
+    height: 100% !important;
+  }
+  
+  .split-panel {
+    border-right: none !important;
+    border-bottom: 1px solid var(--panel-border);
+    padding: 16px !important;
+  }
+  
+  /* Metric cards fitting */
+  .metrics-grid {
+    grid-template-columns: 1fr !important;
+  }
+  
+  /* Modals fitting screen */
+  .modal-card {
+    max-width: 95% !important;
+    padding: 16px !important;
+  }
+  
+  .compare-row {
+    flex-direction: column !important;
+    gap: 8px !important;
+  }
+}
+
+/* =================================================================
+   TARGETED HIGH-CONTRAST OVERRIDES
+   ================================================================= */
+
+/* --- Step 3a: Print/PDF Modal Colors (Theme-Aware) --- */
+.print-modal-container {
+  background: var(--panel-bg) !important;
+  border-color: var(--panel-border) !important;
+  color: var(--text-primary) !important;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3) !important;
+}
+.print-modal-header {
+  background: var(--header-bg) !important;
+  border-bottom-color: var(--panel-border) !important;
+  color: var(--text-primary) !important;
+}
+.print-modal-body {
+  background: var(--bg-color) !important;
+  color: var(--text-primary) !important;
+}
+
+/* --- Step 3b: Active Toggle Labels (JavaScript Override) --- */
+/* Simple/Expert mode toggles: override hardcoded #fff inline style in Light Mode */
+html.theme-light #label-mode-simple,
+html.theme-light #label-mode-expert {
+  transition: color 0.15s ease !important;
+}
+html.theme-light #label-mode-simple:not([style*="var(--text-muted)"]) {
+  color: var(--text-primary) !important;
+}
+html.theme-light #label-mode-expert:not([style*="var(--text-muted)"]) {
+  color: var(--text-primary) !important;
+}
+
+/* --- Step 3c: Warning & Error Boxes Contrast --- */
+html.theme-light .gate-warning-box {
+  background: rgba(245, 158, 11, 0.08) !important;
+  border-color: rgba(245, 158, 11, 0.25) !important;
+  color: #A05000 !important; /* Dark orange for clear warning contrast */
+}
+html.theme-light #upload-error {
+  background: rgba(217, 48, 37, 0.08) !important;
+  border-color: rgba(217, 48, 37, 0.2) !important;
+  color: #C5221F !important; /* Dark red for error contrast */
+}
+
+/* --- Step 3d: Success Badges and Labels Contrast --- */
+html.theme-light #upload-success-badge {
+  background: rgba(0, 162, 148, 0.08) !important;
+  border-color: rgba(0, 162, 148, 0.2) !important;
+}
+html.theme-light #badge-zone-label {
+  color: var(--text-primary) !important;
+}
+
+/* --- Step 3e: Recommendation Cards Contrast --- */
+html.theme-light .report-recommendation-box {
+  background: rgba(66, 133, 244, 0.05) !important;
+  border-color: rgba(66, 133, 244, 0.15) !important;
+  color: #1A73E8 !important; /* High contrast Google Blue */
+}
+
+/* --- Step 3f: Welcome screen features contrast --- */
+html.theme-light .feature-step.blue { color: #1A73E8 !important; }
+html.theme-light .feature-step.green { color: #00A294 !important; }
+html.theme-light .feature-step.orange { color: #C06000 !important; }
+
+/* --- Step 3g: Table Borders --- */
+html.theme-light .data-table th {
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08) !important;
+}
+html.theme-light .data-table td {
+  border-bottom: 1px solid rgba(0, 0, 0, 0.04) !important;
+}
+
+/* --- Step 3h: Form Selection Text --- */
+::selection {
+  background: rgba(66, 133, 244, 0.3) !important;
+  color: inherit !important;
+}
+
+/* --- Step 3i: Leaflet Zoom Controls Custom Theme --- */
+.leaflet-bar {
+  border: 1px solid var(--panel-border) !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2) !important;
+  border-radius: 8px !important;
+  overflow: hidden;
+}
+.leaflet-bar a, .leaflet-bar a:hover {
+  background-color: var(--panel-bg) !important;
+  color: var(--text-primary) !important;
+  border-bottom: 1px solid var(--panel-border) !important;
+  transition: all 0.2s ease !important;
+}
+.leaflet-bar a:hover {
+  background-color: var(--btn-secondary-hover) !important;
+}
+.leaflet-control-zoom-in, .leaflet-control-zoom-out {
+  font-weight: bold !important;
+}
+
+/* --- Desktop Icon Sizing & Visual Weight Tuning --- */
+@media (min-width: 769px) {
+  /* Welcome Screen Hero Icon */
+  .welcome-icon {
+    font-size: 80px !important;
+    margin-bottom: 24px !important;
+    display: inline-flex !important;
+  }
+
+  /* Header navigation buttons */
+  .header-nav .btn i,
+  .header-nav .btn .fa-solid,
+  .header-nav .btn .fa-regular {
+    font-size: 18px !important;
+    font-variation-settings: 'FILL' 0, 'wght' 450, 'GRAD' 0, 'opsz' 20 !important;
+    margin-right: 6px !important;
+    vertical-align: middle !important;
+  }
+
+  /* Sidebar Card Headers and section headers */
+  .card-title i,
+  .card-title .fa-solid,
+  .card-title .fa-regular,
+  .split-panel h2 i,
+  .split-panel h2 .fa-solid {
+    font-size: 20px !important;
+    font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24 !important;
+    vertical-align: middle !important;
+  }
+
+  /* Extract & Verify CTA play icon */
+  #btn-submit-run i,
+  #btn-submit-run .fa-solid {
+    font-size: 18px !important;
+    font-variation-settings: 'FILL' 1, 'wght' 500, 'GRAD' 0, 'opsz' 20 !important;
+    margin-right: 8px !important;
+  }
+
+  /* Decision/Metric Cards in Report */
+  .metric-header i,
+  .metric-header .fa-solid {
+    font-size: 16px !important;
+    font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 20 !important;
+  }
+
+  /* General Content/Action Icons on Desktop */
+  .fa-solid,
+  .fa-regular,
+  .fas,
+  .far,
+  .fa {
+    font-size: 16px !important;
+    font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 20 !important;
+  }
+}
+
+/* Drawer/Slide-In Style Rules */
+@keyframes slideInLeft {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(0); }
+}
+.drawer-content {
+  animation: slideInLeft 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+

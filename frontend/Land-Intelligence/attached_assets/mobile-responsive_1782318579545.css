@@ -1,0 +1,1157 @@
+/* =================================================================
+   LANDIQ MOBILE/TABLET RESPONSIVE OVERLAY STYLE SYSTEM
+   ================================================================= */
+
+/* --- Section 11: Design Token Reconciliation & Light-Default --- */
+:root {
+  /* LIGHT Theme variables (canonical default) */
+  --accent-primary:       #4285F4; /* Google Blue */
+  --accent-secondary:     #00A294; /* Teal / Success */
+  --accent-tertiary:      #1A73E8; /* Links / Secondary CTAs */
+  --bg-base:              #FFFFFF;
+  --bg-panel:             #F8FAFC;
+  --bg-card:              #F1F5F9;
+  --bg-input:             #FFFFFF;
+  --text-primary-color:   #202124; /* Neutral Charcoal */
+  --text-secondary-color: #5F6368;
+  --text-muted-color:     #70757A;
+  --border-default:       #E2E8F0;
+  --border-subtle:        #F1F5F9;
+  --border-panel:         #E2E8F0;
+  --primary-glow:         rgba(66, 133, 244, 0.15);
+  --header-bg:            #FFFFFF;
+  --split-panel-bg:       #F8FAFC;
+  
+  /* Status colors */
+  --green:                #00A294;
+  --green-bg:             rgba(0, 162, 148, 0.08);
+  --amber:                #F59E0B;
+  --amber-bg:             rgba(245, 158, 11, 0.08);
+  --red:                  #EF4444;
+  --red-bg:               rgba(239, 68, 68, 0.08);
+}
+
+/* Gate existing dark-mode tokens specifically */
+html:not(.theme-light) {
+  --bg-base:              #080c14;
+  --bg-panel:             rgba(13, 20, 35, 0.7);
+  --bg-card:              rgba(13, 20, 35, 0.5);
+  --bg-input:             rgba(255, 255, 255, 0.03);
+  --text-primary-color:   #f8fafc;
+  --text-secondary-color: #94a3b8;
+  --text-muted-color:     #64748b;
+  --accent-primary:       #3b82f6;
+  --accent-secondary:     #10b981;
+  --accent-tertiary:      #2563eb;
+  --border-default:       rgba(255, 255, 255, 0.1);
+  --border-subtle:        rgba(255, 255, 255, 0.04);
+  --border-panel:         rgba(255, 255, 255, 0.08);
+  --header-bg:            rgba(10, 16, 30, 0.8);
+  --split-panel-bg:       rgba(10, 16, 30, 0.4);
+  --primary-glow:         rgba(59, 130, 246, 0.35);
+
+  --green:                #10b981;
+  --green-bg:             rgba(16, 185, 129, 0.12);
+  --amber:                #f59e0b;
+  --amber-bg:             rgba(245, 158, 11, 0.12);
+  --red:                  #ef4444;
+  --red-bg:               rgba(239, 68, 68, 0.12);
+}
+
+/* Override existing Light Mode selector mapping to sync seamlessly */
+html {
+  --bg-color:         var(--bg-base) !important;
+  --panel-bg:         var(--bg-panel) !important;
+  --panel-border:     var(--border-panel) !important;
+  --text-primary:     var(--text-primary-color) !important;
+  --text-secondary:   var(--text-secondary-color) !important;
+  --text-muted:       var(--text-muted-color) !important;
+  --primary:          var(--accent-primary) !important;
+  --primary-hover:    var(--accent-tertiary) !important;
+  --primary-glow:     var(--primary-glow) !important;
+  --success:          var(--accent-secondary) !important;
+  --input-bg:         var(--bg-input) !important;
+  --input-border:     var(--border-default) !important;
+  --header-bg:        var(--header-bg) !important;
+  --split-panel-bg:   var(--split-panel-bg) !important;
+}
+
+/* =================================================================
+   SECTION 2 — BREAKPOINT ARCHITECTURE
+   ================================================================= */
+
+/* --- TABLET BREAKPOINT (768px – 1023px) --- */
+@media (min-width: 768px) and (max-width: 1023px) {
+  body {
+    height: 100vh !important;
+    overflow: hidden !important;
+  }
+
+  header {
+    height: 60px !important;
+    padding: 0 16px !important;
+  }
+
+  /* Hamburger drawer icon gets tablet touch-size bump */
+  #btn-hamburger {
+    display: inline-flex !important;
+  }
+
+  /* Split layout */
+  .main-layout {
+    display: flex !important;
+    height: calc(100vh - 60px) !important;
+    overflow: hidden !important;
+  }
+
+  /* Tabbed mini-sidebar */
+  .sidebar {
+    width: 360px !important;
+    flex-shrink: 0 !important;
+    border-right: 1px solid var(--panel-border) !important;
+    height: 100% !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
+  }
+
+  .content-workspace {
+    flex: 1 !important;
+    height: 100% !important;
+    overflow: hidden !important;
+  }
+
+  /* 3-column metric cards */
+  #decision-card-grid, .metrics-grid {
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 12px !important;
+  }
+
+  /* Segmented tablet header navigation */
+  .header-nav {
+    display: flex !important;
+    gap: 8px !important;
+  }
+
+  /* Larger touch targets on tablet */
+  .btn, .map-control-btn {
+    min-height: 44px !important;
+  }
+}
+
+/* --- MOBILE BREAKPOINT (<= 767px) --- */
+@media (max-width: 767px) {
+  /* Prevent scrolling of main body, lock viewport to tab system */
+  body {
+    height: 100vh !important;
+    min-height: 100vh !important;
+    overflow: hidden !important;
+    position: relative !important;
+    padding-bottom: 56px !important; /* reserve bottom bar space */
+  }
+
+  /* Floating header treatment */
+  header {
+    position: absolute !important;
+    top: 16px !important;
+    left: 16px !important;
+    right: 16px !important;
+    height: 52px !important;
+    z-index: 999 !important;
+    background: var(--panel-bg) !important;
+    backdrop-filter: blur(8px) !important;
+    -webkit-backdrop-filter: blur(8px) !important;
+    border: 1px solid var(--panel-border) !important;
+    border-radius: 12px !important;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1) !important;
+    padding: 0 16px !important;
+    margin-bottom: 0 !important;
+    display: flex !important;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  /* Hide default header nav buttons (Settings, New Analysis, History) */
+  .header-nav {
+    display: none !important;
+  }
+
+  #btn-hamburger {
+    display: inline-flex !important;
+  }
+
+  /* Mobile profile avatar trigger */
+  .mobile-header-avatar {
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--accent-muted, rgba(66, 133, 244, 0.15));
+    border: 1px solid var(--panel-border);
+    cursor: pointer;
+    color: var(--accent-primary);
+  }
+
+  /* Main container full screen */
+  .main-layout {
+    display: block !important;
+    height: 100vh !important;
+    width: 100vw !important;
+    position: relative !important;
+    overflow: hidden !important;
+  }
+
+  /* Sidebars and content workspace act as isolated full-screen panels */
+  .sidebar, .content-workspace {
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    display: none !important; /* controlled by data-active-tab classes */
+    background: var(--bg-color) !important;
+    border: none !important;
+    z-index: 100 !important;
+    padding: 84px 16px 16px 16px !important; /* top padding accounts for floating header */
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Selectively reveal views according to tab state */
+  body[data-active-tab="map"] .content-workspace {
+    display: block !important;
+  }
+
+  body[data-active-tab="analyse"] .sidebar {
+    display: block !important;
+  }
+
+  body[data-active-tab="report"] .content-workspace {
+    display: block !important;
+  }
+
+  body[data-active-tab="history"] .sidebar {
+    display: block !important;
+  }
+
+  /* Hide welcome overlay details / let map fill full bleed */
+  body[data-active-tab="map"] .content-workspace {
+    padding: 0 !important; /* Map fills full screen */
+  }
+
+  body[data-active-tab="map"] header {
+    background: rgba(255, 255, 255, 0.92) !important;
+  }
+  
+  html[data-theme="dark"] body[data-active-tab="map"] header {
+    background: rgba(13, 20, 35, 0.85) !important;
+  }
+
+  /* Manage view subdivisions inside content workspace */
+  body[data-active-tab="map"] .view-section {
+    display: none !important;
+  }
+  body[data-active-tab="map"] #view-welcome.active {
+    display: flex !important;
+  }
+  body[data-active-tab="map"] #view-gate.active {
+    display: flex !important;
+  }
+  body[data-active-tab="map"] #view-gate.active .split-panel {
+    display: none !important; /* Hide verify details, only show map */
+  }
+  body[data-active-tab="map"] #view-gate.active .split-map-area {
+    display: block !important;
+    width: 100% !important;
+    height: 100% !important;
+  }
+  body[data-active-tab="map"] #view-report.active {
+    display: flex !important;
+  }
+  body[data-active-tab="map"] #view-report.active .split-panel {
+    display: none !important; /* Hide report details, only show map */
+  }
+  body[data-active-tab="map"] #view-report.active .split-map-area {
+    display: block !important;
+    width: 100% !important;
+    height: 100% !important;
+  }
+
+  body[data-active-tab="report"] .view-section {
+    display: none !important;
+  }
+  body[data-active-tab="report"] #view-report {
+    display: flex !important;
+  }
+  body[data-active-tab="report"] #view-report .split-map-area {
+    display: none !important; /* Hide map, only show details */
+  }
+  body[data-active-tab="report"] #view-report .split-panel {
+    display: block !important;
+    width: 100% !important;
+    height: 100% !important;
+    padding: 0 !important;
+  }
+
+  /* History views selective layout */
+  body[data-active-tab="history"] .card {
+    display: none !important;
+  }
+  body[data-active-tab="history"] .sidebar > .card:last-child {
+    display: flex !important; /* only show history items container */
+    border: none !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    height: 100% !important;
+    padding: 0 !important;
+  }
+
+  /* Run Land Audit Form (Analyse) styled as bottom sheet */
+  body[data-active-tab="analyse"] {
+    background-color: var(--bg-base) !important;
+  }
+  body[data-active-tab="analyse"] .sidebar {
+    padding: 0 !important;
+    background: transparent !important;
+  }
+  
+  body[data-active-tab="analyse"] .sidebar > .card:first-child {
+    position: fixed !important;
+    bottom: 56px !important;
+    left: 0 !important;
+    width: 100% !important;
+    max-height: 85vh !important;
+    background: var(--panel-bg) !important;
+    backdrop-filter: blur(16px) !important;
+    border-radius: 20px 20px 0 0 !important;
+    border: 1px solid var(--panel-border) !important;
+    border-bottom: none !important;
+    z-index: 1000 !important;
+    padding: 16px 20px 24px 20px !important;
+    overflow-y: auto !important;
+    box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.15) !important;
+    animation: slideUp 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .bottom-sheet-drag-handle {
+    display: block !important;
+    width: 36px;
+    height: 4px;
+    background: var(--border-default);
+    border-radius: 2px;
+    margin: -4px auto 16px auto;
+    cursor: grab;
+  }
+
+  /* Custom input dimensions & stacking */
+  .form-control, .btn {
+    min-height: 48px !important;
+    font-size: 14px !important;
+  }
+
+  .form-or {
+    margin: 8px 0 !important;
+  }
+
+  /* --- Section 7: Mobile Report Layout --- */
+  #view-report .split-panel {
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .viability-score-row {
+    flex-direction: row !important;
+    align-items: center !important;
+    gap: 16px !important;
+  }
+
+  /* Smaller score gauge */
+  .circular-gauge {
+    width: 64px !important;
+    height: 64px !important;
+  }
+  .circular-gauge-text {
+    font-size: 16px !important;
+  }
+
+  /* 2-column metrics cards */
+  #decision-card-grid, .metrics-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 8px !important;
+  }
+
+  /* Compact terrain chart height */
+  .split-panel svg, #section-advanced-tech canvas {
+    max-height: 120px !important;
+  }
+
+  /* --- Section 8: History Tab Cards --- */
+  .history-item {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    padding: 12px 16px !important;
+    margin-bottom: 8px !important;
+  }
+
+  /* Custom float action button for mobile history list */
+  .mobile-fab {
+    display: flex !important;
+    position: fixed;
+    bottom: 72px;
+    right: 16px;
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: var(--accent-primary);
+    color: white;
+    box-shadow: 0 4px 16px rgba(66, 133, 244, 0.4);
+    align-items: center;
+    justify-content: center;
+    border: none;
+    cursor: pointer;
+    z-index: 1010;
+  }
+  .mobile-fab i {
+    width: 24px;
+    height: 24px;
+  }
+}
+
+/* =================================================================
+   SECTION 3 & 5 — BOTTOM TAB BAR & HAMBURGER DRAWER (CSS & LAYOUT)
+   ================================================================= */
+
+/* Bottom tab selectors bar style definitions */
+.mobile-tabs {
+  display: none;
+}
+
+@media (max-width: 767px) {
+  .mobile-tabs {
+    display: flex;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 56px;
+    background: var(--panel-bg);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-top: 1px solid var(--border-default);
+    z-index: 9999;
+    justify-content: space-around;
+    align-items: center;
+    padding: 0 8px;
+    box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.05);
+  }
+
+  .mobile-tab-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    font-size: 10px;
+    font-weight: 500;
+    cursor: pointer;
+    width: 25%;
+    height: 100%;
+    position: relative;
+    transition: color 0.15s ease;
+  }
+
+  .mobile-tab-btn i {
+    width: 20px;
+    height: 20px;
+    stroke-width: 2;
+  }
+
+  .mobile-tab-btn.active {
+    color: var(--accent-primary);
+  }
+
+  .mobile-tab-btn.active::after {
+    content: "";
+    display: block;
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: var(--accent-secondary);
+    position: absolute;
+    bottom: 2px;
+  }
+}
+
+/* Hamburger side drawer styles */
+.hamburger-drawer-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.4);
+  z-index: 10000;
+  display: none;
+  opacity: 0;
+  transition: opacity 0.25s ease;
+}
+
+.hamburger-drawer-overlay.active {
+  display: block;
+  opacity: 1;
+}
+
+.hamburger-drawer-content {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 85%;
+  max-width: 320px;
+  height: 100%;
+  background: var(--bg-base);
+  box-shadow: 4px 0 24px rgba(0, 0, 0, 0.15);
+  display: flex;
+  flex-direction: column;
+  transform: translateX(-100%);
+  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.hamburger-drawer-overlay.active .hamburger-drawer-content {
+  transform: translateX(0);
+}
+
+.drawer-header {
+  padding: 24px 16px 16px 16px;
+  border-bottom: 1px solid var(--border-default);
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.avatar-circle {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--accent-muted, rgba(66, 133, 244, 0.15));
+  color: var(--accent-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.drawer-user-name {
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--text-primary);
+}
+
+.drawer-user-email {
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.drawer-close-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--text-secondary);
+  padding: 4px;
+}
+
+.drawer-close-btn i {
+  width: 20px;
+  height: 20px;
+}
+
+.drawer-menu-links {
+  flex: 1;
+  padding: 16px 0;
+  overflow-y: auto;
+}
+
+.drawer-menu-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 14px 20px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  color: var(--text-primary);
+  transition: background 0.1s ease;
+}
+
+.drawer-menu-item:active {
+  background: var(--bg-card);
+}
+
+.item-icon-label {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.item-icon-label i {
+  width: 18px;
+  height: 18px;
+  color: var(--text-secondary);
+}
+
+.item-icon-label span {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.chevron-arrow {
+  width: 14px;
+  height: 14px;
+  color: var(--text-muted);
+}
+
+.drawer-footer {
+  padding: 16px;
+  border-top: 1px solid var(--border-default);
+  font-size: 11px;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.drawer-footer a {
+  color: var(--text-muted);
+  text-decoration: none;
+  margin: 0 4px;
+}
+
+.drawer-footer a:hover {
+  text-decoration: underline;
+}
+
+/* =================================================================
+   SECTION 6 — SETTINGS & LEGAL MODALS
+   ================================================================= */
+
+.custom-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.4);
+  z-index: 10100;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+.custom-modal-card {
+  width: 100%;
+  max-width: 480px;
+  background: var(--bg-base);
+  border: 1px solid var(--panel-border);
+  border-radius: 16px;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  display: flex;
+  flex-direction: column;
+  max-height: 90vh;
+  overflow: hidden;
+  animation: fadeInModal 0.2s ease-out;
+}
+
+.custom-modal-header {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border-default);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.custom-modal-header h3 {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0;
+}
+
+.custom-modal-close {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--text-secondary);
+}
+
+.custom-modal-close i {
+  width: 18px;
+  height: 18px;
+}
+
+.custom-modal-body {
+  padding: 16px 20px;
+  overflow-y: auto;
+}
+
+.settings-section {
+  margin-bottom: 24px;
+}
+
+.settings-section-title {
+  font-size: 11px;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+  letter-spacing: 0.05em;
+}
+
+.settings-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 0;
+  font-size: 14px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.settings-row-btn {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  padding: 12px 0;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  color: var(--text-primary);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.settings-row-btn i {
+  width: 16px;
+  height: 16px;
+  color: var(--text-secondary);
+}
+
+/* Segmented Theme Switch Controls */
+.segmented-control {
+  display: flex;
+  background: var(--bg-card);
+  border: 1px solid var(--border-default);
+  border-radius: 8px;
+  padding: 2px;
+}
+
+.segment-btn {
+  border: none;
+  background: transparent;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 6px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  color: var(--text-secondary);
+  transition: all 0.15s ease;
+}
+
+.segment-btn.active {
+  background: var(--bg-base);
+  color: var(--accent-primary);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+/* =================================================================
+   SECTION 13 — MICRO-COMPONENTS (ERROR, TOASTS, PROGRESS BARS)
+   ================================================================= */
+
+/* Inline mobile banners instead of native alert dialogs */
+.mobile-error-banner {
+  background: rgba(239, 68, 68, 0.08);
+  border-left: 3px solid #EF4444;
+  border-radius: 6px;
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  position: relative;
+  margin-bottom: 16px;
+  animation: fadeIn 0.2s ease-out;
+}
+
+.mobile-error-banner i.error-icon {
+  color: #EF4444;
+  width: 18px;
+  height: 18px;
+}
+
+.mobile-error-banner span.error-text {
+  font-size: 13px;
+  color: var(--text-primary);
+  flex: 1;
+}
+
+.mobile-error-banner button.dismiss-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--text-secondary);
+  padding: 2px;
+}
+
+.mobile-error-banner button.dismiss-btn i {
+  width: 14px;
+  height: 14px;
+}
+
+/* Toast Toaster Snackbars Container */
+#snackbar-container {
+  position: fixed;
+  bottom: 72px; /* floats just above the bottom tab bar */
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10050;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 90%;
+  max-width: 360px;
+  pointer-events: none;
+}
+
+.snackbar-toast {
+  background: var(--text-primary);
+  color: var(--bg-base);
+  font-size: 13px;
+  font-weight: 500;
+  padding: 12px 16px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  animation: slideUpToast 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  pointer-events: auto;
+}
+
+.snackbar-toast i {
+  width: 16px;
+  height: 16px;
+  stroke-width: 2.5;
+}
+
+/* Linear Progress Loading bar */
+.linear-progress-bar {
+  width: 100%;
+  height: 3px;
+  background: var(--border-default);
+  position: relative;
+  overflow: hidden;
+  border-radius: 1.5px;
+}
+
+.linear-progress-fill {
+  height: 100%;
+  background: var(--accent-primary);
+  width: 0%;
+  transition: width 0.3s ease;
+}
+
+/* =================================================================
+   SECTION 14 — EXTRA LAYOUT ADJUSTMENTS & POLISHES
+   ================================================================= */
+   
+/* Remove heavy dropshadows and clunky border radiuses inside panels */
+.card, .split-panel, .split-map-area {
+  box-shadow: none !important;
+  border-radius: 8px !important;
+}
+
+.welcome-card-overlay {
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15) !important;
+  border-radius: 16px !important;
+}
+
+/* Soft-badge tonal backgrounds for the report metrics screen */
+.metric-card .metric-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px !important;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+
+.metric-card .icon-wrapper-tonal {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+}
+
+.metric-card .icon-wrapper-tonal.blue-tonal {
+  background: rgba(66, 133, 244, 0.08);
+  color: #1A73E8;
+}
+
+.metric-card .icon-wrapper-tonal.teal-tonal {
+  background: rgba(0, 162, 148, 0.08);
+  color: #00A294;
+}
+
+.metric-card .icon-wrapper-tonal.green-tonal {
+  background: rgba(34, 197, 94, 0.08);
+  color: #22C55E;
+}
+
+.metric-card .icon-wrapper-tonal.amber-tonal {
+  background: rgba(245, 158, 11, 0.08);
+  color: #F59E0B;
+}
+
+/* Animation configurations */
+@keyframes slideUp {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+@keyframes slideUpToast {
+  from { transform: translateY(24px) scale(0.95); opacity: 0; }
+  to { transform: translateY(0) scale(1); opacity: 1; }
+}
+
+@keyframes fadeInModal {
+  from { transform: scale(0.95); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* Metric card borders in Light & Dark Mode */
+.metric-card {
+  background: var(--bg-card) !important;
+  border: 1px solid var(--panel-border) !important;
+  border-radius: 8px !important;
+  transition: transform 0.2s ease, box-shadow 0.2s ease !important;
+}
+.metric-card:hover {
+  transform: translateY(-2px) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05) !important;
+}
+html:not(.theme-light) .metric-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25) !important;
+}
+
+/* =================================================================
+   LANDINTEL MOBILE OVERLAY STYLES
+   ================================================================= */
+@media (max-width: 767px) {
+  /* Hide ghost boxes if empty */
+  .report-exec-summary:empty,
+  .report-recommendation-box:empty {
+    display: none !important;
+  }
+
+  /* Make report panel a bottom sheet over transparent map */
+  #view-report .split-panel {
+    background-color: var(--bg-card) !important;
+    border-radius: 24px 24px 0 0 !important;
+    padding: 24px 16px !important;
+    margin-top: 10vh !important; /* space for map */
+    position: relative;
+    display: flex !important;
+    flex-direction: column;
+    min-height: 90vh;
+  }
+
+  /* Map background wrapper */
+  #view-report {
+    background: transparent !important;
+  }
+  
+  /* Drag handle */
+  #view-report .split-panel::before {
+    content: '';
+    position: absolute;
+    top: 8px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 40px;
+    height: 4px;
+    background: var(--text-muted);
+    border-radius: 4px;
+    opacity: 0.5;
+  }
+
+  /* Reorder split-panel children */
+  #view-report .split-panel > .report-header-container { order: 1; margin-bottom: 24px; }
+  #view-report .split-panel > style { order: 2; }
+  #view-report .split-panel > .desktop-only-item { display: none !important; }
+  #view-report .split-panel > #decision-card-grid { order: 3; margin-bottom: 24px; gap: 12px; }
+  #view-report .split-panel > .report-exec-summary { order: 4; background: rgba(0,0,0,0.03); border-radius: 12px; padding: 12px; font-size: 13px; margin-bottom: 24px; }
+  #view-report .split-panel > #report-ai-rec { order: 5; border: 2px solid #00A294; border-radius: 12px; margin-bottom: 24px; padding: 16px; }
+  #view-report .split-panel > #section-advanced-tech { order: 6; }
+  #view-report .split-panel > .mobile-only-toggle { order: 7; display: block !important; margin-bottom: 16px; }
+  #view-report .split-panel > #btn-download-pdf { order: 8; background: #0b57d0; border: none; padding: 14px; border-radius: 100px; font-weight: 600; margin-bottom: 12px; }
+  #view-report .split-panel > #btn-save-assets { order: 9; display: flex !important; background: rgba(0,0,0,0.05); color: var(--text-secondary); border: none; padding: 14px; border-radius: 100px; font-weight: 600; margin-bottom: 30px; }
+
+  html.theme-light #view-report .split-panel > .report-exec-summary {
+    background: #f1f3f4;
+  }
+
+  /* Header Layout Grid */
+  .report-header-container {
+    display: grid !important;
+    grid-template-areas: 
+      "left gauge"
+      "right gauge";
+    grid-template-columns: 1fr auto;
+    border-bottom: none !important;
+    padding-bottom: 0 !important;
+  }
+  .report-header-left {
+    grid-area: left;
+  }
+  .report-header-right {
+    grid-area: right;
+    align-items: flex-start !important;
+    margin-top: 8px;
+  }
+  .report-header-right .traffic-badge {
+    padding: 6px 12px;
+    border-radius: 100px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: 700;
+  }
+  .report-header-right .traffic-badge::before {
+    content: '\f00c';
+    font-family: 'Font Awesome 6 Free';
+    font-weight: 900;
+  }
+
+  /* Viability Gauge Absolute Positioning */
+  .viability-score-row {
+    position: absolute;
+    top: 24px;
+    right: 16px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-top: 0 !important;
+  }
+  .viability-score-row .circular-gauge {
+    width: 64px;
+    height: 64px;
+  }
+  .viability-score-row .circular-gauge-text {
+    font-size: 16px;
+    font-weight: 800;
+  }
+  .viability-score-row > div:last-child {
+    text-align: center;
+    margin-top: 4px;
+  }
+  .viability-score-row > div:last-child p {
+    display: none; /* Hide date */
+  }
+
+  /* Metric Cards Vertical Layout */
+  .metric-card {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 16px !important;
+    border: none !important;
+    background: rgba(0,0,0,0.02) !important;
+    border-radius: 16px !important;
+  }
+  html.theme-light .metric-card {
+    background: #f8f9fa !important;
+  }
+  .metric-card .metric-header {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+    font-size: 12px !important;
+    text-transform: none;
+    letter-spacing: normal;
+    font-weight: 400;
+    margin-bottom: 4px;
+    color: var(--text-secondary);
+  }
+  .metric-card .metric-value {
+    font-size: 15px !important;
+    font-weight: 700;
+    margin-top: 2px;
+  }
+
+  /* Bottom Nav Teal Pill */
+  #mobile-nav-bar {
+    height: 72px;
+    background: var(--bg-card);
+    border-top: 1px solid var(--panel-border);
+  }
+  .mobile-tab-btn.active {
+    background: rgba(0, 162, 148, 0.15) !important;
+    color: #00A294 !important;
+    border-radius: 100px;
+    padding: 8px 16px;
+    flex-direction: row;
+    gap: 6px;
+  }
+  .mobile-tab-btn.active::after {
+    display: none; /* Hide old dot indicator */
+  }
+  .mobile-tab-btn.active span {
+    font-size: 13px;
+    font-weight: 700;
+  }
+
+  /* Segmented Control Toggle */
+  .mobile-segmented-control {
+    display: flex;
+    background: rgba(0,0,0,0.05);
+    border-radius: 100px;
+    padding: 4px;
+    margin-bottom: 8px;
+  }
+  html.theme-light .mobile-segmented-control {
+    background: #e9ecef;
+  }
+  .segment-btn {
+    flex: 1;
+    text-align: center;
+    padding: 10px 0;
+    border-radius: 100px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    transition: all 0.2s ease;
+  }
+  .segment-btn.active {
+    background: #64ffda; /* Teal-ish accent */
+    color: #004d40;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  }
+  .mobile-mode-desc {
+    font-size: 11px;
+    color: var(--text-muted);
+    text-align: center;
+    line-height: 1.4;
+    padding: 0 16px;
+  }
+}
