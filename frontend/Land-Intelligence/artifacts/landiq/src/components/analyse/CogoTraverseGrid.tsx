@@ -5,6 +5,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Button } from "@/components/ui/button";
 import { Plus, Trash2, Info, X } from "lucide-react";
 import { useAppContext } from "@/context/AppContext";
+import { apiUrl } from "@/lib/api";
 
 export interface COGOPayload {
   input_mode: string;
@@ -155,7 +156,7 @@ export function CogoTraverseGrid({ onPayloadChange }: Props) {
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(async () => {
       try {
-        const res = await fetch("http://127.0.0.1:8000/api/cogo/draft", {
+        const res = await fetch(apiUrl("/api/cogo/draft"), {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
