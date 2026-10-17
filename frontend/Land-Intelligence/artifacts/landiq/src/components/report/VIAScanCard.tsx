@@ -15,6 +15,7 @@
  */
 
 import { useEffect, useRef, useState, useCallback } from "react";
+import { API_BASE } from "@/lib/api";
 import {
   Eye,
   Route,
@@ -134,7 +135,7 @@ function DotPulse() {
 // ── Main Component ────────────────────────────────────────────────────────────
 
 export function VIAScanCard(props: VIAScanCardProps) {
-  const { reportId, apiBase = "http://127.0.0.1:8000" } = props;
+  const { reportId, apiBase = API_BASE } = props;
   const [viaStatus, setViaStatus] = useState<"pending" | "complete" | "timeout" | "error" | "low_quality">("pending");
   const [viaResult, setViaResult] = useState<VIAResult | null>(null);
   const [triggered, setTriggered] = useState(false);
