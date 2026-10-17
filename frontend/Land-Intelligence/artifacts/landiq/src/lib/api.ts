@@ -17,7 +17,7 @@ if (!configuredApiBase && !developmentFallback) {
   throw new Error("Missing VITE_API_BASE_URL. Configure the LandIQ backend URL in the deployment environment.");
 }
 
-export const API_BASE: string = (configuredApiBase || developmentFallback!).replace(/\\/+$/, "");
+export const API_BASE: string = (configuredApiBase || developmentFallback!).replace(/\/+$/, "");
 
 /**
  * Builds a full API URL by appending `path` to the configured API base.
