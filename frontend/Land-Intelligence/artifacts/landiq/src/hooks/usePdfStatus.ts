@@ -1,3 +1,4 @@
+import { apiUrl } from "@/lib/api";
 import { useEffect, useRef, useState } from "react";
 
 export function usePdfStatus(reportId: string | null) {
@@ -14,7 +15,7 @@ export function usePdfStatus(reportId: string | null) {
 
     const poll = async () => {
       try {
-        const r = await fetch(`/api/reports/${reportId}/pdf-status`);
+        const r = await fetch(apiUrl(`/api/reports/${reportId}/pdf-status`));
         const d = await r.json();
         if (d.pdf_ready) {
           setPdfReady(true);
