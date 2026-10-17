@@ -112,7 +112,7 @@ export function ReportPanel() {
     if (!sessionId) return;
     setLoadingNav(true);
     try {
-      const res = await fetch(`http://127.0.0.1:8000/api/reports/${sessionId}/navigation-data`);
+      const res = await fetch(apiUrl(`/api/reports/${sessionId}/navigation-data`));
       if (res.ok) {
         const data = await res.json();
         setNavData(data);

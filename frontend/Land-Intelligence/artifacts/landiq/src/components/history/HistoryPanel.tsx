@@ -4,6 +4,7 @@ import { Link, useLocation } from "wouter";
 import { useState, useEffect } from "react";
 import { useAppContext } from "@/context/AppContext";
 import { useMobile } from "@/hooks/use-mobile";
+import { apiUrl } from "@/lib/api";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -40,7 +41,7 @@ export function HistoryPanel() {
   useEffect(() => {
     async function fetchHistory() {
       try {
-        const res = await fetch("http://127.0.0.1:8000/api/history");
+        const res = await fetch(apiUrl("/api/history"));
         if (res.ok) {
           const data = await res.json();
           setHistoryData(data);
@@ -67,7 +68,7 @@ export function HistoryPanel() {
 
   const handleDeleteAll = async () => {
     try {
-      const res = await fetch("http://127.0.0.1:8000/api/history", { method: "DELETE" });
+      const res = await fetch(apiUrl("/api/history"), { method: "DELETE" });
       if (res.ok) {
         setHistoryData([]);
       }
@@ -79,7 +80,7 @@ export function HistoryPanel() {
   const handleDeleteItem = async (e: React.MouseEvent, report_id: string) => {
     e.stopPropagation();
     try {
-      const res = await fetch(`http://127.0.0.1:8000/api/history/${report_id}`, { method: "DELETE" });
+      const res = await fetch(apiUrl(`/api/history/${report_id}`), { method: "DELETE" });
       if (res.ok) {
         setHistoryData(prev => prev.filter(h => h.report_id !== report_id));
       }

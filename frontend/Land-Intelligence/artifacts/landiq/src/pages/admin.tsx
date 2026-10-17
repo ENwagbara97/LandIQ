@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link } from "wouter";
+import { apiUrl } from "@/lib/api";
 import {
   LayoutDashboard, FileText, Users, Bot, Map, Upload,
   BarChart2, Activity, Shield, LogOut, ChevronRight, ChevronLeft,
@@ -190,7 +191,7 @@ function DashboardView() {
   });
 
   useEffect(() => {
-    fetch("http://127.0.0.1:8000/api/admin/stats")
+    fetch(apiUrl("/api/admin/stats"))
       .then(res => res.json())
       .then(data => {
         if (data.recent_reports && data.recent_reports.length > 0) {
@@ -806,7 +807,7 @@ export function AdminPage() {
             <button
               onClick={() => {
                 if (confirm("Are you sure you want to completely wipe all test history?")) {
-                  fetch("http://127.0.0.1:8000/api/history", { method: "DELETE" })
+                  fetch(apiUrl("/api/history"), { method: "DELETE" })
                     .then(() => { alert("History Cleared!"); window.location.reload(); })
                     .catch(e => console.error(e));
                 }

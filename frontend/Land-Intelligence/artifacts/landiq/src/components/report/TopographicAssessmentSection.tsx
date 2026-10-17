@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { apiUrl } from "@/lib/api";
 import { MapContainer, TileLayer, Polygon, Polyline, Tooltip } from "react-leaflet";
 import { Mountain, Loader2, AlertCircle } from "lucide-react";
 import L from "leaflet";
@@ -128,7 +129,7 @@ export function TopographicAssessmentSection({ reportId, parcelCoords }: Topogra
     if (!reportId) return;
     setLoading(true);
     setError(null);
-    fetch(`http://127.0.0.1:8000/api/report/${reportId}/gee-elevation`)
+    fetch(apiUrl(`/api/report/${reportId}/gee-elevation`))
       .then((res) => {
         if (!res.ok) {
           throw new Error("Failed to load GEE elevation data.");

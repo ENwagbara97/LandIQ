@@ -7,6 +7,7 @@ import { useRouteCalculation } from '../../hooks/useRouteCalculation';
 import { Navigation2, Car, Footprints, AlertCircle, MapPin, Loader2, X, Globe, Copy, Share2, ExternalLink, Check } from 'lucide-react';
 import { SiteInspectionChecklist } from './SiteInspectionChecklist';
 import { MapErrorBoundary } from '../map/MapErrorBoundary';
+import { apiUrl } from "@/lib/api";
 
 // Custom Icons
 const createPulseIcon = () => L.divIcon({
@@ -147,7 +148,7 @@ export function SiteNavigationPanel({ navData, reportData, onClose, onArrivalCom
           setIsDiaspora(true);
           if (!diasporaPingSentRef.current && navData?.report_id) {
             diasporaPingSentRef.current = true;
-            fetch(`/api/sessions/${navData.report_id}/diaspora-ping`, {
+            fetch(apiUrl(`/api/sessions/${navData.report_id}/diaspora-ping`), {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ country: "Overseas" })
@@ -186,7 +187,7 @@ export function SiteNavigationPanel({ navData, reportData, onClose, onArrivalCom
             hasArrivedRef.current = true; // Block future calls immediately
             
             // Fire API call exactly once
-            fetch(`/api/reports/${navData.report_id}/arrival`, {
+            fetch(apiUrl(`/api/reports/${navData.report_id}/arrival`), {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
