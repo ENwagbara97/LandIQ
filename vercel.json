@@ -1,6 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "installCommand": "cd frontend/Land-Intelligence/artifacts/landiq && npm install --legacy-peer-deps --ignore-scripts",
+  "installCommand": "cd frontend/Land-Intelligence/artifacts/landiq && npm install --legacy-peer-deps",
   "buildCommand": "cd frontend/Land-Intelligence/artifacts/landiq && npm run build",
   "outputDirectory": "frontend/Land-Intelligence/artifacts/landiq/dist/public",
   "rewrites": [

@@ -45,3 +45,8 @@ dist/
 **/.git_backup/
 .env.local
 **/.env.local
+
+# Lockfiles
+package-lock.json
+**/package-lock.json
+
