@@ -166,6 +166,19 @@ def _llm_call(
     except Exception as exc:
         logger.warning(f"[report_gen] AI client call failed: {exc}, attempting legacy fallbacks")
 
+    # The unified client above already tries all configured cloud providers
+    # (NVIDIA NIM, OpenRouter, Kaggle proxy, Gemini Direct) and only attempts
+    # Ollama when OLLAMA_ENABLED is explicitly true. Do not fall through to
+    # this legacy router: it bypasses the provider chain and attempts local
+    # Ollama even on hosted services such as Render.
+    logger.warning(
+        "[report_gen] Unified AI client returned no response; "
+        "skipping legacy provider/Ollama fallback"
+    )
+    return "", True
+
+    # Legacy routing retained temporarily below for easy local comparison;
+    # it is intentionally unreachable after the unified client fails.
     # Auto-detect Gemini key from environment if not explicitly provided
     if not llm_provider and os.getenv("GEMINI_API_KEY"):
         llm_provider = "gemini"
@@ -396,27 +409,45 @@ def call_metric_translation(
     )
 
     if timed_out or not raw:
-        return MCPErrorResponse(
-            error_code="LLM_TIMEOUT",
-            instruction="[PIPELINE HALTED] Call 1 (Metric Translation) timed out. The local Ollama model failed to respond within the allowed window.",
-            run_id="system",
-            stage=PipelineStage.REPORT_GEN,
+        # Narrative translation is optional. Preserve the structured GIS/risk
+        # assessment and continue with a conservative note rather than
+        # converting an unavailable LLM into a pipeline-halting error.
+        logger.warning(
+            "[report_gen] Metric translation unavailable; continuing with "
+            "deterministic fallback text"
         )
+        fallback_metrics = {
+            "assessment_note": (
+                "Automated plain language translation was unavailable for this run. "
+                "Use the numeric GIS measurements and risk classifications in this "
+                "report as the source of truth; unavailable measurements should be "
+                "treated as unassessed."
+            )
+        }
+        return {k: scrub_output(v) for k, v in fallback_metrics.items()}, True
 
     # Parse JSON from response
     try:
         # Strip markdown fences if present
         clean = re.sub(r"```(?:json)?", "", raw).strip()
         metrics = json.loads(clean)
+        if not isinstance(metrics, dict):
+            raise ValueError("Metric translation response must be a JSON object")
         # Scrub each value
         return {k: scrub_output(str(v)) for k, v in metrics.items()}, False
     except (json.JSONDecodeError, ValueError):
-        return MCPErrorResponse(
-            error_code="LLM_PARSE_ERROR",
-            instruction="[PIPELINE HALTED] Call 1 (Metric Translation) returned invalid JSON.",
-            run_id="system",
-            stage=PipelineStage.REPORT_GEN,
+        logger.warning(
+            "[report_gen] Metric translation returned invalid JSON; "
+            "continuing with deterministic fallback text"
         )
+        return {
+            "assessment_note": scrub_output(
+                "Automated plain language translation could not be parsed for this run. "
+                "Use the numeric GIS measurements and risk classifications in this "
+                "report as the source of truth; unavailable measurements should be "
+                "treated as unassessed."
+            )
+        }, True
 
 
 # =============================================================================
