@@ -233,53 +233,51 @@ def _llm_call(
             logger.warning(f"[report_gen] Cloud LLM ({provider}) failed: {e}. Falling back to local Ollama.")
             # Fall through to Ollama
 
-    # ── LOCAL OLLAMA FALLBACK ──
-    try:
-        import ollama
+    # ── OPTIONAL LOCAL OLLAMA FALLBACK (LOCAL DEVELOPMENT ONLY) ──
+    # Never let an unavailable local Ollama daemon block a cloud-backed report
+    # on Render. Local Ollama must be explicitly enabled by the developer.
+    if os.getenv("OLLAMA_ENABLED", "").strip().lower() in ("true", "1", "yes"):
+        try:
+            import ollama
 
-        full_text = ""
+            full_text = ""
+            ollama_host = os.getenv("OLLAMA_HOST") or os.getenv("OLLAMA_BASE_URL")
+            client = ollama.Client(host=ollama_host) if ollama_host else ollama
+            messages = [
+                {"role": "system", "content": system},
+                {"role": "user", "content": prompt},
+            ]
 
-        if stream:
-            response_iter = ollama.chat(
-                model=model,
-                messages=[
-                    {"role": "system",  "content": system},
-                    {"role": "user",    "content": prompt},
-                ],
-                stream=True,
-                options={"num_predict": max_tokens, "temperature": 0.3},
-            )
-            for chunk in response_iter:
-                if time.monotonic() - start > timeout_s:
-                    logger.warning(f"[LLM_TIMEOUT] Ollama stream exceeded {timeout_s}s")
-                    return full_text or "", True
-                content = chunk.get("message", {}).get("content", "")
-                full_text += content
-        else:
-            response = ollama.chat(
-                model=model,
-                messages=[
-                    {"role": "system",  "content": system},
-                    {"role": "user",    "content": prompt},
-                ],
-                options={"num_predict": max_tokens, "temperature": 0.3},
-            )
-            elapsed = time.monotonic() - start
-            if elapsed > timeout_s:
-                logger.warning(f"[LLM_TIMEOUT] Ollama non-stream exceeded {timeout_s}s")
-                return "", True
-            full_text = response.get("message", {}).get("content", "")
+            if stream:
+                response_iter = client.chat(
+                    model=model,
+                    messages=messages,
+                    stream=True,
+                    options={"num_predict": max_tokens, "temperature": 0.3},
+                )
+                for chunk in response_iter:
+                    if time.monotonic() - start > timeout_s:
+                        logger.warning("[LLM_TIMEOUT] Optional local Ollama exceeded %ss", timeout_s)
+                        return full_text.strip(), not bool(full_text.strip())
+                    full_text += chunk.get("message", {}).get("content", "")
+            else:
+                response = client.chat(
+                    model=model,
+                    messages=messages,
+                    options={"num_predict": max_tokens, "temperature": 0.3},
+                )
+                full_text = response.get("message", {}).get("content", "")
 
-        elapsed = round(time.monotonic() - start, 2)
-        logger.info(f"[report_gen] Ollama call completed in {elapsed}s ({len(full_text)} chars)")
-        return full_text.strip(), False
+            if full_text.strip():
+                logger.info("[report_gen] Optional local Ollama completed in %.2fs", time.monotonic() - start)
+                return full_text.strip(), False
+        except Exception as exc:
+            logger.warning("[report_gen] Optional local Ollama unavailable: %s", exc)
 
-    except ImportError:
-        logger.error("[report_gen] ollama library not installed. Run: pip install ollama")
-        return "", True
-    except Exception as exc:
-        logger.warning(f"[report_gen] Ollama call failed: {exc}")
-        return "", True
+    # No cloud provider succeeded and local Ollama is disabled/unavailable.
+    # Return control to deterministic report fallbacks; do not halt the pipeline here.
+    logger.warning("[report_gen] No LLM provider returned a response; using deterministic report fallback")
+    return "", True
 
 
 def _get_ollama_model(flags: dict) -> tuple[str, str]:
@@ -396,12 +394,11 @@ def call_metric_translation(
     )
 
     if timed_out or not raw:
-        return MCPErrorResponse(
-            error_code="LLM_TIMEOUT",
-            instruction="[PIPELINE HALTED] Call 1 (Metric Translation) timed out. The local Ollama model failed to respond within the allowed window.",
-            run_id="system",
-            stage=PipelineStage.REPORT_GEN,
-        )
+        logger.warning("[report_gen] Metric translation unavailable from cloud providers; using deterministic metric templates")
+        return {
+            key: scrub_output(value)
+            for key, value in _METRIC_FALLBACK_TEMPLATES.items()
+        }, True
 
     # Parse JSON from response
     try:
@@ -411,12 +408,11 @@ def call_metric_translation(
         # Scrub each value
         return {k: scrub_output(str(v)) for k, v in metrics.items()}, False
     except (json.JSONDecodeError, ValueError):
-        return MCPErrorResponse(
-            error_code="LLM_PARSE_ERROR",
-            instruction="[PIPELINE HALTED] Call 1 (Metric Translation) returned invalid JSON.",
-            run_id="system",
-            stage=PipelineStage.REPORT_GEN,
-        )
+        logger.warning("[report_gen] Metric translation returned invalid JSON; using deterministic metric templates")
+        return {
+            key: scrub_output(value)
+            for key, value in _METRIC_FALLBACK_TEMPLATES.items()
+        }, True
 
 
 # =============================================================================
