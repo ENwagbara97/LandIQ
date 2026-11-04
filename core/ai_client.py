@@ -149,8 +149,12 @@ def ai_complete(
         image_b64  : Optional base64 image string for vision/OCR tasks.
     """
     # Build the message list (inject image into last user message if provided)
+    nim_messages = None
     if image_b64 and task in ("ocr", "vision"):
-        messages = _inject_image(messages, image_b64)
+        plain_messages = messages
+        messages = _inject_image(plain_messages, image_b64)
+        # NVIDIA NIM rejects large inline images, so give it a downsized JPEG copy.
+        nim_messages = _inject_image(plain_messages, _fit_image_for_nim(image_b64))
         # Fast path for Vision/OCR: inject image into Gemini Direct payload
         # (pass raw image_b64 — Gemini Direct builds its own payload independently)
         gemini_fast = _try_gemini_direct([], max_tokens, temperature, image_b64=image_b64,
@@ -179,7 +183,7 @@ def ai_complete(
         # Deduplicate — if primary == fallback (e.g. ocr), only call once
         nim_models = list(dict.fromkeys(filter(None, [primary_model, fallback_model])))
         for model in nim_models:
-            result = _try_complete(client, model, messages,
+            result = _try_complete(client, model, nim_messages or messages,
                                    max_tokens, temperature, nv_timeout,
                                    "nvidia", task)
             if result is not None:
@@ -367,6 +371,39 @@ def _try_ollama(
     except Exception as exc:
         logger.warning(f"[ai_client] Ollama failed: {exc}")
         return None
+
+
+def _fit_image_for_nim(image_b64: str, max_chars: int = 170_000) -> str:
+    """Return a JPEG base64 string small enough for NIM's inline image limit.
+
+    NIM vision endpoints reject inline base64 images above roughly 180k
+    characters, so a 200 dpi survey scan sent as-is fails. Shrinks dimensions
+    and quality step by step. Returns the input unchanged if it already fits or
+    if Pillow cannot process it.
+    """
+    if len(image_b64) <= max_chars:
+        return image_b64
+    try:
+        import base64
+        import io
+        from PIL import Image
+        img = Image.open(io.BytesIO(base64.b64decode(image_b64)))
+        img = img.convert("RGB")
+        longest = max(img.size)
+        for target in (2000, 1600, 1280, 1024, 800):
+            scale = min(1.0, target / longest)
+            work = img.resize((max(1, int(img.width * scale)), max(1, int(img.height * scale))))
+            for quality in (85, 70, 55):
+                buf = io.BytesIO()
+                work.save(buf, format="JPEG", quality=quality, optimize=True)
+                out = base64.b64encode(buf.getvalue()).decode()
+                if len(out) <= max_chars:
+                    logger.info(f"[ai_client] NIM image fitted: {work.size} q{quality} ({len(out)} chars)")
+                    return out
+        return out
+    except Exception as exc:
+        logger.warning(f"[ai_client] NIM image resize failed: {exc}")
+        return image_b64
 
 
 def _inject_image(messages: list[dict], image_b64: str) -> list[dict]:

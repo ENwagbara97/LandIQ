@@ -25,6 +25,9 @@ scipy
 # ── OCR / Vision ──────────────────────────────────────────────────────────────
 google-genai
 Pillow
+pymupdf
+pypdf
+requests
 
 # ── Map Snapshot Engine ───────────────────────────────────────────────────────
 staticmap

@@ -598,8 +598,8 @@ async def upload_coordinates(
                         debug_path = Path(__file__).resolve().parent / "scratch" / "ocr_dump.txt"
                         debug_path.parent.mkdir(exist_ok=True)
                         debug_path.write_text(raw_text or "", encoding="utf-8")
-                except Exception:
-                    pass
+                except Exception as ocr_exc:
+                    logger.error(f"[server] OCR failed for {filename}: {ocr_exc}")
 
         # ── Plan Type Classification (Chapter 1.2 — Masterclass Prompt) ─────
         detected_plan_type = "TYPE_A"
