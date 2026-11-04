@@ -1477,12 +1477,65 @@ def _vision_result_to_text(vision_json: dict) -> str:
     return "\n".join(lines)
 
 
+def _ocr_via_ai_tiers(image_bytes: bytes, plan_type: str = "TYPE_A") -> str | None:
+    """Run OCR through core.ai_client (Gemini Direct -> NVIDIA NIM -> OpenRouter -> ...).
+
+    Returns the extracted coordinate text, or None when no backend produced
+    anything. Never raises.
+    """
+    import base64
+    import json as _json
+    import logging
+
+    _logger = logging.getLogger("landiq.vision_ocr")
+    try:
+        from core.ai_client import complete_ocr
+        img_b64_raw = base64.b64encode(image_bytes).decode()
+        sys_p = (
+            _SURVEYOR_INTELLIGENCE_PROMPT if plan_type == "TYPE_A"
+            else (_COMPOSITE_PLAN_PROMPT if plan_type == "TYPE_B" else _ENGINEERING_PLAN_PROMPT)
+        )
+        messages = [
+            {"role": "system", "content": sys_p},
+            {"role": "user", "content": "Extract all survey boundary beacon coordinates from this image as instructed."},
+        ]
+        res_text = complete_ocr(messages=messages, image_b64=img_b64_raw, timeout=45)
+        if not res_text:
+            _logger.warning("[vision_ocr] 4-Tier AI client returned nothing")
+            return None
+        _logger.info("[vision_ocr] 4-Tier AI client OCR succeeded")
+        raw_clean = res_text.strip()
+        if raw_clean.startswith("```json"):
+            raw_clean = raw_clean[7:]
+        elif raw_clean.startswith("```"):
+            raw_clean = raw_clean[3:]
+        if raw_clean.endswith("```"):
+            raw_clean = raw_clean[:-3]
+        raw_clean = raw_clean.strip()
+        try:
+            return _vision_result_to_text(_json.loads(raw_clean))
+        except Exception as parse_err:
+            _logger.warning(f"[vision_ocr] 4-Tier OCR JSON parsing failed: {parse_err}, returning raw text")
+            return res_text.strip()
+    except Exception as exc:
+        _logger.warning(f"[vision_ocr] 4-Tier AI client OCR failed: {exc}")
+        return None
+
+
+def _any_ai_backend_configured() -> bool:
+    import os
+    return any((os.getenv(k) or "").strip() for k in (
+        "NVIDIA_API_KEY", "OPENROUTER_API_KEY", "GEMINI_API_KEY", "MODEL_PROXY_API_KEY",
+    ))
+
+
 def _ocr_via_gemini(
     image_bytes: bytes,
     api_key: str,
     stated_area_ha: float | None = None,
     plan_type: str = "TYPE_A",
     mime_type: str = "image/png",
+    skip_tiers: bool = False,
 ) -> str:
     """Call Gemini Vision API and return extracted coordinate text.
 
@@ -1503,33 +1556,10 @@ def _ocr_via_gemini(
     _logger = logging.getLogger("landiq.vision_ocr")
 
     # ── 4-TIER AI CLIENT (NVIDIA NIM → OpenRouter → Kaggle Proxy → Ollama) ──
-    try:
-        from core.ai_client import complete_ocr
-        img_b64_raw = base64.b64encode(image_bytes).decode()
-        sys_p = _SURVEYOR_INTELLIGENCE_PROMPT if plan_type == "TYPE_A" else (_COMPOSITE_PLAN_PROMPT if plan_type == "TYPE_B" else _ENGINEERING_PLAN_PROMPT)
-        messages = [
-            {"role": "system", "content": sys_p},
-            {"role": "user",   "content": "Extract all survey boundary beacon coordinates from this image as instructed."}
-        ]
-        res_text = complete_ocr(messages=messages, image_b64=img_b64_raw, timeout=45)
-        if res_text:
-            _logger.info("[vision_ocr] 4-Tier AI client OCR succeeded")
-            raw_clean = res_text.strip()
-            if raw_clean.startswith("```json"):
-                raw_clean = raw_clean[7:]
-            elif raw_clean.startswith("```"):
-                raw_clean = raw_clean[3:]
-            if raw_clean.endswith("```"):
-                raw_clean = raw_clean[:-3]
-            raw_clean = raw_clean.strip()
-            try:
-                result = _json.loads(raw_clean)
-                return _vision_result_to_text(result)
-            except Exception as parse_err:
-                _logger.warning(f"[vision_ocr] 4-Tier OCR JSON parsing failed: {parse_err}, returning raw text")
-                return res_text.strip()
-    except Exception as exc:
-        _logger.warning(f"[vision_ocr] 4-Tier AI client OCR failed: {exc}, cascading to Gemini")
+    if not skip_tiers:
+        _tier_text = _ocr_via_ai_tiers(image_bytes, plan_type=plan_type)
+        if _tier_text:
+            return _tier_text
 
     _VALID_GEMINI_PREFIXES = ("AIzaSy", "AQ.")
     # Always resolve the freshest key from .env
@@ -1790,48 +1820,50 @@ def ocr_file(
 
     _logger.info(
         f"[vision_ocr] ocr_file called: ext={ext}, provider={vision_provider}, "
-        f"key_set={bool(vision_api_key)}, proxy_url={bool(os.getenv('MODEL_PROXY_URL'))}"
+        f"key_set={bool(vision_api_key)}, proxy_url={bool(os.getenv('MODEL_PROXY_URL'))}, "
+        f"nvidia_key={bool(os.getenv('NVIDIA_API_KEY'))}, openrouter_key={bool(os.getenv('OPENROUTER_API_KEY'))}"
     )
+
+    # Rendered image bytes for the vision backends (PDF page 1 or the image itself)
+    image_bytes_for_api = None
+    if ext == ".pdf":
+        try:
+            import pymupdf
+            _doc = pymupdf.open(stream=file_bytes, filetype="pdf")
+            if len(_doc) > 0:
+                image_bytes_for_api = _doc.load_page(0).get_pixmap(dpi=200).tobytes("png")
+        except Exception as _fz_err:
+            _logger.warning(f"[vision_ocr] PyMuPDF rendering failed ({_fz_err}); trying pdf2image")
+        if image_bytes_for_api is None:
+            try:
+                from pdf2image import convert_from_bytes
+                _pages = convert_from_bytes(file_bytes, dpi=200, first_page=1, last_page=1)
+                _buf = io.BytesIO()
+                _pages[0].save(_buf, format="PNG")
+                image_bytes_for_api = _buf.getvalue()
+            except Exception as _p2i_err:
+                _logger.warning(f"[vision_ocr] pdf2image rendering failed ({_p2i_err}); trying embedded text")
+                try:
+                    import pypdf
+                    _reader = pypdf.PdfReader(io.BytesIO(file_bytes))
+                    _text = "".join((pg.extract_text() or "") for pg in _reader.pages).strip()
+                    if len(_text) > 50 and any(c.isdigit() for c in _text):
+                        return _text
+                except Exception:
+                    pass
+    elif ext in (".jpg", ".jpeg", ".png", ".tiff", ".tif", ".bmp"):
+        image_bytes_for_api = file_bytes
+
+    # ── AI TIERS FIRST (Gemini Direct → NVIDIA NIM → OpenRouter → Kaggle → Ollama) ──
+    # Works with any one of NVIDIA_API_KEY / OPENROUTER_API_KEY / GEMINI_API_KEY /
+    # MODEL_PROXY_API_KEY set. Previously this only ran when a Gemini key existed.
+    if image_bytes_for_api and (_any_ai_backend_configured() or os.getenv("OLLAMA_ENABLED")):
+        _tier_text = _ocr_via_ai_tiers(image_bytes_for_api)
+        if _tier_text:
+            return _tier_text
 
     # ── CLOUD VISION PATH ────────────────────────────────────────────────────
     if vision_provider and vision_api_key:
-        # For PDFs, convert first page to PNG bytes for the Vision API
-        if ext == ".pdf":
-            # Native PyMuPDF rendering (fast, no external Poppler binary required)
-            try:
-                import pymupdf
-                doc = pymupdf.open(stream=file_bytes, filetype="pdf")
-                if len(doc) > 0:
-                    page = doc.load_page(0)
-                    pix = page.get_pixmap(dpi=200)
-                    image_bytes_for_api = pix.tobytes("png")
-            except Exception as _fz_err:
-                _logger.warning(f"[vision_ocr] PyMuPDF rendering failed ({_fz_err}); trying pdf2image")
-
-            if image_bytes_for_api is None:
-                try:
-                    from pdf2image import convert_from_bytes
-                    pages = convert_from_bytes(file_bytes, dpi=200, first_page=1, last_page=1)
-                    img_buf = io.BytesIO()
-                    pages[0].save(img_buf, format="PNG")
-                    image_bytes_for_api = img_buf.getvalue()
-                except Exception:
-                    # If PDF image rendering fails, try pypdf text first
-                    try:
-                        import pypdf
-                        reader = pypdf.PdfReader(io.BytesIO(file_bytes))
-                        text = ""
-                        for page in reader.pages:
-                            text += page.extract_text() or ""
-                        text = text.strip()
-                        if len(text) > 50 and any(c.isdigit() for c in text):
-                            return text
-                    except Exception:
-                        pass
-                    image_bytes_for_api = None
-        else:
-            image_bytes_for_api = file_bytes
-
         if image_bytes_for_api:
             provider = vision_provider.lower()
             _ext_mime_map = {
@@ -1847,7 +1879,7 @@ def ocr_file(
             try:
                 if provider == "gemini":
                     _logger.info(f"[vision_ocr] Using Gemini Vision (mime={detected_mime})")
-                    return _ocr_via_gemini(image_bytes_for_api, vision_api_key, stated_area_ha=stated_area_ha, mime_type=detected_mime)
+                    return _ocr_via_gemini(image_bytes_for_api, vision_api_key, stated_area_ha=stated_area_ha, mime_type=detected_mime, skip_tiers=True)
                 elif provider == "openai":
                     _logger.info(f"[vision_ocr] Using GPT-4o Vision (mime={detected_mime})")
                     return _ocr_via_openai(image_bytes_for_api, vision_api_key, mime_type=detected_mime)
@@ -1875,7 +1907,7 @@ def ocr_file(
             try:
                 send_bytes = png_bytes if png_bytes else file_bytes
                 send_mime = "image/png" if png_bytes else "application/pdf"
-                return _ocr_via_gemini(send_bytes, _key, stated_area_ha=stated_area_ha, mime_type=send_mime)
+                return _ocr_via_gemini(send_bytes, _key, stated_area_ha=stated_area_ha, mime_type=send_mime, skip_tiers=True)
             except Exception as exc:
                 _logger.warning(f"[vision_ocr] Gemini PDF fallback failed: {exc}")
 
@@ -1894,11 +1926,12 @@ def ocr_file(
         if _key:
             _logger.info(f"[vision_ocr] Gemini Vision for image file (mime={_img_mime})")
             try:
-                return _ocr_via_gemini(file_bytes, _key, stated_area_ha=stated_area_ha, mime_type=_img_mime)
+                return _ocr_via_gemini(file_bytes, _key, stated_area_ha=stated_area_ha, mime_type=_img_mime, skip_tiers=True)
             except Exception as exc:
                 _logger.warning(f"[vision_ocr] Gemini image OCR failed: {exc}")
         raise RuntimeError(
-            "Image parsing requires a Gemini API key set in your environment. "
+            "Image parsing requires a Gemini API key (or NVIDIA_API_KEY / OPENROUTER_API_KEY) "
+            "set in your environment, and that backend must return text. "
             "Please paste the coordinate text directly."
         )
     else:
