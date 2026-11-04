@@ -38,12 +38,11 @@ logger = logging.getLogger("landiq.ai_client")
 def _get_model(key: str, default: str = "") -> str:
     """Read latest model string from environment or defaults."""
     defaults = {
-        # OCR/Vision: llama-3.2-11b confirmed working on NIM at 1.9s (2026-08-14 live test).
-        # nemotron-nano-12b-v2-vl and llama-3.2-90b are unresponsive (3+ min timeout, marked DEAD).
-        # Fast-path: Gemini Direct is tried FIRST for vision/OCR inside ai_complete().
-        # NIM llama-3.2-11b is Tier-1 backup; OpenRouter gemini-2.5-flash is Tier-2.
-        "ocr":              "meta/llama-3.2-11b-vision-instruct",  # NIM: confirmed 1.9s
-        "ocr_fallback":     "meta/llama-3.2-11b-vision-instruct",  # same — skip dead models
+        # OCR/Vision: use NVIDIA's currently listed 90B Vision model for scanned plans.
+        # The previous 11B model returned HTTP 404 in the live Render test.
+        # Fast-path: Gemini Direct is tried FIRST when configured; NIM follows.
+        "ocr":              "meta/llama-3.2-90b-vision-instruct",
+        "ocr_fallback":     "meta/llama-3.2-11b-vision-instruct",  # legacy fallback; OpenRouter follows
         "ocr_openrouter":   "google/gemini-2.5-flash",              # OR: confirmed 1.2s
         "vision":           "meta/llama-3.2-11b-vision-instruct",  # NIM: confirmed 1.9s
         "vision_fallback":  "meta/llama-3.2-11b-vision-instruct",  # same — skip dead 90B
@@ -170,8 +169,11 @@ def ai_complete(
         #   reasoning:  20s  — nemotron-reasoning confirmed 1.0s; super-49b confirmed 5.5s
         #   report:     42s  — llama-3.3-70b confirmed 36s (slow but works)
         #   fast/other: 15s  — llama-3.2-11b confirmed 1.9s
-        if task in ("ocr", "vision"):
-            nv_timeout = 15
+        if task == "ocr":
+            # 90B Vision is substantially slower than the retired 11B route.
+            nv_timeout = max(60, timeout)
+        elif task == "vision":
+            nv_timeout = max(30, timeout)
         elif task == "reasoning":
             nv_timeout = 20
         elif task == "report":
